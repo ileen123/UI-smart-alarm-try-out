@@ -1,0 +1,653 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Instellen Nieuwe Patiënt</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f5f5f5;
+            padding: 20px;
+        }
+        
+        .header {
+            background-color: #e8e8e8;
+            padding: 10px 20px;
+            border-radius: 8px;
+            margin-bottom: 30px;
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            font-size: 14px;
+            color: #666;
+        }
+        
+        .user-icon {
+            font-size: 16px;
+        }
+        
+        .main-title {
+            font-size: 24px;
+            font-weight: 600;
+            margin-bottom: 30px;
+            color: #333;
+            border-bottom: 3px solid #ff6b35;
+            padding-bottom: 10px;
+        }
+        
+        .progress-bar {
+            display: flex;
+            align-items: center;
+            margin-bottom: 40px;
+        }
+        
+        .step {
+            display: flex;
+            align-items: center;
+            color: #666;
+        }
+        
+        .step-number {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            background-color: #007bff;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            margin-right: 10px;
+        }
+        
+        .step-number.inactive {
+            background-color: #ccc;
+        }
+        
+        .step-line {
+            width: 200px;
+            height: 2px;
+            background-color: #ccc;
+            margin: 0 20px;
+        }
+        
+        .section {
+            margin-bottom: 40px;
+        }
+        
+        .section-title {
+            font-size: 18px;
+            color: #007bff;
+            margin-bottom: 15px;
+            font-weight: 600;
+        }
+        
+        .button-group {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .btn {
+            padding: 8px 16px;
+            border: 2px solid #ccc;
+            border-radius: 20px;
+            background: white;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        
+        .btn.selected {
+            background-color: #ff6b35;
+            color: white;
+            border-color: #ff6b35;
+        }
+        
+        .btn.risk-low { border-color: #ff6b35; color: #ff6b35; }
+        .btn.risk-med { border-color: #007bff; color: #007bff; }
+        .btn.risk-high { border-color: #dc3545; color: #dc3545; }
+        
+        .alarm-indicator {
+            text-align: center;
+            margin-top: 10px;
+            font-size: 12px;
+            color: #666;
+        }
+        
+        .tags-section {
+            background-color: #e3f2fd;
+            padding: 20px;
+            border-radius: 10px;
+            margin-top: 20px;
+        }
+        
+        .tags-section .button-group {
+            gap: 10px;
+        }
+        
+        .tags-section .btn {
+            background-color: #bbdefb;
+            border-color: #90caf9;
+            color: #1976d2;
+        }
+        
+        .more-btn {
+            background-color: #ff6b35;
+            color: white;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            border: none;
+            font-size: 16px;
+            cursor: pointer;
+        }
+        
+        .monitoring-section {
+            margin-top: 40px;
+        }
+        
+        .monitoring-grid {
+            display: grid;
+            grid-template-columns: repeat(6, 1fr);
+            gap: 20px;
+            background-color: #e8e8e8;
+            padding: 20px;
+            border-radius: 10px;
+        }
+        
+        .monitor-item {
+            text-align: center;
+        }
+        
+        .monitor-circle {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            margin: 0 auto 10px;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .circle-active {
+            background: conic-gradient(#007bff 0deg 270deg, #e0e0e0 270deg);
+        }
+        
+        .circle-critical {
+            background: conic-gradient(#007bff 0deg 300deg, #e0e0e0 300deg);
+        }
+        
+        .circle-inactive {
+            background: #e0e0e0;
+        }
+        
+        .circle-inner {
+            width: 60px;
+            height: 60px;
+            background: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+        }
+        
+        .monitor-label {
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+        
+        .monitor-status {
+            font-size: 12px;
+            color: #666;
+            font-style: italic;
+        }
+        
+        .monitor-values {
+            display: grid;
+            grid-template-columns: repeat(6, 1fr);
+            gap: 20px;
+            margin-top: 20px;
+        }
+        
+        .value-card {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+        }
+        
+        .value-label {
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 5px;
+        }
+        
+        .value-number {
+            font-size: 14px;
+            font-weight: bold;
+            color: #333;
+        }
+        
+        .navigation {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 40px;
+        }
+        
+        .nav-btn {
+            padding: 10px 20px;
+            border: 2px solid #ff6b35;
+            border-radius: 20px;
+            background: white;
+            color: #ff6b35;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        
+        .nav-btn.primary {
+            background-color: #007bff;
+            border-color: #007bff;
+            color: white;
+        }
+        
+        .inactive-text {
+            color: #ccc !important;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <span class="user-icon">👤</span>
+        <span>34567 - S. Groen - Vrouw - 16 jaar - 55 kg</span>
+    </div>
+    
+    <h1 class="main-title">Instellen Nieuwe Patiënt</h1>
+    
+    <div class="progress-bar">
+        <div class="step">
+            <div class="step-number">1</div>
+        </div>
+        <div class="step-line"></div>
+        <div class="step">
+            <div class="step-number">2</div>
+        </div>
+        <div class="step-line"></div>
+        <div class="step">
+            <div class="step-number inactive">3</div>
+        </div>
+        <div class="step-line"></div>
+        <div class="step">
+            <div class="step-number inactive">✓</div>
+        </div>
+    </div>
+    
+    <div class="section">
+        <h2 class="section-title">Wat is het hoofdprobleem?</h2>
+        <div class="button-group">
+            <button class="btn">Respiratoire Insufficiëntie</button>
+            <button class="btn selected">Selecteer</button>
+        </div>
+    </div>
+    
+    <div class="section">
+        <h2 class="section-title">Wat is het risico - level van de patiënt?</h2>
+        <div class="button-group">
+            <button class="btn risk-low">Laag</button>
+            <button class="btn risk-med">Mid</button>
+            <button class="btn risk-high">Hoog</button>
+        </div>
+        <div class="alarm-indicator">
+            <div>🔔 🔔 🔔</div>
+            <div>sneller een alarm</div>
+        </div>
+    </div>
+    
+    <div class="section">
+        <h2 class="section-title inactive-text">Selecteer eventueel additionele informatie:</h2>
+        <div class="tags-section">
+            <div class="button-group">
+                <button class="btn">Sepsis ⚙️</button>
+                <button class="btn">Diabetes 🔧</button>
+                <button class="btn">Herstellende 👤</button>
+            </div>
+            <div class="button-group">
+                <button class="btn">Pneumonie 🫁</button>
+                <button class="btn">Chronisch Nierfalen 🧠</button>
+                <button class="more-btn">⋯</button>
+            </div>
+        </div>
+    </div>
+    
+    <div class="monitoring-section">
+        <h2 class="section-title">Monitoring op Orgaan Niveau</h2>
+        <div class="monitoring-grid">
+            <div class="monitor-item">
+                <div class="monitor-label">Circulatoir</div>
+                <div class="monitor-circle circle-active">
+                    <div class="circle-inner">❤️</div>
+                </div>
+                <div class="monitor-status">mild</div>
+            </div>
+            <div class="monitor-item">
+                <div class="monitor-label">Respiratoir</div>
+                <div class="monitor-circle circle-critical">
+                    <div class="circle-inner">🫁</div>
+                </div>
+                <div class="monitor-status">strak</div>
+            </div>
+            <div class="monitor-item">
+                <div class="monitor-label inactive-text">Neuro</div>
+                <div class="monitor-circle circle-inactive">
+                    <div class="circle-inner">🧠</div>
+                </div>
+                <div class="monitor-status inactive-text">los</div>
+            </div>
+            <div class="monitor-item">
+                <div class="monitor-label inactive-text">Lever</div>
+                <div class="monitor-circle circle-inactive">
+                    <div class="circle-inner">🏥</div>
+                </div>
+                <div class="monitor-status inactive-text">los</div>
+            </div>
+            <div class="monitor-item">
+                <div class="monitor-label inactive-text">Nieren</div>
+                <div class="monitor-circle circle-inactive">
+                    <div class="circle-inner">⚙️</div>
+                </div>
+                <div class="monitor-status inactive-text">los</div>
+            </div>
+            <div class="monitor-item">
+                <div class="monitor-label">Overig</div>
+                <div class="monitor-circle circle-active">
+                    <div class="circle-inner">🌡️</div>
+                </div>
+                <div class="monitor-status">mild</div>
+            </div>
+        </div>
+        
+        <div class="monitor-values">
+            <div class="value-card">
+                <div class="value-label">HR</div>
+                <div class="value-number">70 - 110</div>
+                <div class="value-label">BP Mean</div>
+                <div class="value-number">65 - 85</div>
+            </div>
+            <div class="value-card">
+                <div class="value-label">Saturatie</div>
+                <div class="value-number">90 - 100</div>
+                <div class="value-label">AF</div>
+                <div class="value-number">10 - 25</div>
+            </div>
+            <div class="value-card">
+                <div class="value-label inactive-text">ICP</div>
+                <div class="value-number inactive-text">NIRS</div>
+            </div>
+            <div class="value-card">
+                <div class="value-label inactive-text">ALAT</div>
+                <div class="value-number inactive-text">ASAT</div>
+            </div>
+            <div class="value-card">
+                <div class="value-label inactive-text">KREAT</div>
+                <div class="value-number inactive-text">Ureum</div>
+            </div>
+            <div class="value-card">
+                <div class="value-label">Temp.</div>
+                <div class="value-number">36.5 - 39</div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="navigation">
+        <button class="nav-btn" onclick="goBack()">← Terug</button>
+        <button class="nav-btn primary" onclick="confirmSettings()">Bevestigen</button>
+    </div>
+
+    <script>
+        // Track selected options
+        let selectedProblem = null;
+        let selectedRiskLevel = null;
+        let selectedTags = [];
+        let organSettings = {
+            circulatoir: { active: true, severity: 'mild' },
+            respiratoir: { active: true, severity: 'strak' },
+            neuro: { active: false, severity: 'los' },
+            lever: { active: false, severity: 'los' },
+            nieren: { active: false, severity: 'los' },
+            overig: { active: true, severity: 'mild' }
+        };
+
+        // Initialize interactive elements
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeProblemButtons();
+            initializeRiskButtons();
+            initializeTagButtons();
+            initializeOrganMonitoring();
+            updateProgressBar();
+        });
+
+        // Problem selection functionality
+        function initializeProblemButtons() {
+            const problemButtons = document.querySelectorAll('.section:first-of-type .btn');
+            problemButtons.forEach(button => {
+                button.addEventListener('click', function() {
+                    // Remove selected class from all buttons in this group
+                    problemButtons.forEach(btn => btn.classList.remove('selected'));
+                    // Add selected class to clicked button
+                    this.classList.add('selected');
+                    selectedProblem = this.textContent;
+                    updateProgressBar();
+                });
+            });
+        }
+
+        // Risk level selection functionality
+        function initializeRiskButtons() {
+            const riskButtons = document.querySelectorAll('.btn.risk-low, .btn.risk-med, .btn.risk-high');
+            riskButtons.forEach(button => {
+                button.addEventListener('click', function() {
+                    // Remove selected class from all risk buttons
+                    riskButtons.forEach(btn => btn.classList.remove('selected'));
+                    // Add selected class to clicked button
+                    this.classList.add('selected');
+                    selectedRiskLevel = this.textContent;
+                    updateAlarmIndicator(this.textContent);
+                    updateProgressBar();
+                });
+            });
+        }
+
+        // Tag selection functionality
+        function initializeTagButtons() {
+            const tagButtons = document.querySelectorAll('.tags-section .btn:not(.more-btn)');
+            tagButtons.forEach(button => {
+                button.addEventListener('click', function() {
+                    this.classList.toggle('selected');
+                    const tagText = this.textContent;
+                    
+                    if (this.classList.contains('selected')) {
+                        if (!selectedTags.includes(tagText)) {
+                            selectedTags.push(tagText);
+                        }
+                    } else {
+                        selectedTags = selectedTags.filter(tag => tag !== tagText);
+                    }
+                });
+            });
+
+            // More button functionality
+            const moreBtn = document.querySelector('.more-btn');
+            moreBtn.addEventListener('click', function() {
+                alert('Meer opties worden binnenkort beschikbaar...');
+            });
+        }
+
+        // Organ monitoring functionality
+        function initializeOrganMonitoring() {
+            const monitorItems = document.querySelectorAll('.monitor-item');
+            monitorItems.forEach((item, index) => {
+                const organNames = ['circulatoir', 'respiratoir', 'neuro', 'lever', 'nieren', 'overig'];
+                const organName = organNames[index];
+                
+                item.addEventListener('click', function() {
+                    toggleOrganMonitoring(organName, item);
+                });
+            });
+        }
+
+        function toggleOrganMonitoring(organName, element) {
+            const circle = element.querySelector('.monitor-circle');
+            const label = element.querySelector('.monitor-label');
+            const status = element.querySelector('.monitor-status');
+            
+            if (organSettings[organName].active) {
+                // Deactivate
+                organSettings[organName].active = false;
+                organSettings[organName].severity = 'los';
+                circle.className = 'monitor-circle circle-inactive';
+                label.classList.add('inactive-text');
+                status.classList.add('inactive-text');
+                status.textContent = 'los';
+            } else {
+                // Activate
+                organSettings[organName].active = true;
+                organSettings[organName].severity = 'mild';
+                circle.className = 'monitor-circle circle-active';
+                label.classList.remove('inactive-text');
+                status.classList.remove('inactive-text');
+                status.textContent = 'mild';
+            }
+            
+            updateParameterCards();
+        }
+
+        function updateAlarmIndicator(riskLevel) {
+            const alarmDiv = document.querySelector('.alarm-indicator');
+            let alarmText = '';
+            let bellCount = '';
+            
+            switch(riskLevel.toLowerCase()) {
+                case 'laag':
+                    bellCount = '🔔';
+                    alarmText = 'langzamer een alarm';
+                    break;
+                case 'mid':
+                    bellCount = '🔔 🔔';
+                    alarmText = 'normaal alarm tempo';
+                    break;
+                case 'hoog':
+                    bellCount = '🔔 🔔 🔔';
+                    alarmText = 'sneller een alarm';
+                    break;
+            }
+            
+            alarmDiv.innerHTML = `<div>${bellCount}</div><div>${alarmText}</div>`;
+        }
+
+        function updateParameterCards() {
+            const valueCards = document.querySelectorAll('.value-card');
+            const organNames = ['circulatoir', 'respiratoir', 'neuro', 'lever', 'nieren', 'overig'];
+            
+            valueCards.forEach((card, index) => {
+                const organName = organNames[index];
+                const labels = card.querySelectorAll('.value-label');
+                const numbers = card.querySelectorAll('.value-number');
+                
+                if (organSettings[organName].active) {
+                    labels.forEach(label => label.classList.remove('inactive-text'));
+                    numbers.forEach(number => number.classList.remove('inactive-text'));
+                } else {
+                    labels.forEach(label => label.classList.add('inactive-text'));
+                    numbers.forEach(number => number.classList.add('inactive-text'));
+                }
+            });
+        }
+
+        function updateProgressBar() {
+            const stepNumbers = document.querySelectorAll('.step-number');
+            let completedSteps = 1; // Always start with step 1
+            
+            if (selectedProblem) completedSteps = 2;
+            if (selectedRiskLevel) completedSteps = 3;
+            
+            stepNumbers.forEach((step, index) => {
+                if (index < completedSteps) {
+                    step.classList.remove('inactive');
+                    if (index === completedSteps - 1) {
+                        step.style.backgroundColor = '#007bff';
+                    }
+                } else {
+                    step.classList.add('inactive');
+                }
+            });
+        }
+
+        // Navigation functions
+        function goBack() {
+            if (confirm('Weet je zeker dat je terug wilt gaan? Alle wijzigingen gaan verloren.')) {
+                // Reset all selections
+                selectedProblem = null;
+                selectedRiskLevel = null;
+                selectedTags = [];
+                
+                // Reset UI
+                document.querySelectorAll('.btn.selected').forEach(btn => btn.classList.remove('selected'));
+                updateProgressBar();
+                
+                alert('Terug naar vorige stap...');
+            }
+        }
+
+        function confirmSettings() {
+            if (!selectedProblem || !selectedRiskLevel) {
+                alert('Selecteer eerst een hoofdprobleem en risico niveau voordat je doorgaat.');
+                return;
+            }
+            
+            const summary = `
+Overzicht instellingen:
+- Hoofdprobleem: ${selectedProblem}
+- Risico niveau: ${selectedRiskLevel}
+- Additionele tags: ${selectedTags.length > 0 ? selectedTags.join(', ') : 'Geen'}
+- Actieve monitoring: ${Object.keys(organSettings).filter(organ => organSettings[organ].active).join(', ')}
+            `;
+            
+            if (confirm(summary + '\n\nWil je deze instellingen bevestigen?')) {
+                alert('Instellingen opgeslagen! Patiënt monitoring is geactiveerd.');
+                
+                // Simulate moving to next step
+                const lastStep = document.querySelector('.step:last-child .step-number');
+                lastStep.classList.remove('inactive');
+                lastStep.textContent = '✓';
+                lastStep.style.backgroundColor = '#28a745';
+            }
+        }
+
+        // Add hover effects for better UX
+        document.addEventListener('DOMContentLoaded', function() {
+            const buttons = document.querySelectorAll('.btn, .nav-btn');
+            buttons.forEach(button => {
+                button.addEventListener('mouseenter', function() {
+                    if (!this.classList.contains('selected')) {
+                        this.style.transform = 'scale(1.05)';
+                        this.style.transition = 'transform 0.2s ease';
+                    }
+                });
+                
+                button.addEventListener('mouseleave', function() {
+                    this.style.transform = 'scale(1)';
+                });
+            });
+        });
+    </script>
+</body>
+</html>
