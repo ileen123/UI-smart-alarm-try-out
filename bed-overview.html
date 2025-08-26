@@ -4,6 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Patiënten Overzicht - Smart Alarm</title>
+    
+    <!-- Google Fonts - Open Sans with multiple weights -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Open+Sans:ital,wght@0,300;0,400;0,600;0,700;1,400;1,600&display=swap" rel="stylesheet">
+    
     <style>
         * {
             margin: 0;
@@ -12,29 +18,32 @@
         }
 
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
+            font-family: 'Open Sans', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-weight: 400;
+            background-color: #f5f5f5;
             padding: 20px;
         }
 
         .header {
-            background: white;
-            padding: 15px 25px;
-            border-radius: 15px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            background-color: #e8e8e8;
+            padding: 10px 20px;
+            border-radius: 8px;
             margin-bottom: 30px;
             display: flex;
-            justify-content: space-between;
             align-items: center;
+            justify-content: space-between;
+            font-size: 14px;
+            font-weight: 400;
+            color: #666;
         }
 
         .header h1 {
-            font-size: 28px;
-            color: #2c3e50;
-            border-bottom: 3px solid #e74c3c;
-            padding-bottom: 5px;
-            display: inline-block;
+            font-size: 24px;
+            font-weight: 600;
+            color: #333;
+            border-bottom: 3px solid #ff6b35;
+            padding-bottom: 10px;
+            margin: 0;
         }
 
         .header-buttons {
@@ -52,13 +61,17 @@
             font-size: 14px;
         }
 
-        .floorplan-container {
-            background: white;
-            border-radius: 20px;
-            padding: 40px;
-            box-shadow: 0 8px 25px rgba(0,0,0,0.15);
-            max-width: 1200px;
-            margin: 0 auto;
+        .instruction-text {
+            text-align: center;
+            color: #7f8c8d;
+            font-style: italic;
+            margin-bottom: 40px;
+            font-size: 16px;
+            padding: 20px;
+        }
+
+        .instruction-text.hidden {
+            display: none;
         }
 
         .beds-grid {
@@ -66,6 +79,8 @@
             grid-template-columns: repeat(3, 1fr);
             gap: 30px;
             align-items: start;
+            max-width: 1200px;
+            margin: 0 auto;
         }
 
         /* Left column - 2 beds */
@@ -102,6 +117,7 @@
             position: relative;
             cursor: pointer;
             transition: all 0.3s ease;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
         }
 
         .bed-card:hover {
@@ -110,7 +126,25 @@
         }
 
         .bed-card.occupied {
-            background: linear-gradient(135deg, #3498db, #2980b9);
+            color: white;
+        }
+
+        .bed-card.occupied.risk-low {
+            background: #C2E4FF;
+            color: #333;
+        }
+
+        .bed-card.occupied.risk-low .bed-status {
+            color: #666;
+        }
+
+        .bed-card.occupied.risk-med {
+            background: #1191FA;
+            color: white;
+        }
+
+        .bed-card.occupied.risk-high {
+            background: #0020CB;
             color: white;
         }
 
@@ -145,7 +179,11 @@
         }
 
         .bed-icon {
-            font-size: 40px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            align-items: center;
+            justify-content: center;
             margin: 10px 0;
         }
 
@@ -185,6 +223,28 @@
             box-shadow: 0 2px 8px rgba(0,0,0,0.2);
         }
 
+        .discharge-btn {
+            padding: 6px 12px;
+            border: 1px solid #e74c3c;
+            background: #fff;
+            color: #e74c3c;
+            border-radius: 15px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-top: 4px;
+        }
+
+        .discharge-btn:hover {
+            background: #e74c3c;
+            color: #fff;
+        }
+
+        .bed-card.occupied.risk-low .alarm-btn {
+            background: #fff;
+            color: #0020CB;
+        }
+
         .bed-status {
             font-size: 14px;
             color: #7f8c8d;
@@ -209,6 +269,7 @@
             width: 280px;
             text-align: center;
             display: none;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
         }
 
         .patient-selection.active {
@@ -246,6 +307,15 @@
             border-color: #2980b9;
             background: #3498db;
             color: white;
+        }
+
+        .no-patients {
+            background: #f8f9fa;
+            color: #6c757d;
+            text-align: center;
+            padding: 20px;
+            border-radius: 10px;
+            font-style: italic;
         }
 
         .patient-id {
@@ -298,13 +368,6 @@
         .btn-cancel:hover {
             background: #c0392b;
         }
-
-        .no-selection {
-            color: #7f8c8d;
-            font-style: italic;
-            padding: 50px 20px;
-            font-size: 16px;
-        }
     </style>
 </head>
 <body>
@@ -316,8 +379,11 @@
         </div>
     </div>
 
-    <div class="floorplan-container">
-        <div class="beds-grid">
+    <div class="instruction-text" id="instruction-text">
+        <p>Klik op een bed om een patiënt toe te voegen</p>
+    </div>
+
+    <div class="beds-grid">
             <!-- Left Column - Beds 1 & 2 -->
             <div class="left-column">
                 <div class="bed-card" id="bed-1" onclick="handleBedClick(1)">
@@ -349,11 +415,6 @@
                         <button class="btn btn-cancel" onclick="cancelSelection()">Annuleren</button>
                     </div>
                 </div>
-                
-                <div class="no-selection" id="no-selection">
-                    <p>Geen patiënt geselecteerd</p>
-                    <p>Klik op een bed om een patiënt toe te voegen</p>
-                </div>
             </div>
 
             <!-- Right Column - Beds 3 & 4 -->
@@ -377,39 +438,139 @@
         </div>
     </div>
 
-    <script>
+    <script type="text/javascript">
         let bedData = {};
         let availablePatients = [];
         let selectedBed = null;
         let selectedPatient = null;
 
+        // Function to save bed states to JSON file via localStorage (since we can't write files directly)
+        function saveBedStatesToStorage() {
+            try {
+                localStorage.setItem('bedStates', JSON.stringify(bedData));
+                console.log('✅ Bed states saved to localStorage:', bedData);
+            } catch (error) {
+                console.error('❌ Error saving bed states:', error);
+            }
+        }
+
+        // Function to load bed states from localStorage (simulating JSON file read)
+        function loadBedStatesFromStorage() {
+            try {
+                const savedBedStates = localStorage.getItem('bedStates');
+                if (savedBedStates) {
+                    const parsedStates = JSON.parse(savedBedStates);
+                    console.log('✅ Loaded bed states from localStorage:', parsedStates);
+                    return parsedStates;
+                } else {
+                    console.log('ℹ️ No bed states found in localStorage');
+                }
+            } catch (error) {
+                console.error('❌ Error loading bed states:', error);
+            }
+            return null;
+        }
+
+        // Function to save patient medical information
+        function savePatientMedicalInfo(patientId, medicalInfo) {
+            try {
+                localStorage.setItem('patient_' + patientId + '_medicalInfo', JSON.stringify(medicalInfo));
+                console.log('✅ Saved medical info for patient ' + patientId + ':', medicalInfo);
+            } catch (error) {
+                console.error('❌ Error saving patient medical info:', error);
+            }
+        }
+
+        // Function to load patient medical information
+        function loadPatientMedicalInfo(patientId) {
+            try {
+                const savedInfo = localStorage.getItem('patient_' + patientId + '_medicalInfo');
+                if (savedInfo) {
+                    const parsedInfo = JSON.parse(savedInfo);
+                    console.log('✅ Loaded medical info for patient ' + patientId + ':', parsedInfo);
+                    return parsedInfo;
+                } else {
+                    console.log('ℹ️ No medical info found for patient ' + patientId);
+                }
+            } catch (error) {
+                console.error('❌ Error loading patient medical info:', error);
+            }
+            return null;
+        }
+
         // Load initial data
         async function loadData() {
-            try {
-                const response = await fetch('./data/bed-overview.json');
-                const data = await response.json();
-                bedData = {};
-                
-                // Convert beds array to object for easier lookup
-                data.beds.forEach(bed => {
-                    bedData[bed.bedNumber] = bed;
-                });
-                
-                availablePatients = [...data.proposedPatients];
-                updateDisplay();
-            } catch (error) {
-                console.error('Error loading bed data:', error);
-                // Initialize with default data
+            console.log('🔄 loadData() function called');
+            console.log('📍 Current availablePatients:', availablePatients);
+            
+            // First try to load bed states from storage
+            const savedBedStates = loadBedStatesFromStorage();
+            if (savedBedStates) {
+                bedData = savedBedStates;
+                console.log('Using saved bed states:', bedData);
+            } else {
+                // Initialize with default data if no saved states
                 initializeDefaultData();
             }
+
+            // Try to load patient list from JSON file
+            console.log('🌐 Attempting to fetch hospital-data.json...');
+            try {
+                const response = await fetch('./data/hospital-data.json');
+                console.log('📥 Fetch response status:', response.status, response.statusText);
+                if (!response.ok) {
+                    throw new Error('HTTP error! status: ' + response.status);
+                }
+                const data = await response.json();
+                console.log('📄 Raw JSON data:', data);
+                
+                // Check if data and patients array exist
+                if (data && data.patients && Array.isArray(data.patients)) {
+                    availablePatients = [...data.patients];
+                    console.log('✅ Successfully loaded patients:', availablePatients);
+                    
+                    // Remove patients that are already assigned to beds
+                    Object.values(bedData).forEach(bed => {
+                        if (bed.occupied && bed.patientId) {
+                            availablePatients = availablePatients.filter(p => p.id !== bed.patientId);
+                        }
+                    });
+                    
+                    console.log('Successfully loaded patients from unified hospital-data.json file');
+                    console.log('Available patients after filtering:', availablePatients);
+                } else {
+                    throw new Error('Invalid data structure - missing patients array');
+                }
+            } catch (error) {
+                console.warn('Could not load patient data from hospital-data.json, using default data:', error.message);
+                // Use default patient data if fetch fails (CORS or other issues)
+                if (availablePatients.length === 0) {
+                    // Only set default patients if we don't already have them
+                    availablePatients = [
+                        { id: "1", name: "S. Groen", gender: "Vrouw", age: 16, weight: 55 },
+                        { id: "2", name: "M. Bunnik", gender: "Vrouw", age: 44, weight: 70 },
+                        { id: "3", name: "H. Demir", gender: "Man", age: 35, weight: 81 },
+                        { id: "4", name: "B. Al Salah", gender: "Man", age: 65, weight: 73 }
+                    ];
+                    
+                    // Remove patients that are already assigned to beds
+                    Object.values(bedData).forEach(bed => {
+                        if (bed.occupied && bed.patientId) {
+                            availablePatients = availablePatients.filter(p => p.id !== bed.patientId);
+                        }
+                    });
+                }
+            }
+            
+            updateDisplay();
         }
 
         function initializeDefaultData() {
             bedData = {
-                1: { bedNumber: 1, occupied: false, patientId: null, vpkCode: null },
-                2: { bedNumber: 2, occupied: false, patientId: null, vpkCode: null },
-                3: { bedNumber: 3, occupied: false, patientId: null, vpkCode: null },
-                4: { bedNumber: 4, occupied: false, patientId: null, vpkCode: null }
+                1: { bedNumber: 1, occupied: false, patientId: null, vpkCode: null, riskLevel: null },
+                2: { bedNumber: 2, occupied: false, patientId: null, vpkCode: null, riskLevel: null },
+                3: { bedNumber: 3, occupied: false, patientId: null, vpkCode: null, riskLevel: null },
+                4: { bedNumber: 4, occupied: false, patientId: null, vpkCode: null, riskLevel: null }
             };
             
             availablePatients = [
@@ -431,29 +592,40 @@
 
         function updateBedDisplay(bedNumber) {
             const bed = bedData[bedNumber];
-            const bedElement = document.getElementById(`bed-${bedNumber}`);
+            const bedElement = document.getElementById('bed-' + bedNumber);
             
             if (bed.occupied) {
                 const patient = getPatientById(bed.patientId);
-                bedElement.className = 'bed-card occupied';
-                bedElement.innerHTML = `
-                    <div class="bed-number">${bedNumber}</div>
-                    <div class="bed-vpk">VPK: ${bed.vpkCode}</div>
-                    <div class="bed-icon">
-                        <button class="alarm-btn">🔔</button>
-                    </div>
-                    <div class="patient-name">${patient ? patient.name : 'Unknown'}</div>
-                    <div class="bed-status">Alarm Instellingen</div>
-                `;
+                const patientMedicalInfo = loadPatientMedicalInfo(bed.patientId);
+                const riskClass = bed.riskLevel ? 'risk-' + bed.riskLevel : 'risk-med';
+                
+                // Create display text for medical info
+                let medicalDisplay = 'Alarm Instellingen';
+                if (patientMedicalInfo) {
+                    const problem = patientMedicalInfo.selectedProblem || 'Geen probleem geselecteerd';
+                    const riskLevel = patientMedicalInfo.selectedRiskLevel || 'Geen risico geselecteerd';
+                    medicalDisplay = problem + ' (' + riskLevel + ')';
+                }
+                
+                console.log('Updating bed ' + bedNumber + ' display with risk level: ' + bed.riskLevel + ', CSS class: ' + riskClass);
+                bedElement.className = 'bed-card occupied ' + riskClass;
+                bedElement.innerHTML = 
+                    '<div class="bed-number">' + bedNumber + '</div>' +
+                    '<div class="bed-vpk">VPK: ' + bed.vpkCode + '</div>' +
+                    '<div class="bed-icon">' +
+                        '<button class="alarm-btn" onclick="event.stopPropagation(); navigateToAlarmSettings(' + bedNumber + ', \'' + bed.patientId + '\')">🔔</button>' +
+                        '<button class="discharge-btn" onclick="event.stopPropagation(); dischargePatient(' + bedNumber + ')" title="Patiënt ontslaan">Ontslaan</button>' +
+                    '</div>' +
+                    '<div class="patient-name">' + (patient ? patient.name : 'Unknown') + '</div>' +
+                    '<div class="bed-status">' + medicalDisplay + '</div>';
             } else {
                 bedElement.className = 'bed-card';
-                bedElement.innerHTML = `
-                    <div class="bed-number">${bedNumber}</div>
-                    <div class="bed-icon">
-                        <button class="add-patient-btn">+</button>
-                    </div>
-                    <div class="bed-status">Nieuwe Patiënt</div>
-                `;
+                bedElement.innerHTML = 
+                    '<div class="bed-number">' + bedNumber + '</div>' +
+                    '<div class="bed-icon">' +
+                        '<button class="add-patient-btn">+</button>' +
+                    '</div>' +
+                    '<div class="bed-status">Nieuwe Patiënt</div>';
             }
         }
 
@@ -469,25 +641,33 @@
         }
 
         function handleBedClick(bedNumber) {
+            console.log('🛏️ Bed clicked:', bedNumber);
             const bed = bedData[bedNumber];
+            console.log('📋 Bed data:', bed);
             
             if (bed.occupied) {
+                console.log('👤 Bed is occupied, navigating to alarm settings');
                 // Navigate to alarm settings for occupied bed
                 navigateToAlarmSettings(bedNumber, bed.patientId);
             } else {
+                console.log('➕ Bed is empty, showing patient selection');
                 // Show patient selection for empty bed
                 showPatientSelection(bedNumber);
             }
         }
 
         function showPatientSelection(bedNumber) {
+            console.log('📋 showPatientSelection called for bed:', bedNumber);
+            console.log('👥 Available patients at start:', availablePatients);
+            
             selectedBed = bedNumber;
             selectedPatient = null;
             
             document.getElementById('selected-bed-number').textContent = bedNumber;
-            document.getElementById('no-selection').style.display = 'none';
+            document.getElementById('instruction-text').classList.add('hidden');
             document.getElementById('patient-selection').classList.add('active');
             
+            console.log('🔄 Calling updatePatientList...');
             updatePatientList();
         }
 
@@ -495,14 +675,23 @@
             const patientList = document.getElementById('patient-list');
             patientList.innerHTML = '';
             
+            console.log('updatePatientList called - availablePatients:', availablePatients);
+            console.log('Number of available patients:', availablePatients.length);
+            
+            if (availablePatients.length === 0) {
+                patientList.innerHTML = '<li class="no-patients">Geen patiënten beschikbaar</li>';
+                console.warn('No patients available to display');
+                return;
+            }
+            
             availablePatients.forEach(patient => {
+                console.log('Adding patient to list:', patient);
                 const li = document.createElement('li');
                 li.className = 'patient-item';
                 li.onclick = () => selectPatient(patient.id);
-                li.innerHTML = `
-                    <div class="patient-id">${patient.id} - ${patient.name}</div>
-                    <div class="patient-details">${patient.gender} - ${patient.age} jaar - ${patient.weight} kg</div>
-                `;
+                li.innerHTML = 
+                    '<div class="patient-id">' + patient.id + ' - ' + patient.name + '</div>' +
+                    '<div class="patient-details">' + patient.gender + ' - ' + patient.age + ' jaar - ' + patient.weight + ' kg</div>';
                 patientList.appendChild(li);
             });
             
@@ -524,18 +713,22 @@
         function confirmPatientSelection() {
             if (!selectedPatient || !selectedBed) return;
             
-            console.log(`Assigning patient ${selectedPatient} to bed ${selectedBed}`);
+            console.log('Assigning patient ' + selectedPatient + ' to bed ' + selectedBed);
             
             // Generate VPK code
             const vpkCodes = ['FG', 'AM', 'IB', 'GT'];
             const vpkCode = vpkCodes[Math.floor(Math.random() * vpkCodes.length)];
             
-            // Update bed data
+            // Update bed data with default medium risk (will be updated when returning from setup)
             bedData[selectedBed].occupied = true;
             bedData[selectedBed].patientId = selectedPatient;
             bedData[selectedBed].vpkCode = vpkCode;
+            bedData[selectedBed].riskLevel = 'med'; // default risk level
             
             console.log('Updated bed data:', bedData[selectedBed]);
+            
+            // Save bed states immediately
+            saveBedStatesToStorage();
             
             // Remove patient from available list
             availablePatients = availablePatients.filter(p => p.id !== selectedPatient);
@@ -555,7 +748,7 @@
             selectedPatient = null;
             
             document.getElementById('patient-selection').classList.remove('active');
-            document.getElementById('no-selection').style.display = 'block';
+            document.getElementById('instruction-text').classList.remove('hidden');
         }
 
         function navigateToPatientSetup(bedNumber, patientId) {
@@ -579,44 +772,144 @@
         }
 
         function navigateToAlarmSettings(bedNumber, patientId) {
-            alert(`Navigating to alarm settings for bed ${bedNumber}, patient ${patientId}`);
+            alert('Navigating to alarm settings for bed ' + bedNumber + ', patient ' + patientId);
             // In the future, this could navigate to an alarm monitoring page
+        }
+
+        // Function to discharge a patient from a bed
+        function dischargePatient(bedNumber) {
+            const bed = bedData[bedNumber];
+            if (!bed || !bed.occupied) {
+                console.log('Bed ' + bedNumber + ' is not occupied or does not exist');
+                return;
+            }
+
+            const patient = getPatientById(bed.patientId);
+            const patientName = patient ? patient.name : 'Unknown';
+            
+            if (confirm('Weet je zeker dat je ' + patientName + ' wilt ontslaan uit bed ' + bedNumber + '?')) {
+                console.log('Discharging patient ' + bed.patientId + ' from bed ' + bedNumber);
+                
+                // Clear patient medical info (they can start fresh if readmitted)
+                localStorage.removeItem('patient_' + bed.patientId + '_medicalInfo');
+                console.log('Cleared medical info for patient ' + bed.patientId);
+                
+                // Add patient back to available patients list if not already there
+                const patientExists = availablePatients.find(p => p.id === bed.patientId);
+                if (!patientExists && patient) {
+                    availablePatients.push(patient);
+                    console.log('Added patient ' + patient.name + ' back to available patients');
+                }
+                
+                // Clear bed data
+                bedData[bedNumber] = {
+                    bedNumber: bedNumber,
+                    occupied: false,
+                    patientId: null,
+                    vpkCode: null,
+                    riskLevel: null
+                };
+                
+                // Save updated state and refresh display
+                saveBedStatesToStorage();
+                updateDisplay();
+                
+                console.log('Patient discharged from bed ' + bedNumber + '. Bed is now available.');
+            }
         }
 
         // Check if returning from patient setup
         function checkReturnFromSetup() {
             const urlParams = new URLSearchParams(window.location.search);
             if (urlParams.get('from') === 'setup') {
-                console.log('Returning from setup, restoring state...');
-                // Restore state from localStorage
-                const savedState = localStorage.getItem('bedOverviewState');
-                if (savedState) {
-                    const state = JSON.parse(savedState);
-                    bedData = state.bedData;
-                    availablePatients = state.availablePatients;
-                    console.log('Restored bed data:', bedData);
-                    console.log('Restored available patients:', availablePatients);
-                    updateDisplay();
-                    
-                    // Clean up
-                    localStorage.removeItem('currentBed');
-                    localStorage.removeItem('currentPatient');
-                    localStorage.removeItem('bedOverviewState');
-                    
-                    return true; // Indicate that state was restored
+                console.log('Returning from setup, updating risk level...');
+                
+                // Get the risk level and bed from localStorage (temporary storage during workflow)
+                const currentBed = localStorage.getItem('currentBed');
+                const savedRiskLevel = localStorage.getItem('selectedRiskLevel');
+                console.log('Retrieved from localStorage - currentBed:', currentBed, 'savedRiskLevel:', savedRiskLevel);
+                
+                if (currentBed && savedRiskLevel) {
+                    // Load current bed states
+                    const currentBedStates = loadBedStatesFromStorage();
+                    if (currentBedStates && currentBedStates[currentBed] && currentBedStates[currentBed].occupied) {
+                        console.log('Updating bed ' + currentBed + ' risk level from ' + currentBedStates[currentBed].riskLevel + ' to ' + savedRiskLevel);
+                        
+                        // Update the risk level in bed data
+                        currentBedStates[currentBed].riskLevel = savedRiskLevel;
+                        
+                        // Save the updated bed states
+                        bedData = currentBedStates;
+                        saveBedStatesToStorage();
+                        
+                        console.log('Bed ' + currentBed + ' after risk level update:', bedData[currentBed]);
+                    } else {
+                        console.log('Bed not found or not occupied:', currentBed);
+                    }
                 }
+                
+                // Clean up temporary localStorage items
+                localStorage.removeItem('currentBed');
+                localStorage.removeItem('currentPatient');
+                localStorage.removeItem('selectedRiskLevel');
+                localStorage.removeItem('bedOverviewState'); // Clean up old system
+                
+                // Load the updated data and display
+                loadData();
+                return true; // Indicate that we handled the return from setup
             }
-            return false; // No state restored
+            return false; // No return from setup
         }
 
         // Initialize page
         document.addEventListener('DOMContentLoaded', function() {
+            console.log('🚀 DOMContentLoaded event fired');
+            
+            // Clear any old localStorage data that might conflict
+            localStorage.removeItem('bedOverviewState');
+            localStorage.removeItem('currentBed');
+            localStorage.removeItem('currentPatient');
+            console.log('🧹 Cleared old localStorage data');
+            
             const stateRestored = checkReturnFromSetup();
+            console.log('🔄 checkReturnFromSetup result:', stateRestored);
+            
             if (!stateRestored) {
+                console.log('📞 Calling loadData()...');
                 // Only load default data if no state was restored
                 loadData();
+            } else {
+                console.log('⏭️ Skipped loadData() because state was restored');
             }
         });
+
+        // Test function to manually test risk levels (for debugging)
+        function testRiskLevels() {
+            console.log('Testing risk levels...');
+            // Manually set bed 1 to different risk levels for testing
+            bedData[1] = { bedNumber: 1, occupied: true, patientId: "1", vpkCode: "TEST", riskLevel: 'low' };
+            bedData[2] = { bedNumber: 2, occupied: true, patientId: "2", vpkCode: "TEST", riskLevel: 'med' };
+            bedData[3] = { bedNumber: 3, occupied: true, patientId: "3", vpkCode: "TEST", riskLevel: 'high' };
+            updateDisplay();
+        }
+
+        // Test localStorage flow
+        function testLocalStorageFlow(bedNum, riskLevel) {
+            console.log('Testing localStorage flow for bed ' + bedNum + ' with risk ' + riskLevel);
+            
+            // Simulate the workflow
+            localStorage.setItem('currentBed', bedNum);
+            localStorage.setItem('selectedRiskLevel', riskLevel);
+            
+            // Simulate returning from setup
+            const urlParams = new URLSearchParams('?from=setup');
+            window.history.replaceState({}, '', window.location.pathname + '?from=setup');
+            
+            // Trigger state restoration
+            checkReturnFromSetup();
+        }
+
+        // Call this function from browser console to test: testRiskLevels()
     </script>
 </body>
 </html>

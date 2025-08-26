@@ -180,7 +180,7 @@
 
                         // Utility to inject SVG content directly
                         function injectSVG(containerId, svgType) {
-                            console.log(`Injecting ${svgType} SVG into ${containerId}`);
+                            console.log('Injecting ' + svgType + ' SVG into ' + containerId);
                             const container = document.getElementById(containerId);
                             if (!container) {
                                 console.log(`Container ${containerId} not found`);
@@ -196,10 +196,10 @@
                                     svgEl.style.height = '70%';
                                     svgEl.style.display = 'block';
                                     svgEl.style.margin = '0 auto';
-                                    console.log(`SVG successfully injected into ${containerId}`);
+                                    console.log('SVG successfully injected into ' + containerId);
                                 }
                             } else {
-                                console.log(`White center not found in ${containerId}`);
+                                console.log('White center not found in ' + containerId);
                                 // Try again after a short delay
                                 setTimeout(() => injectSVG(containerId, svgType), 50);
                             }
@@ -322,8 +322,10 @@
                                     
                                     // Get risk level and update circles
                                     const riskLevel = this.classList.contains('risk-low') ? 'low' : 
-                                                     this.classList.contains('risk-high') ? 'high' : 'mid';
+                                                     this.classList.contains('risk-high') ? 'high' : 'med';
+                                    console.log('Risk button clicked, detected risk level:', riskLevel);
                                     selectedRiskLevel = riskLevel;
+                                    console.log('selectedRiskLevel is now:', selectedRiskLevel);
                                     window.dataManager?.setSelectedRiskLevel(riskLevel);
                                     updateOrganCirclesWithRisk(riskLevel);
                                 });
@@ -353,21 +355,38 @@
                         
                         // Always start with fresh session data (no restoration of previous selections)
                         function loadSessionData() {
-                            // Ensure interface starts clean - no previous selections restored
-                            selectedProblem = '';
-                            selectedRiskLevel = '';
-                            selectedTags = [];
+                            // Check if coming from bed overview - if so, don't reset everything
+                            const currentBed = localStorage.getItem('currentBed');
+                            const comingFromBedOverview = !!currentBed;
                             
-                            // Ensure UI elements are reset
-                            const dropdown = document.getElementById('problemDropdown');
-                            if (dropdown) dropdown.value = '';
+                            if (!comingFromBedOverview) {
+                                // Ensure interface starts clean - no previous selections restored
+                                selectedProblem = '';
+                                selectedRiskLevel = '';
+                                selectedTags = [];
+                                
+                                // Ensure UI elements are reset
+                                const dropdown = document.getElementById('problemDropdown');
+                                if (dropdown) dropdown.value = '';
+                                
+                                // Remove any selected classes from risk buttons
+                                document.querySelectorAll('.btn.risk-low, .btn.risk-med, .btn.risk-high').forEach(btn => {
+                                    btn.classList.remove('selected');
+                                });
+                                
+                                // Remove any selected classes from tag buttons
+                                document.querySelectorAll('.tag-btn').forEach(btn => {
+                                    btn.classList.remove('selected');
+                                });
+                            } else {
+                                console.log('Coming from bed overview, preserving fresh state for new patient setup');
+                                // Still reset for fresh patient setup, but don't interfere with workflow
+                                selectedProblem = '';
+                                selectedRiskLevel = '';
+                                selectedTags = [];
+                            }
                             
-                            // Remove any selected classes from risk buttons
-                            document.querySelectorAll('.btn.risk-low, .btn.risk-med, .btn.risk-high').forEach(btn => {
-                                btn.classList.remove('selected');
-                            });
-                            
-                            // Remove any selected classes from tag buttons
+                            // Always reset tag buttons
                             document.querySelectorAll('.tags-section .btn').forEach(btn => {
                                 btn.classList.remove('selected');
                             });
@@ -445,7 +464,7 @@
                             
                             if (thresholds.circulatoir && thresholds.circulatoir.HR) {
                                 const hr = thresholds.circulatoir.HR;
-                                hrRange.textContent = `${hr.min} - ${hr.max}`;
+                                hrRange.textContent = hr.min + ' - ' + hr.max;
                                 
                                 // Check if this is different from normal (highlight if modified)
                                 const normalThresholds = window.dataManager.getThresholds('normal');
@@ -521,6 +540,9 @@
                         }
 
                         function confirmSettings() {
+                            console.log('confirmSettings called - selectedRiskLevel:', selectedRiskLevel);
+                            console.log('confirmSettings called - selectedProblem:', selectedProblem);
+                            
                             if (!selectedProblem || !selectedRiskLevel) {
                                 alert('Selecteer eerst een hoofdprobleem en risico niveau voordat je doorgaat.');
                                 return;
@@ -529,13 +551,12 @@
                             const organSettings = window.dataManager?.getCurrentSession()?.organSettings || {};
                             const activeOrgans = Object.keys(organSettings).filter(organ => organSettings[organ].active);
                             
-                            const summary = `
-Overzicht instellingen:
-- Hoofdprobleem: ${selectedProblem}
-- Risico niveau: ${selectedRiskLevel}
-- Additionele tags: ${selectedTags.length > 0 ? selectedTags.join(', ') : 'Geen'}
-- Actieve monitoring: ${activeOrgans.length > 0 ? activeOrgans.join(', ') : 'Geen'}
-                            `;
+                            const summary = 
+'Overzicht instellingen:\n' +
+'- Hoofdprobleem: ' + selectedProblem + '\n' +
+'- Risico niveau: ' + selectedRiskLevel + '\n' +
+'- Additionele tags: ' + (selectedTags.length > 0 ? selectedTags.join(', ') : 'Geen') + '\n' +
+'- Actieve monitoring: ' + (activeOrgans.length > 0 ? activeOrgans.join(', ') : 'Geen');
                             
                             if (confirm(summary + '\n\nWil je deze instellingen bevestigen?')) {
                                 // Save all the selected data to patient-data.json
@@ -544,6 +565,29 @@ Overzicht instellingen:
                                     window.dataManager.setSelectedRiskLevel(selectedRiskLevel);
                                     window.dataManager.setSelectedTags(selectedTags);
                                     window.dataManager.setProgressStep(4);
+                                }
+                                
+                                // Save patient medical information permanently
+                                const currentPatient = localStorage.getItem('currentPatient');
+                                if (currentPatient) {
+                                    const patientMedicalInfo = {
+                                        selectedProblem: selectedProblem,
+                                        selectedRiskLevel: selectedRiskLevel,
+                                        selectedTags: selectedTags,
+                                        organSettings: (window.dataManager && typeof window.dataManager.getOrganSettings === 'function') ? window.dataManager.getOrganSettings() : {},
+                                        lastUpdated: new Date().toISOString()
+                                    };
+                                    
+                                    // Save to localStorage for bed overview to pick up
+                                    localStorage.setItem('patient_' + currentPatient + '_medicalInfo', JSON.stringify(patientMedicalInfo));
+                                    console.log('Saved medical info for patient ' + currentPatient + ':', patientMedicalInfo);
+                                }
+                                
+                                // Save risk level for bed overview
+                                const currentBed = localStorage.getItem('currentBed');
+                                if (currentBed) {
+                                    console.log('Saving risk level to localStorage:', selectedRiskLevel);
+                                    localStorage.setItem('selectedRiskLevel', selectedRiskLevel);
                                 }
                                 
                                 alert('Instellingen opgeslagen! Patiënt monitoring is geactiveerd.');
@@ -555,7 +599,6 @@ Overzicht instellingen:
                                 lastStep.style.backgroundColor = '#28a745';
                                 
                                 // Check if user came from bed overview and redirect back
-                                const currentBed = localStorage.getItem('currentBed');
                                 if (currentBed) {
                                     // Small delay to let user see the completion
                                     setTimeout(() => {

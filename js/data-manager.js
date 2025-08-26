@@ -144,6 +144,13 @@ class DataManager {
         return this.patientData?.currentSession || {};
     }
 
+    /**
+     * Get current organ settings
+     */
+    getOrganSettings() {
+        return this.patientData?.currentSession?.organSettings || {};
+    }
+
     // =============================================================================
     // SETTERS - Update specific data
     // =============================================================================
