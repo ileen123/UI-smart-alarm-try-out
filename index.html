@@ -8,6 +8,11 @@
     <!-- Page title that appears in browser tab -->
     <title>Instellen Nieuwe Patiënt</title>
     
+    <!-- Google Fonts - Open Sans with multiple weights -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Open+Sans:ital,wght@0,300;0,400;0,600;0,700;1,400;1,600&display=swap" rel="stylesheet">
+    
     <!-- Link to external CSS file for styling -->
     <link rel="stylesheet" href="styles.css">
 </head>
@@ -77,18 +82,12 @@
         <div class="form-section">
             <h2 class="section-title">Selecteer eventueel additionele informatie:</h2>
             <div class="tags-section">
-                <!-- First row of medical condition tags -->
-                <div class="button-group">
+                <!-- All tags in horizontal layout with wrapping -->
+                <div class="button-group tags-horizontal">
                     <button class="btn tag-btn" data-condition="sepsis">Sepsis ⚙️</button>
                     <button class="btn tag-btn" data-condition="diabetes">Diabetes 🔧</button>
-                </div>
-                <!-- Second row of medical condition tags -->
-                <div class="button-group">
                     <button class="btn tag-btn" data-condition="herstellende">Herstellende 👤</button>
                     <button class="btn tag-btn" data-condition="pneumonie">Pneumonie 🫁</button>
-                </div>
-                <!-- Third row with more button -->
-                <div class="button-group">
                     <button class="btn tag-btn" data-condition="chronisch-nierfalen">Chronisch Nierfalen 🧠</button>
                     <!-- More button to show additional options -->
                     <button class="more-btn">⋯</button>

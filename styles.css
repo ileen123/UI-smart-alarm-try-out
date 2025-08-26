@@ -23,7 +23,8 @@
 
 /* Main body styling - sets the overall look of the page */
 body {
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; /* Modern, medical-appropriate font */
+    font-family: 'Open Sans', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; /* Open Sans as primary font */
+    font-weight: 400; /* Regular weight for body text */
     background-color: #f5f5f5; /* Light gray background for clinical feel */
     padding: 20px; /* Consistent spacing around page content */
 }
@@ -42,6 +43,7 @@ body {
     align-items: center; /* Vertically center content */
     gap: 20px; /* Space between user icon and text */
     font-size: 14px; /* Smaller font for patient details */
+    font-weight: 400; /* Regular weight */
     color: #666; /* Medium gray text color */
 }
 
@@ -57,7 +59,8 @@ body {
 /* Main page title styling */
 .main-title {
     font-size: 24px; /* Large, prominent title */
-    font-weight: 600; /* Semi-bold weight */
+    font-weight: 600; /* Semibold weight */
+    font-style: regular; /* Italic style for elegance */
     margin-bottom: 30px; /* Space below title */
     color: #333; /* Dark gray for readability */
     border-bottom: 3px solid #ff6b35; /* Orange accent line below title */
@@ -151,18 +154,21 @@ body {
 .form-section {
     flex: 1; /* Equal width for all sections */
     background: white; /* White background for each section */
-    padding: 20px; /* Internal spacing */
+    padding: 20px 20px 25px 20px; /* More padding at bottom for better spacing */
     border-radius: 10px; /* Rounded corners */
     box-shadow: 0 2px 4px rgba(0,0,0,0.1); /* Subtle shadow */
-    min-height: 200px; /* Minimum height for consistency */
+    min-height: 180px; /* Reduced minimum height for better alignment */
+    max-height: 180px; /* Maximum height to keep sections aligned */
+    display: flex;
+    flex-direction: column;
 }
 
 /* Section titles (questions) */
 .section-title {
     font-size: 18px; /* Medium-large font size */
+    font-weight: 600; /* Semibold weight */
     color: #007bff; /* Blue color to match theme */
     margin-bottom: 15px; /* Space below title */
-    font-weight: 600; /* Semi-bold weight */
 }
 
 /* Container for groups of buttons */
@@ -171,6 +177,14 @@ body {
     gap: 15px; /* Space between buttons */
     margin-bottom: 20px; /* Space below button group */
     flex-wrap: wrap; /* Allow wrapping to next line if needed */
+}
+
+/* Horizontal tags layout - single row with wrapping */
+.button-group.tags-horizontal {
+    margin-bottom: 0; /* Remove bottom margin for tags */
+    gap: 10px; /* Smaller gap between tags */
+    align-items: flex-start; /* Align to top */
+    flex: 1; /* Take remaining space in form section */
 }
 
 /* =============================================================================
@@ -185,7 +199,16 @@ body {
     background: white; /* White background */
     cursor: pointer; /* Hand cursor on hover */
     font-size: 14px; /* Standard font size */
+    font-weight: 400; /* Regular weight */
+    font-family: 'Open Sans', sans-serif; /* Ensure Open Sans for buttons */
     transition: all 0.3s ease; /* Smooth transitions for all properties */
+}
+
+/* Tag buttons - smaller for horizontal layout */
+.btn.tag-btn {
+    padding: 6px 12px; /* Smaller padding for tag buttons */
+    font-size: 13px; /* Slightly smaller font */
+    white-space: nowrap; /* Prevent text wrapping */
 }
 
 /* Selected button state - when user has clicked a button */
@@ -279,14 +302,19 @@ body {
 /* Container for additional medical condition tags */
 .tags-section {
     background-color: #e3f2fd; /* Light blue background */
-    padding: 15px; /* Reduced internal spacing for horizontal layout */
-    border-radius: 10px; /* Rounded corners */
-    margin-top: 15px; /* Reduced space above tags section */
+    padding: 12px; /* Reduced padding for better alignment */
+    border-radius: 8px; /* Slightly smaller border radius */
+    margin-top: 10px; /* Reduced space above tags section */
+    flex: 1; /* Take remaining space in form section */
+    display: flex;
+    align-items: flex-start;
 }
 
 /* Adjust gap for buttons in tags section */
 .tags-section .button-group {
     gap: 8px; /* Smaller gap between tag buttons for tighter layout */
+    margin-bottom: 0; /* Remove bottom margin */
+    flex: 1; /* Take full width of tags section */
 }
 
 /* Special styling for medical condition tag buttons */
@@ -316,7 +344,7 @@ body {
 
 /* Container for the entire monitoring section */
 .monitoring-section {
-    margin-top: 40px;
+    margin-top: 20px; /* Reduced from 40px to move content higher */
     display: flex;
     flex-direction: column;
     align-items: stretch;
@@ -346,6 +374,7 @@ body {
 /* Monitoring labels and status */
 .monitor-label, .monitor-status {
     opacity: 0.3;
+    font-weight: 600; /* Semibold for monitoring labels */
     transition: opacity 0.5s ease-in-out;
 }
 
@@ -445,6 +474,7 @@ body {
 /* Labels for parameter names (HR, BP, etc.) */
 .value-label {
     font-size: 12px; /* Small font */
+    font-weight: 600; /* Semibold for parameter labels */
     color: #666; /* Medium gray */
     margin-bottom: 5px; /* Space below label */
     transition: color 0.5s ease-in-out;
@@ -457,7 +487,7 @@ body {
 /* Numerical values and ranges */
 .value-number {
     font-size: 14px; /* Standard font size */
-    font-weight: bold; /* Bold for emphasis */
+    font-weight: 700; /* Bold for emphasis on numbers */
     color: #000000; /* Dark gray for readability */
     transition: all 0.5s ease; /* Smooth transition for changes */
 }
@@ -500,7 +530,8 @@ body {
 .navigation {
     display: flex; /* Horizontal layout */
     justify-content: space-between; /* Space buttons apart */
-    margin-top: 40px; /* Space above navigation */
+    margin-top: 60px; /* Increased spacing above navigation */
+    padding-top: 20px; /* Additional padding for visual separation */
 }
 
 /* Base styling for navigation buttons */
@@ -512,6 +543,8 @@ body {
     color: #ff6b35; /* Orange text */
     cursor: pointer; /* Hand cursor on hover */
     font-size: 14px; /* Standard font size */
+    font-weight: 600; /* Semibold for navigation buttons */
+    font-family: 'Open Sans', sans-serif; /* Ensure Open Sans for nav buttons */
 }
 
 /* Primary action button (Confirm) styling */
