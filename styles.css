@@ -1,269 +1,489 @@
+/* =============================================================================
+   PATIENT MONITORING DASHBOARD - CSS STYLES
+   
+   This stylesheet contains all the visual styling for the medical patient 
+   monitoring dashboard interface. It includes:
+   - Basic reset and typography
+   - Layout components (header, sections, navigation)
+   - Interactive buttons and forms
+   - Organ monitoring visual elements
+   - Responsive design features
+============================================================================= */
+
+/* =============================================================================
+   1. GLOBAL RESET & BASE STYLES
+============================================================================= */
+
+/* Reset default browser margins, padding, and set consistent box-sizing */
 * {
     margin: 0;
     padding: 0;
-    box-sizing: border-box;
+    box-sizing: border-box; /* Ensures padding/border are included in element width */
 }
 
+/* Main body styling - sets the overall look of the page */
 body {
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    background-color: #f5f5f5;
-    padding: 20px;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; /* Modern, medical-appropriate font */
+    background-color: #f5f5f5; /* Light gray background for clinical feel */
+    padding: 20px; /* Consistent spacing around page content */
 }
 
+/* =============================================================================
+   2. HEADER SECTION - Patient Information Display
+============================================================================= */
+
+/* Patient information header bar */
 .header {
-    background-color: #e8e8e8;
-    padding: 10px 20px;
-    border-radius: 8px;
-    margin-bottom: 30px;
-    display: flex;
-    align-items: center;
-    gap: 20px;
-    font-size: 14px;
-    color: #666;
+    background-color: #e8e8e8; /* Light gray background */
+    padding: 10px 20px; /* Internal spacing */
+    border-radius: 8px; /* Rounded corners for modern look */
+    margin-bottom: 30px; /* Space below header */
+    display: flex; /* Horizontal layout */
+    align-items: center; /* Vertically center content */
+    gap: 20px; /* Space between user icon and text */
+    font-size: 14px; /* Smaller font for patient details */
+    color: #666; /* Medium gray text color */
 }
 
+/* User icon styling within header */
 .user-icon {
-    font-size: 16px;
+    font-size: 16px; /* Slightly larger icon */
 }
 
+/* =============================================================================
+   3. MAIN TITLE & PROGRESS SECTION
+============================================================================= */
+
+/* Main page title styling */
 .main-title {
-    font-size: 24px;
-    font-weight: 600;
-    margin-bottom: 30px;
-    color: #333;
-    border-bottom: 3px solid #ff6b35;
-    padding-bottom: 10px;
+    font-size: 24px; /* Large, prominent title */
+    font-weight: 600; /* Semi-bold weight */
+    margin-bottom: 30px; /* Space below title */
+    color: #333; /* Dark gray for readability */
+    border-bottom: 3px solid #ff6b35; /* Orange accent line below title */
+    padding-bottom: 10px; /* Space between text and border */
 }
 
+/* Progress bar container - shows which step user is on */
 .progress-bar {
-    display: flex;
-    align-items: center;
-    margin-bottom: 40px;
+    display: flex; /* Horizontal layout */
+    align-items: center; /* Vertically center all elements */
+    margin-bottom: 40px; /* Space below progress bar */
+    width: 100%; /* Full width to match form sections */
+    justify-content: space-between; /* Distribute steps evenly */
 }
 
+/* Individual step container in progress bar */
 .step {
-    display: flex;
-    align-items: center;
-    color: #666;
+    display: flex; /* Horizontal layout for number and text */
+    align-items: center; /* Vertically center content */
+    color: #666; /* Medium gray text */
 }
 
+/* Circular step number indicators */
 .step-number {
-    width: 30px;
-    height: 30px;
-    border-radius: 50%;
-    background-color: #007bff;
-    color: white;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-weight: bold;
-    margin-right: 10px;
+    width: 30px; /* Fixed width for consistent circles */
+    height: 30px; /* Fixed height for consistent circles */
+    border-radius: 50%; /* Makes it perfectly circular */
+    background-color: #007bff; /* Blue background for active steps */
+    color: white; /* White text on blue background */
+    display: flex; /* Center the number inside circle */
+    align-items: center; /* Vertically center number */
+    justify-content: center; /* Horizontally center number */
+    font-weight: bold; /* Bold number text */
+    margin-right: 10px; /* Space to the right of circle */
 }
 
+/* Inactive step styling (not yet reached) */
 .step-number.inactive {
-    background-color: #ccc;
+    background-color: #ccc; /* Gray background for inactive steps */
 }
 
+/* Completed step styling */
+.step-number.completed {
+    background-color: #007bff; /* Blue background for completed steps */
+    color: white; /* White text */
+}
+
+/* Checkmark ready state - when steps 1 and 2 are done */
+.step-number.checkmark-ready {
+    background-color: #28a745; /* Green background for ready checkmark */
+    color: white; /* White checkmark */
+    font-weight: bold; /* Bold checkmark */
+}
+
+/* Lines connecting the step circles */
 .step-line {
-    width: 200px;
-    height: 2px;
-    background-color: #ccc;
-    margin: 0 20px;
+    flex: 1; /* Take up available space between steps */
+    height: 2px; /* Thin line */
+    background-color: #ccc; /* Gray color */
+    margin: 0 20px; /* Horizontal margins for spacing */
 }
 
+/* Special positioning for the last step (checkmark) */
+.step:last-child {
+    margin-left: auto; /* Push to the right edge */
+}
+
+/* Adjust the last step number positioning */
+.step:last-child .step-number {
+    margin-right: 0; /* Remove right margin from last step */
+}
+
+/* =============================================================================
+   4. FORM SECTIONS & CONTENT AREAS
+============================================================================= */
+
+/* General section container for each form section */
 .section {
-    margin-bottom: 40px;
+    margin-bottom: 40px; /* Consistent spacing between sections */
 }
 
+/* Container for the three main form sections - horizontal layout */
+.form-sections-container {
+    display: flex; /* Horizontal layout */
+    gap: 30px; /* Space between sections */
+    margin-bottom: 40px; /* Space below the container */
+    align-items: flex-start; /* Align sections to top */
+}
+
+/* Individual form section within the horizontal container */
+.form-section {
+    flex: 1; /* Equal width for all sections */
+    background: white; /* White background for each section */
+    padding: 20px; /* Internal spacing */
+    border-radius: 10px; /* Rounded corners */
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1); /* Subtle shadow */
+    min-height: 200px; /* Minimum height for consistency */
+}
+
+/* Section titles (questions) */
 .section-title {
-    font-size: 18px;
-    color: #007bff;
-    margin-bottom: 15px;
-    font-weight: 600;
+    font-size: 18px; /* Medium-large font size */
+    color: #007bff; /* Blue color to match theme */
+    margin-bottom: 15px; /* Space below title */
+    font-weight: 600; /* Semi-bold weight */
 }
 
+/* Container for groups of buttons */
 .button-group {
-    display: flex;
-    gap: 15px;
-    margin-bottom: 20px;
+    display: flex; /* Horizontal layout */
+    gap: 15px; /* Space between buttons */
+    margin-bottom: 20px; /* Space below button group */
+    flex-wrap: wrap; /* Allow wrapping to next line if needed */
 }
 
+/* =============================================================================
+   5. BUTTON STYLES - Interactive Elements
+============================================================================= */
+
+/* Base button styling for all interactive buttons */
 .btn {
-    padding: 8px 16px;
-    border: 2px solid #ccc;
-    border-radius: 20px;
-    background: white;
-    cursor: pointer;
-    font-size: 14px;
+    padding: 8px 16px; /* Internal spacing around text */
+    border: 2px solid #ccc; /* Gray border by default */
+    border-radius: 20px; /* Rounded pill-shaped buttons */
+    background: white; /* White background */
+    cursor: pointer; /* Hand cursor on hover */
+    font-size: 14px; /* Standard font size */
+    transition: all 0.3s ease; /* Smooth transitions for all properties */
 }
 
+/* Selected button state - when user has clicked a button */
 .btn.selected {
-    background-color: #ff6b35;
-    color: white;
-    border-color: #ff6b35;
+    background-color: #ff6b35; /* Orange background when selected */
+    color: white; /* White text on orange background */
+    border-color: #ff6b35; /* Orange border to match background */
 }
 
+/* Selected tag button state - blue for tag buttons when selected */
+.btn.tag-btn.selected {
+    background-color: #007bff; /* Blue background for selected tag buttons */
+    color: white; /* White text on blue background */
+    border-color: #007bff; /* Blue border to match background */
+}
+
+/* Risk level button color coding */
 .btn.risk-low { 
-    border-color: #ff6b35; 
-    color: #ff6b35; 
+    border-color: #ff6b35; /* Orange border for low risk */
+    color: #d47755; /* Orange text */
 }
 
 .btn.risk-med { 
-    border-color: #007bff; 
-    color: #007bff; 
+    border-color: #007bff; /* Blue border for medium risk */
+    color: #007bff; /* Blue text */
 }
 
 .btn.risk-high { 
-    border-color: #dc3545; 
-    color: #dc3545; 
+    border-color: #dc3545; /* Red border for high risk */
+    color: #dc3545; /* Red text */
 }
 
+/* Selected state for specific risk buttons - overrides unselected colors */
+.btn.risk-low.selected,
+.btn.risk-med.selected,
+.btn.risk-high.selected {
+    color: white !important; /* Force white text for all selected risk buttons */
+}
+
+/* Dropdown styling for problem selection */
+.dropdown-container {
+    margin-bottom: 20px; /* Space below dropdown */
+}
+
+.problem-dropdown {
+    width: 100%; /* Full width of container */
+    padding: 12px 16px; /* Internal spacing */
+    border: 2px solid #ccc; /* Gray border */
+    border-radius: 8px; /* Rounded corners */
+    background: white; /* White background */
+    font-size: 14px; /* Standard font size */
+    cursor: pointer; /* Hand cursor */
+    transition: all 0.3s ease; /* Smooth transition for all properties */
+}
+
+.problem-dropdown:focus {
+    outline: none; /* Remove default outline */
+    border-color: #007bff; /* Blue border when focused */
+}
+
+/* Selected state for dropdown - when option is chosen */
+.problem-dropdown.selected {
+    background-color: #e3f2fd; /* Light blue background */
+    border-color: #007bff; /* Blue border */
+    border-width: 3px; /* Thicker border for emphasis */
+    font-weight: 600; /* Slightly bolder text */
+    color: #0056b3; /* Darker blue text color */
+    box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.25); /* Blue glow effect */
+}
+
+.problem-dropdown option {
+    padding: 8px; /* Internal spacing for options */
+}
+
+/* =============================================================================
+   6. ALARM INDICATOR - Risk Level Feedback
+============================================================================= */
+
+/* Container for alarm bells and text */
 .alarm-indicator {
-    text-align: center;
-    margin-top: 10px;
-    font-size: 12px;
-    color: #666;
+    text-align: center; /* Center-align the alarm display */
+    margin-top: 10px; /* Space above alarm indicator */
+    font-size: 12px; /* Small font for descriptive text */
+    color: #666; /* Medium gray text */
 }
 
+/* =============================================================================
+   7. MEDICAL CONDITIONS TAGS SECTION
+============================================================================= */
+
+/* Container for additional medical condition tags */
 .tags-section {
-    background-color: #e3f2fd;
-    padding: 20px;
-    border-radius: 10px;
-    margin-top: 20px;
+    background-color: #e3f2fd; /* Light blue background */
+    padding: 15px; /* Reduced internal spacing for horizontal layout */
+    border-radius: 10px; /* Rounded corners */
+    margin-top: 15px; /* Reduced space above tags section */
 }
 
+/* Adjust gap for buttons in tags section */
 .tags-section .button-group {
-    gap: 10px;
+    gap: 8px; /* Smaller gap between tag buttons for tighter layout */
 }
 
+/* Special styling for medical condition tag buttons */
 .tags-section .btn {
-    background-color: #bbdefb;
-    border-color: #90caf9;
-    color: #1976d2;
+    background-color: #bbdefb; /* Light blue background */
+    border-color: #90caf9; /* Slightly darker blue border */
+    color: #1976d2; /* Dark blue text */
+    font-size: 12px; /* Smaller font for horizontal layout */
+    padding: 6px 12px; /* Reduced padding for compact buttons */
 }
 
+/* "More options" circular button */
 .more-btn {
-    background-color: #ff6b35;
-    color: white;
-    width: 30px;
-    height: 30px;
-    border-radius: 50%;
-    border: none;
-    font-size: 16px;
-    cursor: pointer;
+    background-color: #ff6b35; /* Orange background */
+    color: white; /* White text/symbol */
+    width: 30px; /* Fixed width for circle */
+    height: 30px; /* Fixed height for circle */
+    border-radius: 50%; /* Makes it perfectly circular */
+    border: none; /* No border */
+    font-size: 16px; /* Size for the "..." symbol */
+    cursor: pointer; /* Hand cursor on hover */
 }
 
+/* =============================================================================
+   8. ORGAN MONITORING SECTION - Main Visual Component
+============================================================================= */
+
+/* Container for the entire monitoring section */
 .monitoring-section {
-    margin-top: 40px;
+    margin-top: 40px; /* Space above monitoring section */
 }
 
+/* Grid layout for organ monitoring circles */
 .monitoring-grid {
-    display: grid;
-    grid-template-columns: repeat(6, 1fr);
-    gap: 20px;
-    background-color: #e8e8e8;
-    padding: 20px;
-    border-radius: 10px;
+    display: grid; /* CSS Grid layout */
+    grid-template-columns: repeat(3, 1fr); /* 3 equal columns for remaining organs */
+    gap: 20px; /* Space between grid items */
+    background-color: #e8e8e8; /* Light gray background */
+    padding: 20px; /* Internal spacing */
+    border-radius: 10px; /* Rounded corners */
 }
 
+/* Individual organ monitoring item */
 .monitor-item {
-    text-align: center;
+    text-align: center; /* Center all content */
 }
 
+/* Circular progress indicators for each organ */
 .monitor-circle {
-    width: 80px;
-    height: 80px;
-    border-radius: 50%;
-    margin: 0 auto 10px;
-    position: relative;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    width: 80px; /* Fixed width for consistency */
+    height: 80px; /* Fixed height for consistency */
+    border-radius: 50%; /* Perfect circle */
+    margin: 0 auto 10px; /* Center horizontally, space below */
+    position: relative; /* For positioning inner circle */
+    display: flex; /* Center the inner content */
+    align-items: center; /* Vertically center */
+    justify-content: center; /* Horizontally center */
 }
 
+/* Active monitoring state - partial circle fill */
 .circle-active {
+    /* Creates a conic gradient showing 75% progress (270 degrees) */
     background: conic-gradient(#007bff 0deg 270deg, #e0e0e0 270deg);
 }
 
+/* Critical monitoring state - more progress shown */
 .circle-critical {
+    /* Creates a conic gradient showing ~83% progress (300 degrees) */
     background: conic-gradient(#007bff 0deg 300deg, #e0e0e0 300deg);
 }
 
+/* Inactive monitoring state - no progress */
 .circle-inactive {
-    background: #e0e0e0;
+    background: #e0e0e0; /* Solid gray background */
 }
 
+/* Inner white circle containing the organ icon */
 .circle-inner {
-    width: 60px;
-    height: 60px;
-    background: white;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 20px;
+    width: 60px; /* Smaller than outer circle */
+    height: 60px; /* Smaller than outer circle */
+    background: white; /* White background */
+    border-radius: 50%; /* Perfect circle */
+    display: flex; /* Center the icon */
+    align-items: center; /* Vertically center icon */
+    justify-content: center; /* Horizontally center icon */
+    font-size: 20px; /* Size of emoji icons */
 }
 
+/* Labels for each organ system */
 .monitor-label {
-    font-size: 14px;
-    font-weight: 600;
-    margin-bottom: 5px;
+    font-size: 14px; /* Standard font size */
+    font-weight: 600; /* Semi-bold weight */
+    margin-bottom: 5px; /* Space below label */
 }
 
+/* Status text below each monitoring circle */
 .monitor-status {
-    font-size: 12px;
-    color: #666;
-    font-style: italic;
+    font-size: 12px; /* Small font */
+    color: #666; /* Medium gray */
+    font-style: italic; /* Italicized for emphasis */
 }
 
+/* =============================================================================
+   9. PARAMETER VALUE CARDS - Medical Measurements
+============================================================================= */
+
+/* Grid layout for parameter value cards */
 .monitor-values {
-    display: grid;
-    grid-template-columns: repeat(6, 1fr);
-    gap: 20px;
-    margin-top: 20px;
+    display: grid; /* CSS Grid layout */
+    grid-template-columns: repeat(3, 1fr); /* 3 equal columns to match organs */
+    gap: 20px; /* Space between cards */
+    margin-top: 20px; /* Space above value cards */
 }
 
+/* Individual parameter value card */
 .value-card {
-    background: white;
-    padding: 15px;
-    border-radius: 8px;
-    text-align: center;
+    background: white; /* White background */
+    padding: 15px; /* Internal spacing */
+    border-radius: 8px; /* Slightly rounded corners */
+    text-align: center; /* Center all text */
 }
 
+/* Labels for parameter names (HR, BP, etc.) */
 .value-label {
-    font-size: 12px;
-    color: #666;
-    margin-bottom: 5px;
+    font-size: 12px; /* Small font */
+    color: #666; /* Medium gray */
+    margin-bottom: 5px; /* Space below label */
 }
 
+/* Numerical values and ranges */
 .value-number {
-    font-size: 14px;
-    font-weight: bold;
-    color: #333;
+    font-size: 14px; /* Standard font size */
+    font-weight: bold; /* Bold for emphasis */
+    color: #333; /* Dark gray for readability */
+    transition: all 0.5s ease; /* Smooth transition for changes */
 }
 
+/* Highlight class for parameter changes */
+.value-number.highlight {
+    background-color: #fff3cd; /* Light yellow background */
+    color: #856404; /* Dark yellow text */
+    padding: 4px 8px; /* Add padding when highlighted */
+    border-radius: 4px; /* Rounded corners */
+    border: 2px solid #ffc107; /* Yellow border */
+    animation: pulse 0.6s ease-in-out; /* Pulse animation */
+}
+
+/* Pulse animation for highlighting changes */
+@keyframes pulse {
+    0% {
+        transform: scale(1);
+        box-shadow: 0 0 0 0 rgba(255, 193, 7, 0.7);
+    }
+    70% {
+        transform: scale(1.05);
+        box-shadow: 0 0 0 10px rgba(255, 193, 7, 0);
+    }
+    100% {
+        transform: scale(1);
+        box-shadow: 0 0 0 0 rgba(255, 193, 7, 0);
+    }
+}
+
+/* =============================================================================
+   10. NAVIGATION SECTION - Bottom Controls
+============================================================================= */
+
+/* Container for navigation buttons */
 .navigation {
-    display: flex;
-    justify-content: space-between;
-    margin-top: 40px;
+    display: flex; /* Horizontal layout */
+    justify-content: space-between; /* Space buttons apart */
+    margin-top: 40px; /* Space above navigation */
 }
 
+/* Base styling for navigation buttons */
 .nav-btn {
-    padding: 10px 20px;
-    border: 2px solid #ff6b35;
-    border-radius: 20px;
-    background: white;
-    color: #ff6b35;
-    cursor: pointer;
-    font-size: 14px;
+    padding: 10px 20px; /* Internal spacing */
+    border: 2px solid #ff6b35; /* Orange border */
+    border-radius: 20px; /* Rounded pill shape */
+    background: white; /* White background */
+    color: #ff6b35; /* Orange text */
+    cursor: pointer; /* Hand cursor on hover */
+    font-size: 14px; /* Standard font size */
 }
 
+/* Primary action button (Confirm) styling */
 .nav-btn.primary {
-    background-color: #007bff;
-    border-color: #007bff;
-    color: white;
+    background-color: #007bff; /* Blue background */
+    border-color: #007bff; /* Blue border */
+    color: white; /* White text */
 }
 
+/* =============================================================================
+   11. STATE CLASSES - Visual Feedback
+============================================================================= */
+
+/* Class for inactive/disabled text elements */
 .inactive-text {
-    color: #ccc !important;
+    color: #ccc !important; /* Light gray, !important overrides other colors */
 }

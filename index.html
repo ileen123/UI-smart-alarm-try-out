@@ -1,19 +1,27 @@
 <!DOCTYPE html>
 <html lang="nl">
 <head>
+    <!-- Meta tags for character encoding and responsive design -->
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    
+    <!-- Page title that appears in browser tab -->
     <title>Instellen Nieuwe Patiënt</title>
+    
+    <!-- Link to external CSS file for styling -->
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
+    <!-- Patient information header section -->
     <div class="header">
         <span class="user-icon">👤</span>
         <span>34567 - S. Groen - Vrouw - 16 jaar - 55 kg</span>
     </div>
     
+    <!-- Main page title -->
     <h1 class="main-title">Instellen Nieuwe Patiënt</h1>
     
+    <!-- Progress indicator showing current step (1-4) -->
     <div class="progress-bar">
         <div class="step">
             <div class="step-number">1</div>
@@ -32,131 +40,140 @@
         </div>
     </div>
     
-    <div class="section">
-        <h2 class="section-title">Wat is het hoofdprobleem?</h2>
-        <div class="button-group">
-            <button class="btn">Respiratoire Insufficiëntie</button>
-            <button class="btn selected">Selecteer</button>
-        </div>
-    </div>
-    
-    <div class="section">
-        <h2 class="section-title">Wat is het risico - level van de patiënt?</h2>
-        <div class="button-group">
-            <button class="btn risk-low">Laag</button>
-            <button class="btn risk-med">Mid</button>
-            <button class="btn risk-high">Hoog</button>
-        </div>
-        <div class="alarm-indicator">
-            <div>🔔 🔔 🔔</div>
-            <div>sneller een alarm</div>
-        </div>
-    </div>
-    
-    <div class="section">
-        <h2 class="section-title inactive-text">Selecteer eventueel additionele informatie:</h2>
-        <div class="tags-section">
-            <div class="button-group">
-                <button class="btn">Sepsis ⚙️</button>
-                <button class="btn">Diabetes 🔧</button>
-                <button class="btn">Herstellende 👤</button>
-            </div>
-            <div class="button-group">
-                <button class="btn">Pneumonie 🫁</button>
-                <button class="btn">Chronisch Nierfalen 🧠</button>
-                <button class="more-btn">⋯</button>
-            </div>
-        </div>
-    </div>
-    
-    <div class="monitoring-section">
-        <h2 class="section-title">Monitoring op Orgaan Niveau</h2>
-        <div class="monitoring-grid">
-            <div class="monitor-item">
-                <div class="monitor-label">Circulatoir</div>
-                <div class="monitor-circle circle-active">
-                    <div class="circle-inner">❤️</div>
-                </div>
-                <div class="monitor-status">mild</div>
-            </div>
-            <div class="monitor-item">
-                <div class="monitor-label">Respiratoir</div>
-                <div class="monitor-circle circle-critical">
-                    <div class="circle-inner">🫁</div>
-                </div>
-                <div class="monitor-status">strak</div>
-            </div>
-            <div class="monitor-item">
-                <div class="monitor-label inactive-text">Neuro</div>
-                <div class="monitor-circle circle-inactive">
-                    <div class="circle-inner">🧠</div>
-                </div>
-                <div class="monitor-status inactive-text">los</div>
-            </div>
-            <div class="monitor-item">
-                <div class="monitor-label inactive-text">Lever</div>
-                <div class="monitor-circle circle-inactive">
-                    <div class="circle-inner">🏥</div>
-                </div>
-                <div class="monitor-status inactive-text">los</div>
-            </div>
-            <div class="monitor-item">
-                <div class="monitor-label inactive-text">Nieren</div>
-                <div class="monitor-circle circle-inactive">
-                    <div class="circle-inner">⚙️</div>
-                </div>
-                <div class="monitor-status inactive-text">los</div>
-            </div>
-            <div class="monitor-item">
-                <div class="monitor-label">Overig</div>
-                <div class="monitor-circle circle-active">
-                    <div class="circle-inner">🌡️</div>
-                </div>
-                <div class="monitor-status">mild</div>
+    <!-- Container for the three main form sections - horizontal layout -->
+    <div class="form-sections-container">
+        <!-- Section 1: Main problem selection -->
+        <div class="form-section">
+            <h2 class="section-title">Wat is het hoofdprobleem?</h2>
+            <div class="dropdown-container">
+                <select class="problem-dropdown" id="problemDropdown">
+                    <option value="">Selecteer een probleem...</option>
+                    <option value="respiratoire-insufficientie">Respiratoire Insufficiëntie</option>
+                    <option value="hart-falen">Hart Falen</option>
+                    <option value="sepsis">Sepsis</option>
+                    <option value="neurologische-aandoening">Neurologische Aandoening</option>
+                    <option value="nierinsuffcientie">Nierinsufficiëntie</option>
+                    <option value="leverfalen">Leverfalen</option>
+                </select>
             </div>
         </div>
         
-        <div class="monitor-values">
-            <div class="value-card">
-                <div class="value-label">HR</div>
-                <div class="value-number">70 - 110</div>
-                <div class="value-label">BP Mean</div>
-                <div class="value-number">65 - 85</div>
+        <!-- Section 2: Risk level selection -->
+        <div class="form-section">
+            <h2 class="section-title">Wat is het risico - level van de patiënt?</h2>
+            <div class="button-group">
+                <button class="btn risk-low">Laag</button>
+                <button class="btn risk-med">Mid</button>
+                <button class="btn risk-high">Hoog</button>
             </div>
-            <div class="value-card">
-                <div class="value-label">Saturatie</div>
-                <div class="value-number">90 - 100</div>
-                <div class="value-label">AF</div>
-                <div class="value-number">10 - 25</div>
+            <!-- Dynamic alarm indicator that changes based on risk level -->
+            <div class="alarm-indicator">
+                <div>🔔 🔔 🔔</div>
+                <div>sneller een alarm</div>
             </div>
-            <div class="value-card">
-                <div class="value-label inactive-text">ICP</div>
-                <div class="value-number inactive-text">NIRS</div>
-            </div>
-            <div class="value-card">
-                <div class="value-label inactive-text">ALAT</div>
-                <div class="value-number inactive-text">ASAT</div>
-            </div>
-            <div class="value-card">
-                <div class="value-label inactive-text">KREAT</div>
-                <div class="value-number inactive-text">Ureum</div>
-            </div>
-            <div class="value-card">
-                <div class="value-label">Temp.</div>
-                <div class="value-number">36.5 - 39</div>
+        </div>
+        
+        <!-- Section 3: Additional medical conditions/tags -->
+        <div class="form-section">
+            <h2 class="section-title">Selecteer eventueel additionele informatie:</h2>
+            <div class="tags-section">
+                <!-- First row of medical condition tags -->
+                <div class="button-group">
+                    <button class="btn tag-btn" data-condition="sepsis">Sepsis ⚙️</button>
+                    <button class="btn tag-btn" data-condition="diabetes">Diabetes 🔧</button>
+                </div>
+                <!-- Second row of medical condition tags -->
+                <div class="button-group">
+                    <button class="btn tag-btn" data-condition="herstellende">Herstellende 👤</button>
+                    <button class="btn tag-btn" data-condition="pneumonie">Pneumonie 🫁</button>
+                </div>
+                <!-- Third row with more button -->
+                <div class="button-group">
+                    <button class="btn tag-btn" data-condition="chronisch-nierfalen">Chronisch Nierfalen 🧠</button>
+                    <!-- More button to show additional options -->
+                    <button class="more-btn">⋯</button>
+                </div>
             </div>
         </div>
     </div>
     
+    <!-- Section 4: Organ-level monitoring configuration -->
+    <div class="monitoring-section">
+        <h2 class="section-title">Monitoring op Orgaan Niveau</h2>
+        
+        <!-- Grid of organ monitoring circles -->
+        <div class="monitoring-grid">
+            <!-- Circulatory system monitoring -->
+            <div class="monitor-item">
+                <div class="monitor-label inactive-text">Circulatoir</div>
+                <div class="monitor-circle circle-inactive">
+                    <div class="circle-inner">❤️</div>
+                </div>
+                <div class="monitor-status inactive-text">los</div>
+            </div>
+            
+            <!-- Respiratory system monitoring -->
+            <div class="monitor-item">
+                <div class="monitor-label inactive-text">Respiratoir</div>
+                <div class="monitor-circle circle-inactive">
+                    <div class="circle-inner">�</div>
+                </div>
+                <div class="monitor-status inactive-text">los</div>
+            </div>
+            
+            <!-- Other/Temperature monitoring -->
+            <div class="monitor-item">
+                <div class="monitor-label inactive-text">Overig</div>
+                <div class="monitor-circle circle-inactive">
+                    <div class="circle-inner">🌡️</div>
+                </div>
+                <div class="monitor-status inactive-text">los</div>
+            </div>
+        </div>
+        
+        <!-- Parameter value cards showing normal ranges for each organ system -->
+        <div class="monitor-values">
+            <!-- Circulatory parameters -->
+            <div class="value-card">
+                <div class="value-label inactive-text">HR</div>
+                <div class="value-number inactive-text">70 - 110</div>
+                <div class="value-label inactive-text">BP Mean</div>
+                <div class="value-number inactive-text">65 - 85</div>
+            </div>
+            
+            <!-- Respiratory parameters -->
+            <div class="value-card">
+                <div class="value-label inactive-text">Saturatie</div>
+                <div class="value-number inactive-text">90 - 100</div>
+                <div class="value-label inactive-text">AF</div>
+                <div class="value-number inactive-text">10 - 25</div>
+            </div>
+            
+            <!-- Temperature parameters -->
+            <div class="value-card">
+                <div class="value-label inactive-text">Temp.</div>
+                <div class="value-number inactive-text">36.5 - 39</div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Navigation buttons at bottom of page -->
     <div class="navigation">
+        <!-- Back button with onclick event -->
         <button class="nav-btn" onclick="goBack()">← Terug</button>
+        <!-- Confirm button with onclick event -->
         <button class="nav-btn primary" onclick="confirmSettings()">Bevestigen</button>
     </div>
 
+    <!-- Link to external JavaScript file for interactive functionality -->
+    <script src="script.js"></script>
+</body>
+</html>
+
     <script>
         // Track selected options
-        let selectedProblem = null;
-        let selectedRiskLevel = null;
+    
+        
         let selectedTags = [];
         let organSettings = {
             circulatoir: { active: true, severity: 'mild' },
