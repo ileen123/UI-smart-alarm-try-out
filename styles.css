@@ -316,22 +316,38 @@ body {
 
 /* Container for the entire monitoring section */
 .monitoring-section {
-    margin-top: 40px; /* Space above monitoring section */
+    margin-top: 40px;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
 }
 
 /* Grid layout for organ monitoring circles */
 .monitoring-grid {
-    display: grid; /* CSS Grid layout */
-    grid-template-columns: repeat(3, 1fr); /* 3 equal columns for remaining organs */
-    gap: 20px; /* Space between grid items */
-    background-color: #e8e8e8; /* Light gray background */
-    padding: 20px; /* Internal spacing */
-    border-radius: 10px; /* Rounded corners */
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: flex-start;
+    background-color: #e8e8e8;
+    padding: 30px 30px 20px 30px;
+    border-radius: 10px;
+    max-width: 100%;
+    margin-bottom: 40px;
+    gap: 30px;
 }
 
 /* Individual organ monitoring item */
 .monitor-item {
-    text-align: center; /* Center all content */
+    text-align: center;
+    flex: 1 1 0;
+    min-width: 0;
+}
+/* Make the SVG icons inside the circles larger and centered */
+.organ-icon {
+    width: 70%;
+    height: 70%;
+    display: block;
+    margin: 0 auto;
 }
 
 /* Circular progress indicators for each organ */
