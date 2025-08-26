@@ -103,32 +103,13 @@
         
         <!-- Grid of organ monitoring circles -->
         <div class="monitoring-grid">
-            <!-- Circulatory system monitoring -->
+            <!-- Example: Integrate Heart Circle Component for Circulatory system -->
             <div class="monitor-item">
                 <div class="monitor-label inactive-text">Circulatoir</div>
-                <div class="monitor-circle circle-inactive">
-                    <div class="circle-inner">❤️</div>
-                </div>
+                <div id="heart-circle-container"></div>
                 <div class="monitor-status inactive-text">los</div>
             </div>
-            
-            <!-- Respiratory system monitoring -->
-            <div class="monitor-item">
-                <div class="monitor-label inactive-text">Respiratoir</div>
-                <div class="monitor-circle circle-inactive">
-                    <div class="circle-inner">�</div>
-                </div>
-                <div class="monitor-status inactive-text">los</div>
-            </div>
-            
-            <!-- Other/Temperature monitoring -->
-            <div class="monitor-item">
-                <div class="monitor-label inactive-text">Overig</div>
-                <div class="monitor-circle circle-inactive">
-                    <div class="circle-inner">🌡️</div>
-                </div>
-                <div class="monitor-status inactive-text">los</div>
-            </div>
+            <!-- You can add other organ components here as needed -->
         </div>
         
         <!-- Parameter value cards showing normal ranges for each organ system -->
@@ -165,8 +146,15 @@
         <button class="nav-btn primary" onclick="confirmSettings()">Bevestigen</button>
     </div>
 
-    <!-- Link to external JavaScript file for interactive functionality -->
-    <script src="script.js"></script>
+        <!-- Import Heart Circle Component and main script -->
+        <script src="heart-circle-component.js"></script>
+        <script>
+            document.addEventListener('DOMContentLoaded', function() {
+                // Initialize the heart circle component inside the dashboard
+                new HeartCircleComponent('heart-circle-container', { size: 90, initialState: 'mid' });
+            });
+        </script>
+        <script src="script.js"></script>
 </body>
 </html>
 
