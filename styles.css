@@ -556,6 +556,302 @@ body {
 }
 
 /* =============================================================================
+   ALARM OVERVIEW PAGE - Matching Design Styles
+============================================================================= */
+
+/* Top section with three columns */
+.top-section {
+    display: flex;
+    gap: 20px;
+    margin-bottom: 40px;
+    align-items: flex-start;
+}
+
+/* Problem section (left column) */
+.problem-section {
+    flex: 1;
+    background: white;
+    padding: 20px;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.problem-section h2 {
+    color: #007bff;
+    font-size: 16px;
+    margin-bottom: 15px;
+    font-weight: 600;
+}
+
+.problem-dropdown {
+    width: 100%;
+    padding: 12px;
+    border: 2px solid #ddd;
+    border-radius: 8px;
+    font-size: 14px;
+    background: white;
+    cursor: pointer;
+}
+
+.problem-dropdown:focus {
+    outline: none;
+    border-color: #007bff;
+}
+
+/* Risk section (middle column) */
+.risk-section {
+    flex: 1;
+    background: white;
+    padding: 20px;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    text-align: center;
+}
+
+.risk-section h2 {
+    color: #007bff;
+    font-size: 16px;
+    margin-bottom: 15px;
+    font-weight: 600;
+}
+
+.risk-buttons {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 15px;
+    justify-content: center;
+}
+
+.risk-btn {
+    padding: 8px 16px;
+    border: 2px solid;
+    border-radius: 20px;
+    background: white;
+    cursor: pointer;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+
+.risk-btn.risk-low {
+    border-color: #ffc107;
+    color: #ffc107;
+}
+
+.risk-btn.risk-mid {
+    border-color: #007bff;
+    color: #007bff;
+}
+
+.risk-btn.risk-high {
+    border-color: #dc3545;
+    color: #dc3545;
+}
+
+.risk-btn.selected.risk-low {
+    background: #ffc107;
+    color: white;
+}
+
+.risk-btn.selected.risk-mid {
+    background: #007bff;
+    color: white;
+}
+
+.risk-btn.selected.risk-high {
+    background: #dc3545;
+    color: white;
+}
+
+.alarm-indicator {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    color: #ffc107;
+    font-size: 14px;
+}
+
+/* Tags section (right column) */
+.tags-section {
+    flex: 1;
+    background: white;
+    padding: 20px;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.tags-section h2 {
+    color: #007bff;
+    font-size: 16px;
+    margin-bottom: 15px;
+    font-weight: 600;
+}
+
+.tag-pills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.tag-pill {
+    padding: 6px 12px;
+    background: #e3f2fd;
+    color: #1976d2;
+    border-radius: 15px;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    border: 1px solid #bbdefb;
+}
+
+.tag-pill:hover {
+    background: #bbdefb;
+}
+
+.tag-pill.selected {
+    background: #1976d2;
+    color: white;
+}
+
+.tag-pill.add-more {
+    background: #f5f5f5;
+    color: #666;
+    border: 1px dashed #ccc;
+    font-weight: bold;
+    font-size: 16px;
+}
+
+/* Organ monitoring section */
+.organ-monitoring-section {
+    background: white;
+    padding: 30px;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.organ-monitoring-section h2 {
+    color: #007bff;
+    font-size: 18px;
+    margin-bottom: 30px;
+    font-weight: 600;
+}
+
+.organ-circles {
+    display: flex;
+    gap: 40px;
+    justify-content: center;
+}
+
+.organ-card {
+    text-align: center;
+    flex: 1;
+    max-width: 300px;
+}
+
+.organ-card h3 {
+    font-size: 16px;
+    margin-bottom: 20px;
+    color: #333;
+}
+
+.progress-circle {
+    width: 120px;
+    height: 120px;
+    border-radius: 50%;
+    background: conic-gradient(#007bff 0deg 270deg, #e3f2fd 270deg 360deg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 10px;
+    position: relative;
+}
+
+.progress-circle::before {
+    content: '';
+    width: 80px;
+    height: 80px;
+    background: white;
+    border-radius: 50%;
+    position: absolute;
+}
+
+.circle-content {
+    position: relative;
+    z-index: 2;
+    font-size: 24px;
+}
+
+.circle-status {
+    color: #666;
+    font-size: 14px;
+    margin-bottom: 20px;
+    font-style: italic;
+}
+
+.range-box {
+    background: #f8f9fa;
+    border: 1px solid #e9ecef;
+    border-radius: 8px;
+    padding: 15px;
+    margin-bottom: 15px;
+}
+
+.range-label {
+    font-weight: 600;
+    color: #333;
+    display: block;
+    margin-bottom: 5px;
+}
+
+.range-values {
+    text-align: center;
+}
+
+.range-value {
+    font-size: 14px;
+    color: #333;
+    font-weight: 500;
+}
+
+.range-sublabel {
+    font-size: 12px;
+    color: #666;
+    margin: 5px 0;
+}
+
+/* =============================================================================
+   ADJUST BUTTONS - For Alarm Overview Page
+============================================================================= */
+
+/* Adjust button styling for organ system adjustments */
+.adjust-btn {
+    background-color: #28a745; /* Green background */
+    color: white; /* White text */
+    border: 2px solid #28a745; /* Green border */
+    padding: 8px 16px; /* Internal spacing */
+    border-radius: 6px; /* Rounded corners */
+    font-size: 14px; /* Font size */
+    font-weight: 600; /* Semi-bold weight */
+    cursor: pointer; /* Pointer cursor on hover */
+    margin-top: 15px; /* Space above button */
+    width: 100%; /* Full width of container */
+    transition: all 0.3s ease; /* Smooth hover transition */
+}
+
+/* Adjust button hover effect */
+.adjust-btn:hover {
+    background-color: #218838; /* Darker green on hover */
+    border-color: #218838; /* Darker green border on hover */
+    transform: translateY(-1px); /* Slight lift effect */
+}
+
+/* Adjust button active/pressed state */
+.adjust-btn:active {
+    transform: translateY(0); /* Remove lift when pressed */
+    background-color: #1e7e34; /* Even darker green when pressed */
+}
+
+/* =============================================================================
    11. STATE CLASSES - Visual Feedback
 ============================================================================= */
 

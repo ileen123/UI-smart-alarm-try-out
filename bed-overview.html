@@ -772,8 +772,9 @@
         }
 
         function navigateToAlarmSettings(bedNumber, patientId) {
-            alert('Navigating to alarm settings for bed ' + bedNumber + ', patient ' + patientId);
-            // In the future, this could navigate to an alarm monitoring page
+            console.log('Navigating to alarm settings for bed ' + bedNumber + ', patient ' + patientId);
+            // Navigate to alarm overview page with bed and patient parameters
+            window.location.href = 'alarm-overview.html?bed=' + bedNumber + '&patient=' + patientId;
         }
 
         // Function to discharge a patient from a bed
