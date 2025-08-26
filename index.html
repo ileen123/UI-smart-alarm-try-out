@@ -205,21 +205,162 @@
                             
                             console.log('Initializing heart circle components...');
                             
+                            // Store references to the components for later control
+                            window.organComponents = {};
+                            
                             // Heart (circulatoir)
                             console.log('Creating heart component...');
-                            new HeartCircleComponent('heart-circle-container', { size: circleSize, initialState: 'mid' });
+                            window.organComponents.heart = new HeartCircleComponent('heart-circle-container', { size: circleSize, initialState: 'mid' });
                             setTimeout(() => injectSVG('heart-circle-container', 'heart'), 100);
                             
                             // Lung (respiratoir)
                             console.log('Creating lung component...');
-                            new HeartCircleComponent('lung-circle-container', { size: circleSize, initialState: 'mid' });
+                            window.organComponents.lung = new HeartCircleComponent('lung-circle-container', { size: circleSize, initialState: 'mid' });
                             setTimeout(() => injectSVG('lung-circle-container', 'lung'), 100);
                             
                             // Temp (overig)
                             console.log('Creating temp component...');
-                            new HeartCircleComponent('temp-circle-container', { size: circleSize, initialState: 'mid' });
+                            window.organComponents.temp = new HeartCircleComponent('temp-circle-container', { size: circleSize, initialState: 'mid' });
                             setTimeout(() => injectSVG('temp-circle-container', 'temp'), 100);
+                            
+                            // Set up problem dropdown listener
+                            const problemDropdown = document.getElementById('problemDropdown');
+                            if (problemDropdown) {
+                                problemDropdown.addEventListener('change', function() {
+                                    updateOrganCirclesBasedOnProblem(this.value);
+                                });
+                            }
+                            
+                            // Set up risk level button listeners
+                            const riskButtons = document.querySelectorAll('.btn.risk-low, .btn.risk-med, .btn.risk-high');
+                            riskButtons.forEach(button => {
+                                button.addEventListener('click', function() {
+                                    // Remove selected class from all risk buttons
+                                    riskButtons.forEach(btn => btn.classList.remove('selected'));
+                                    // Add selected class to clicked button
+                                    this.classList.add('selected');
+                                    
+                                    // Get risk level and update circles
+                                    const riskLevel = this.classList.contains('risk-low') ? 'low' : 
+                                                     this.classList.contains('risk-high') ? 'high' : 'mid';
+                                    updateOrganCirclesWithRisk(riskLevel);
+                                });
+                            });
                         });
+
+                        // Store current problem and risk level
+                        let currentProblem = '';
+                        let currentRisk = 'mid';
+
+                        // Function to update organ circles based on selected problem
+                        function updateOrganCirclesBasedOnProblem(problemValue) {
+                            console.log('Problem selected:', problemValue);
+                            currentProblem = problemValue;
+                            updateOrganCircles();
+                        }
+                        
+                        // Function to update organ circles based on risk level
+                        function updateOrganCirclesWithRisk(riskLevel) {
+                            console.log('Risk level selected:', riskLevel);
+                            currentRisk = riskLevel;
+                            updateOrganCircles();
+                        }
+
+                        // Main function to update organ circles based on current problem and risk
+                        function updateOrganCircles() {
+                            // Define base organ states for different problems
+                            const problemOrganMapping = {
+                                'respiratoire-insufficientie': {
+                                    heart: 'mid',
+                                    lung: 'high',
+                                    temp: 'low'
+                                },
+                                // Add more mappings here for other problems later
+                                '': { // Default/no selection
+                                    heart: 'mid',
+                                    lung: 'mid',
+                                    temp: 'mid'
+                                }
+                            };
+                            
+                            const baseOrganStates = problemOrganMapping[currentProblem] || problemOrganMapping[''];
+                            const isActivated = currentProblem !== '';
+                            
+                            // Adjust organ states based on risk level
+                            const finalOrganStates = adjustStatesForRisk(baseOrganStates, currentRisk);
+                            
+                            // Update each organ component
+                            if (window.organComponents.heart) {
+                                window.organComponents.heart.setRiskLevel(finalOrganStates.heart);
+                                console.log('Heart set to:', finalOrganStates.heart);
+                            }
+                            if (window.organComponents.lung) {
+                                window.organComponents.lung.setRiskLevel(finalOrganStates.lung);
+                                console.log('Lung set to:', finalOrganStates.lung);
+                            }
+                            if (window.organComponents.temp) {
+                                window.organComponents.temp.setRiskLevel(finalOrganStates.temp);
+                                console.log('Temp set to:', finalOrganStates.temp);
+                            }
+                            
+                            // Update opacity for all monitoring elements
+                            updateAllOpacity(isActivated);
+                        }
+
+                        // Function to adjust organ states based on risk level
+                        function adjustStatesForRisk(baseStates, riskLevel) {
+                            const levels = ['low', 'mid', 'high'];
+                            const adjustment = riskLevel === 'low' ? -1 : riskLevel === 'high' ? 1 : 0;
+                            
+                            const adjustLevel = (currentLevel) => {
+                                const currentIndex = levels.indexOf(currentLevel);
+                                const newIndex = Math.max(0, Math.min(2, currentIndex + adjustment));
+                                return levels[newIndex];
+                            };
+                            
+                            return {
+                                heart: adjustLevel(baseStates.heart),
+                                lung: adjustLevel(baseStates.lung),
+                                temp: adjustLevel(baseStates.temp)
+                            };
+                        }
+
+                        // Function to update opacity for all monitoring elements
+                        function updateAllOpacity(isActive) {
+                            // Update circle opacity
+                            ['heart-circle-container', 'lung-circle-container', 'temp-circle-container'].forEach(containerId => {
+                                updateCircleOpacity(containerId, isActive);
+                            });
+                            
+                            // Update labels and status opacity
+                            document.querySelectorAll('.monitor-label, .monitor-status').forEach(element => {
+                                if (isActive) {
+                                    element.classList.add('active');
+                                } else {
+                                    element.classList.remove('active');
+                                }
+                            });
+                            
+                            // Update value cards opacity
+                            document.querySelectorAll('.value-card').forEach(card => {
+                                if (isActive) {
+                                    card.classList.add('active');
+                                } else {
+                                    card.classList.remove('active');
+                                }
+                            });
+                        }
+
+                        // Function to update circle opacity
+                        function updateCircleOpacity(containerId, isActive) {
+                            const container = document.getElementById(containerId);
+                            if (container) {
+                                const circle = container.querySelector('.heart-organ-circle');
+                                if (circle) {
+                                    circle.style.opacity = isActive ? '1' : '0.3';
+                                }
+                            }
+                        }
             </script>
             <script src="script.js"></script>
 </body>

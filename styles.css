@@ -342,6 +342,17 @@ body {
     flex: 1 1 0;
     min-width: 0;
 }
+
+/* Monitoring labels and status */
+.monitor-label, .monitor-status {
+    opacity: 0.3;
+    transition: opacity 0.5s ease-in-out;
+}
+
+.monitor-label.active, .monitor-status.active {
+    opacity: 1;
+    color: #000 !important;
+}
 /* Make the SVG icons inside the circles larger and centered */
 .organ-icon {
     width: 70%;
@@ -401,7 +412,7 @@ body {
 /* Status text below each monitoring circle */
 .monitor-status {
     font-size: 12px; /* Small font */
-    color: #666; /* Medium gray */
+    color: #000000; /* Medium gray */
     font-style: italic; /* Italicized for emphasis */
 }
 
@@ -423,6 +434,12 @@ body {
     padding: 15px; /* Internal spacing */
     border-radius: 8px; /* Slightly rounded corners */
     text-align: center; /* Center all text */
+    opacity: 0.3;
+    transition: opacity 0.5s ease-in-out;
+}
+
+.value-card.active {
+    opacity: 1;
 }
 
 /* Labels for parameter names (HR, BP, etc.) */
@@ -430,14 +447,23 @@ body {
     font-size: 12px; /* Small font */
     color: #666; /* Medium gray */
     margin-bottom: 5px; /* Space below label */
+    transition: color 0.5s ease-in-out;
+}
+
+.value-card.active .value-label {
+    color: #000 !important;
 }
 
 /* Numerical values and ranges */
 .value-number {
     font-size: 14px; /* Standard font size */
     font-weight: bold; /* Bold for emphasis */
-    color: #333; /* Dark gray for readability */
+    color: #000000; /* Dark gray for readability */
     transition: all 0.5s ease; /* Smooth transition for changes */
+}
+
+.value-card.active .value-number {
+    color: #000 !important;
 }
 
 /* Highlight class for parameter changes */

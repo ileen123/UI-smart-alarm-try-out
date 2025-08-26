@@ -77,6 +77,8 @@ class HeartCircleComponent {
                     align-items: center;
                     justify-content: center;
                     margin: 0 auto;
+                    opacity: 0.3;
+                    transition: opacity 0.5s ease-in-out;
                 }
                 
                 .heart-outer-border {
