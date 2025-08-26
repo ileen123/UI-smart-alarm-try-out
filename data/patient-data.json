@@ -1,0 +1,22 @@
+{
+  "patientInfo": {
+    "id": "34567",
+    "name": "S. Groen",
+    "gender": "Vrouw",
+    "age": 16,
+    "weight": 55,
+    "lastUpdated": null
+  },
+  "currentSession": {
+    "selectedProblem": "",
+    "selectedRiskLevel": "",
+    "selectedTags": [],
+    "organSettings": {
+      "circulatoir": { "active": false, "severity": "los", "riskLevel": "mid" },
+      "respiratoir": { "active": false, "severity": "los", "riskLevel": "mid" },
+      "overig": { "active": false, "severity": "los", "riskLevel": "mid" }
+    },
+    "progressStep": 1,
+    "lastUpdated": null
+  }
+}

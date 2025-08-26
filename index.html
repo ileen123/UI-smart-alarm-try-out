@@ -156,10 +156,16 @@
         <button class="nav-btn primary" onclick="confirmSettings()">Bevestigen</button>
     </div>
 
-            <!-- Import Heart Circle Component and main script -->
+            <!-- Import Data Manager and Heart Circle Component -->
+            <script src="js/data-manager.js"></script>
             <script src="heart-circle-component.js"></script>
             <script>
-                        // SVG content embedded to avoid CORS issues
+                // Global variables for current session
+                let selectedProblem = '';
+                let selectedRiskLevel = '';
+                let selectedTags = [];
+                
+                // SVG content embedded to avoid CORS issues
                         const svgContent = {
                             heart: `<svg class="organ-icon" viewBox="0 0 22 26" fill="none" xmlns="http://www.w3.org/2000/svg">
                                 <path d="M13.22 10.3743C12.0679 12.132 10.9163 15.0615 10.9163 19.1628M13.22 10.3743C12.0681 12.132 11.4922 14.4756 6.30842 14.4756M13.22 10.3743C14.6766 8.39884 16.9516 6.83964 19.3552 6.3986C20.0557 6.27006 20.6011 5.62288 20.4841 4.90863L20.2921 3.73684C20.1996 3.17181 19.7182 2.75127 19.159 2.81881C16.3987 3.15222 12.9705 4.8327 10.9162 7.44486C10.9162 6.27307 10.9162 2.75769 10.3402 1M5.73245 6.85896C5.15648 5.10127 4.00454 3.92948 2.27663 3.92948M1.70071 15.6441C2.85258 20.9171 7.26892 25 10.3401 25C13.4113 25 17.6365 20.9175 18.9799 15.6441C20.3232 10.3707 16.1 6.85563 13.2201 10.371C13.2201 8.61732 11.4922 6.85906 8.03639 6.85906C4.58057 6.85906 0.548838 10.371 1.70071 15.6441Z" stroke="black" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
@@ -198,7 +204,35 @@
                                 setTimeout(() => injectSVG(containerId, svgType), 50);
                             }
                         }
-                        document.addEventListener('DOMContentLoaded', function() {
+                        // Wait for data manager to be ready
+                        document.addEventListener('DOMContentLoaded', async function() {
+                            console.log('DOM loaded, initializing data manager...');
+                            
+                            // Wait for data manager initialization
+                            if (window.dataManager) {
+                                try {
+                                    await window.dataManager.init();
+                                    console.log('Data manager initialized successfully');
+                                    
+                                    // Verify configurations are available
+                                    const configs = window.dataManager.getCircleConfigurations();
+                                    console.log('Available circle configurations:', configs);
+                                    
+                                    // Load any existing session data
+                                    loadSessionData();
+                                } catch (error) {
+                                    console.error('Error initializing data manager:', error);
+                                }
+                            }
+                            
+                            // Create circle components after data manager is ready
+                            await initializeCircleComponents();
+                            
+                            // Set up event listeners
+                            setupEventListeners();
+                        });
+                        
+                        async function initializeCircleComponents() {
                             // Make all circles larger but still fit side by side
                             const circleSize = 130;
                             
@@ -207,26 +241,35 @@
                             // Store references to the components for later control
                             window.organComponents = {};
                             
-                            // Heart (circulatoir)
+                            // Heart (circulatoir) - start inactive
                             console.log('Creating heart component...');
-                            window.organComponents.heart = new HeartCircleComponent('heart-circle-container', { size: circleSize, initialState: 'mid' });
+                            window.organComponents.heart = new HeartCircleComponent('heart-circle-container', { size: circleSize, initialState: 'low' });
                             setTimeout(() => injectSVG('heart-circle-container', 'heart'), 100);
                             
-                            // Lung (respiratoir)
+                            // Lung (respiratoir) - start inactive
                             console.log('Creating lung component...');
-                            window.organComponents.lung = new HeartCircleComponent('lung-circle-container', { size: circleSize, initialState: 'mid' });
+                            window.organComponents.lung = new HeartCircleComponent('lung-circle-container', { size: circleSize, initialState: 'low' });
                             setTimeout(() => injectSVG('lung-circle-container', 'lung'), 100);
                             
-                            // Temp (overig)
+                            // Temp (overig) - start inactive
                             console.log('Creating temp component...');
-                            window.organComponents.temp = new HeartCircleComponent('temp-circle-container', { size: circleSize, initialState: 'mid' });
+                            window.organComponents.temp = new HeartCircleComponent('temp-circle-container', { size: circleSize, initialState: 'low' });
                             setTimeout(() => injectSVG('temp-circle-container', 'temp'), 100);
                             
+                            // Make all circles appear inactive until user makes selections
+                            setTimeout(() => {
+                                updateAllOpacity(false);
+                            }, 200);
+                        }
+                        
+                        function setupEventListeners() {
                             // Set up problem dropdown listener
                             const problemDropdown = document.getElementById('problemDropdown');
                             if (problemDropdown) {
                                 problemDropdown.addEventListener('change', function() {
-                                    updateOrganCirclesBasedOnProblem(this.value);
+                                    selectedProblem = this.value;
+                                    window.dataManager?.setSelectedProblem(selectedProblem);
+                                    updateOrganCirclesBasedOnProblem(selectedProblem);
                                 });
                             }
                             
@@ -242,63 +285,109 @@
                                     // Get risk level and update circles
                                     const riskLevel = this.classList.contains('risk-low') ? 'low' : 
                                                      this.classList.contains('risk-high') ? 'high' : 'mid';
+                                    selectedRiskLevel = riskLevel;
+                                    window.dataManager?.setSelectedRiskLevel(riskLevel);
                                     updateOrganCirclesWithRisk(riskLevel);
                                 });
                             });
-                        });
-
-                        // Store current problem and risk level
-                        let currentProblem = '';
-                        let currentRisk = 'mid';
+                            
+                            // Set up tag button listeners
+                            const tagButtons = document.querySelectorAll('.tags-section .btn:not(.more-btn)');
+                            tagButtons.forEach(button => {
+                                button.addEventListener('click', function() {
+                                    this.classList.toggle('selected');
+                                    const tagText = this.textContent;
+                                    
+                                    if (this.classList.contains('selected')) {
+                                        if (!selectedTags.includes(tagText)) {
+                                            selectedTags.push(tagText);
+                                        }
+                                    } else {
+                                        selectedTags = selectedTags.filter(tag => tag !== tagText);
+                                    }
+                                    
+                                    window.dataManager?.setSelectedTags(selectedTags);
+                                    // Update parameter ranges based on selected conditions
+                                    updateParameterRanges();
+                                });
+                            });
+                        }
+                        
+                        // Always start with fresh session data (no restoration of previous selections)
+                        function loadSessionData() {
+                            // Ensure interface starts clean - no previous selections restored
+                            selectedProblem = '';
+                            selectedRiskLevel = '';
+                            selectedTags = [];
+                            
+                            // Ensure UI elements are reset
+                            const dropdown = document.getElementById('problemDropdown');
+                            if (dropdown) dropdown.value = '';
+                            
+                            // Remove any selected classes from risk buttons
+                            document.querySelectorAll('.btn.risk-low, .btn.risk-med, .btn.risk-high').forEach(btn => {
+                                btn.classList.remove('selected');
+                            });
+                            
+                            // Remove any selected classes from tag buttons
+                            document.querySelectorAll('.tags-section .btn').forEach(btn => {
+                                btn.classList.remove('selected');
+                            });
+                            
+                            console.log('Interface reset to fresh state');
+                        }
 
                         // Function to update organ circles based on selected problem
                         function updateOrganCirclesBasedOnProblem(problemValue) {
                             console.log('Problem selected:', problemValue);
-                            currentProblem = problemValue;
+                            selectedProblem = problemValue;
                             updateOrganCircles();
                         }
                         
                         // Function to update organ circles based on risk level
                         function updateOrganCirclesWithRisk(riskLevel) {
                             console.log('Risk level selected:', riskLevel);
-                            currentRisk = riskLevel;
+                            selectedRiskLevel = riskLevel;
                             updateOrganCircles();
                         }
 
                         // Main function to update organ circles based on current problem and risk
                         function updateOrganCircles() {
-                            // Define base organ states for different problems
-                            const problemOrganMapping = {
-                                'respiratoire-insufficientie': {
-                                    heart: 'mid',
-                                    lung: 'high',
-                                    temp: 'low'
-                                },
-                                // Add more mappings here for other problems later
-                                '': { // Default/no selection
-                                    heart: 'mid',
-                                    lung: 'mid',
-                                    temp: 'mid'
-                                }
-                            };
+                            if (!window.dataManager) {
+                                console.warn('Data manager not available');
+                                return;
+                            }
                             
-                            const baseOrganStates = problemOrganMapping[currentProblem] || problemOrganMapping[''];
-                            const isActivated = currentProblem !== '';
-                            
-                            // Adjust organ states based on risk level
-                            const finalOrganStates = adjustStatesForRisk(baseOrganStates, currentRisk);
+                            // Use data manager to calculate organ states
+                            const finalOrganStates = window.dataManager.calculateOrganStates(selectedProblem, selectedRiskLevel);
+                            const isActivated = selectedProblem !== '';
                             
                             // Update each organ component
                             if (window.organComponents.heart) {
                                 window.organComponents.heart.setRiskLevel(finalOrganStates.heart);
+                                window.dataManager.setOrganSettings('circulatoir', { 
+                                    active: isActivated, 
+                                    severity: isActivated ? 'active' : 'los', 
+                                    riskLevel: finalOrganStates.heart 
+                                });
                                 console.log('Heart set to:', finalOrganStates.heart);
                             }
                             if (window.organComponents.lung) {
                                 window.organComponents.lung.setRiskLevel(finalOrganStates.lung);
+                                window.dataManager.setOrganSettings('respiratoir', { 
+                                    active: isActivated, 
+                                    severity: isActivated ? 'active' : 'los', 
+                                    riskLevel: finalOrganStates.lung 
+                                });
                                 console.log('Lung set to:', finalOrganStates.lung);
                             }
                             if (window.organComponents.temp) {
                                 window.organComponents.temp.setRiskLevel(finalOrganStates.temp);
+                                window.dataManager.setOrganSettings('overig', { 
+                                    active: isActivated, 
+                                    severity: isActivated ? 'active' : 'los', 
+                                    riskLevel: finalOrganStates.temp 
+                                });
                                 console.log('Temp set to:', finalOrganStates.temp);
                             }
                             
@@ -306,22 +395,127 @@
                             updateAllOpacity(isActivated);
                         }
 
-                        // Function to adjust organ states based on risk level
-                        function adjustStatesForRisk(baseStates, riskLevel) {
-                            const levels = ['low', 'mid', 'high'];
-                            const adjustment = riskLevel === 'low' ? -1 : riskLevel === 'high' ? 1 : 0;
+                        function updateParameterRanges() {
+                            if (!window.dataManager) return;
                             
-                            const adjustLevel = (currentLevel) => {
-                                const currentIndex = levels.indexOf(currentLevel);
-                                const newIndex = Math.max(0, Math.min(2, currentIndex + adjustment));
-                                return levels[newIndex];
-                            };
+                            // Get modified thresholds based on selected tags
+                            const thresholds = window.dataManager.getThresholdsByTags(selectedTags);
                             
-                            return {
-                                heart: adjustLevel(baseStates.heart),
-                                lung: adjustLevel(baseStates.lung),
-                                temp: adjustLevel(baseStates.temp)
-                            };
+                            // Update circulatory parameters (HR)
+                            const circulatoryCard = document.querySelector('.value-card');
+                            const hrRange = circulatoryCard.querySelector('.value-number');
+                            
+                            if (thresholds.circulatoir && thresholds.circulatoir.HR) {
+                                const hr = thresholds.circulatoir.HR;
+                                hrRange.textContent = `${hr.min} - ${hr.max}`;
+                                
+                                // Check if this is different from normal (highlight if modified)
+                                const normalThresholds = window.dataManager.getThresholds('normal');
+                                const isModified = normalThresholds.circulatoir?.HR && 
+                                    (hr.min !== normalThresholds.circulatoir.HR.min || hr.max !== normalThresholds.circulatoir.HR.max);
+                                
+                                if (isModified) {
+                                    hrRange.style.backgroundColor = '#fff3cd'; // Light yellow highlight
+                                    hrRange.style.border = '2px solid #ffc107'; // Yellow border
+                                    hrRange.style.borderRadius = '4px';
+                                    hrRange.style.padding = '2px 4px';
+                                } else {
+                                    // Reset to normal styling
+                                    hrRange.style.backgroundColor = '';
+                                    hrRange.style.border = '';
+                                    hrRange.style.borderRadius = '';
+                                    hrRange.style.padding = '';
+                                }
+                            }
+                        }
+
+                        function updateProgressBar() {
+                            const stepNumbers = document.querySelectorAll('.step-number');
+                            let completedSteps = 1; // Always start with step 1
+                            
+                            if (selectedProblem) completedSteps = 2;
+                            if (selectedRiskLevel) completedSteps = 3;
+                            
+                            // Update data manager with current progress
+                            if (window.dataManager) {
+                                window.dataManager.setProgressStep(completedSteps);
+                            }
+                            
+                            stepNumbers.forEach((step, index) => {
+                                if (index < completedSteps) {
+                                    step.classList.remove('inactive');
+                                    if (index === completedSteps - 1) {
+                                        step.style.backgroundColor = '#007bff';
+                                    }
+                                } else {
+                                    step.classList.add('inactive');
+                                }
+                            });
+                            
+                            // Handle the checkmark (last step) - activate when all main steps are done
+                            if (completedSteps >= 3) {
+                                const checkmarkStep = stepNumbers[stepNumbers.length - 1];
+                                checkmarkStep.classList.remove('inactive');
+                                checkmarkStep.classList.add('checkmark-ready');
+                                checkmarkStep.style.backgroundColor = '#28a745';
+                            }
+                        }
+
+                        // Navigation functions
+                        function goBack() {
+                            if (confirm('Weet je zeker dat je terug wilt gaan? Alle wijzigingen gaan verloren.')) {
+                                // Reset all selections and data manager
+                                selectedProblem = '';
+                                selectedRiskLevel = '';
+                                selectedTags = [];
+                                
+                                if (window.dataManager) {
+                                    window.dataManager.resetSession();
+                                }
+                                
+                                // Reset UI
+                                document.querySelectorAll('.btn.selected').forEach(btn => btn.classList.remove('selected'));
+                                document.getElementById('problemDropdown').value = '';
+                                updateProgressBar();
+                                
+                                alert('Terug naar vorige stap...');
+                            }
+                        }
+
+                        function confirmSettings() {
+                            if (!selectedProblem || !selectedRiskLevel) {
+                                alert('Selecteer eerst een hoofdprobleem en risico niveau voordat je doorgaat.');
+                                return;
+                            }
+                            
+                            const organSettings = window.dataManager?.getCurrentSession()?.organSettings || {};
+                            const activeOrgans = Object.keys(organSettings).filter(organ => organSettings[organ].active);
+                            
+                            const summary = `
+Overzicht instellingen:
+- Hoofdprobleem: ${selectedProblem}
+- Risico niveau: ${selectedRiskLevel}
+- Additionele tags: ${selectedTags.length > 0 ? selectedTags.join(', ') : 'Geen'}
+- Actieve monitoring: ${activeOrgans.length > 0 ? activeOrgans.join(', ') : 'Geen'}
+                            `;
+                            
+                            if (confirm(summary + '\n\nWil je deze instellingen bevestigen?')) {
+                                // Save all the selected data to patient-data.json
+                                if (window.dataManager) {
+                                    window.dataManager.setSelectedProblem(selectedProblem);
+                                    window.dataManager.setSelectedRiskLevel(selectedRiskLevel);
+                                    window.dataManager.setSelectedTags(selectedTags);
+                                    window.dataManager.setProgressStep(4);
+                                }
+                                
+                                alert('Instellingen opgeslagen! Patiënt monitoring is geactiveerd.');
+                                
+                                // Simulate moving to next step
+                                const lastStep = document.querySelector('.step:last-child .step-number');
+                                lastStep.classList.remove('inactive');
+                                lastStep.textContent = '✓';
+                                lastStep.style.backgroundColor = '#28a745';
+                            }
                         }
 
                         // Function to update opacity for all monitoring elements
@@ -361,248 +555,5 @@
                             }
                         }
             </script>
-            <script src="script.js"></script>
-</body>
-</html>
-
-    <script>
-        // Track selected options
-    
-        
-        let selectedTags = [];
-        let organSettings = {
-            circulatoir: { active: true, severity: 'mild' },
-            respiratoir: { active: true, severity: 'strak' },
-            neuro: { active: false, severity: 'los' },
-            lever: { active: false, severity: 'los' },
-            nieren: { active: false, severity: 'los' },
-            overig: { active: true, severity: 'mild' }
-        };
-
-        // Initialize interactive elements
-        document.addEventListener('DOMContentLoaded', function() {
-            initializeProblemButtons();
-            initializeRiskButtons();
-            initializeTagButtons();
-            initializeOrganMonitoring();
-            updateProgressBar();
-        });
-
-        // Problem selection functionality
-        function initializeProblemButtons() {
-            const problemButtons = document.querySelectorAll('.section:first-of-type .btn');
-            problemButtons.forEach(button => {
-                button.addEventListener('click', function() {
-                    // Remove selected class from all buttons in this group
-                    problemButtons.forEach(btn => btn.classList.remove('selected'));
-                    // Add selected class to clicked button
-                    this.classList.add('selected');
-                    selectedProblem = this.textContent;
-                    updateProgressBar();
-                });
-            });
-        }
-
-        // Risk level selection functionality
-        function initializeRiskButtons() {
-            const riskButtons = document.querySelectorAll('.btn.risk-low, .btn.risk-med, .btn.risk-high');
-            riskButtons.forEach(button => {
-                button.addEventListener('click', function() {
-                    // Remove selected class from all risk buttons
-                    riskButtons.forEach(btn => btn.classList.remove('selected'));
-                    // Add selected class to clicked button
-                    this.classList.add('selected');
-                    selectedRiskLevel = this.textContent;
-                    updateAlarmIndicator(this.textContent);
-                    updateProgressBar();
-                });
-            });
-        }
-
-        // Tag selection functionality
-        function initializeTagButtons() {
-            const tagButtons = document.querySelectorAll('.tags-section .btn:not(.more-btn)');
-            tagButtons.forEach(button => {
-                button.addEventListener('click', function() {
-                    this.classList.toggle('selected');
-                    const tagText = this.textContent;
-                    
-                    if (this.classList.contains('selected')) {
-                        if (!selectedTags.includes(tagText)) {
-                            selectedTags.push(tagText);
-                        }
-                    } else {
-                        selectedTags = selectedTags.filter(tag => tag !== tagText);
-                    }
-                });
-            });
-
-            // More button functionality
-            const moreBtn = document.querySelector('.more-btn');
-            moreBtn.addEventListener('click', function() {
-                alert('Meer opties worden binnenkort beschikbaar...');
-            });
-        }
-
-        // Organ monitoring functionality
-        function initializeOrganMonitoring() {
-            const monitorItems = document.querySelectorAll('.monitor-item');
-            monitorItems.forEach((item, index) => {
-                const organNames = ['circulatoir', 'respiratoir', 'neuro', 'lever', 'nieren', 'overig'];
-                const organName = organNames[index];
-                
-                item.addEventListener('click', function() {
-                    toggleOrganMonitoring(organName, item);
-                });
-            });
-        }
-
-        function toggleOrganMonitoring(organName, element) {
-            const circle = element.querySelector('.monitor-circle');
-            const label = element.querySelector('.monitor-label');
-            const status = element.querySelector('.monitor-status');
-            
-            if (organSettings[organName].active) {
-                // Deactivate
-                organSettings[organName].active = false;
-                organSettings[organName].severity = 'los';
-                circle.className = 'monitor-circle circle-inactive';
-                label.classList.add('inactive-text');
-                status.classList.add('inactive-text');
-                status.textContent = 'los';
-            } else {
-                // Activate
-                organSettings[organName].active = true;
-                organSettings[organName].severity = 'mild';
-                circle.className = 'monitor-circle circle-active';
-                label.classList.remove('inactive-text');
-                status.classList.remove('inactive-text');
-                status.textContent = 'mild';
-            }
-            
-            updateParameterCards();
-        }
-
-        function updateAlarmIndicator(riskLevel) {
-            const alarmDiv = document.querySelector('.alarm-indicator');
-            let alarmText = '';
-            let bellCount = '';
-            
-            switch(riskLevel.toLowerCase()) {
-                case 'laag':
-                    bellCount = '🔔';
-                    alarmText = 'langzamer een alarm';
-                    break;
-                case 'mid':
-                    bellCount = '🔔 🔔';
-                    alarmText = 'normaal alarm tempo';
-                    break;
-                case 'hoog':
-                    bellCount = '🔔 🔔 🔔';
-                    alarmText = 'sneller een alarm';
-                    break;
-            }
-            
-            alarmDiv.innerHTML = `<div>${bellCount}</div><div>${alarmText}</div>`;
-        }
-
-        function updateParameterCards() {
-            const valueCards = document.querySelectorAll('.value-card');
-            const organNames = ['circulatoir', 'respiratoir', 'neuro', 'lever', 'nieren', 'overig'];
-            
-            valueCards.forEach((card, index) => {
-                const organName = organNames[index];
-                const labels = card.querySelectorAll('.value-label');
-                const numbers = card.querySelectorAll('.value-number');
-                
-                if (organSettings[organName].active) {
-                    labels.forEach(label => label.classList.remove('inactive-text'));
-                    numbers.forEach(number => number.classList.remove('inactive-text'));
-                } else {
-                    labels.forEach(label => label.classList.add('inactive-text'));
-                    numbers.forEach(number => number.classList.add('inactive-text'));
-                }
-            });
-        }
-
-        function updateProgressBar() {
-            const stepNumbers = document.querySelectorAll('.step-number');
-            let completedSteps = 1; // Always start with step 1
-            
-            if (selectedProblem) completedSteps = 2;
-            if (selectedRiskLevel) completedSteps = 3;
-            
-            stepNumbers.forEach((step, index) => {
-                if (index < completedSteps) {
-                    step.classList.remove('inactive');
-                    if (index === completedSteps - 1) {
-                        step.style.backgroundColor = '#007bff';
-                    }
-                } else {
-                    step.classList.add('inactive');
-                }
-            });
-        }
-
-        // Navigation functions
-        function goBack() {
-            if (confirm('Weet je zeker dat je terug wilt gaan? Alle wijzigingen gaan verloren.')) {
-                // Reset all selections
-                selectedProblem = null;
-                selectedRiskLevel = null;
-                selectedTags = [];
-                
-                // Reset UI
-                document.querySelectorAll('.btn.selected').forEach(btn => btn.classList.remove('selected'));
-                updateProgressBar();
-                
-                alert('Terug naar vorige stap...');
-            }
-        }
-
-        function confirmSettings() {
-            if (!selectedProblem || !selectedRiskLevel) {
-                alert('Selecteer eerst een hoofdprobleem en risico niveau voordat je doorgaat.');
-                return;
-            }
-            
-            const summary = `
-Overzicht instellingen:
-- Hoofdprobleem: ${selectedProblem}
-- Risico niveau: ${selectedRiskLevel}
-- Additionele tags: ${selectedTags.length > 0 ? selectedTags.join(', ') : 'Geen'}
-- Actieve monitoring: ${Object.keys(organSettings).filter(organ => organSettings[organ].active).join(', ')}
-            `;
-            
-            if (confirm(summary + '\n\nWil je deze instellingen bevestigen?')) {
-                alert('Instellingen opgeslagen! Patiënt monitoring is geactiveerd.');
-                
-                // Simulate moving to next step
-                const lastStep = document.querySelector('.step:last-child .step-number');
-                lastStep.classList.remove('inactive');
-                lastStep.textContent = '✓';
-                lastStep.style.backgroundColor = '#28a745';
-            }
-        }
-
-        // Add hover effects for better UX
-        document.addEventListener('DOMContentLoaded', function() {
-            const buttons = document.querySelectorAll('.btn, .nav-btn');
-            buttons.forEach(button => {
-                button.addEventListener('mouseenter', function() {
-                    if (!this.classList.contains('selected')) {
-                        this.style.transform = 'scale(1.05)';
-                        this.style.transition = 'transform 0.2s ease';
-                    }
-                });
-                
-                button.addEventListener('mouseleave', function() {
-                    this.style.transform = 'scale(1)';
-                });
-            });
-
-
-        });  
-    </script>
 </body>
 </html>

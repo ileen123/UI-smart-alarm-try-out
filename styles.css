@@ -532,6 +532,7 @@ body {
     justify-content: space-between; /* Space buttons apart */
     margin-top: 60px; /* Increased spacing above navigation */
     padding-top: 20px; /* Additional padding for visual separation */
+    gap: 15px; /* Add space between buttons */
 }
 
 /* Base styling for navigation buttons */
@@ -561,4 +562,40 @@ body {
 /* Class for inactive/disabled text elements */
 .inactive-text {
     color: #ccc !important; /* Light gray, !important overrides other colors */
+}
+
+/* =============================================================================
+   12. MONITORING PAGE - Secondary Page Styling
+============================================================================= */
+
+/* Monitoring status styling for secondary pages */
+.monitoring-status {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 15px;
+    margin-bottom: 8px;
+    background-color: #f8f9fa;
+    border-radius: 6px;
+    border: 1px solid #e9ecef;
+}
+
+.monitoring-status .organ-name {
+    font-weight: 600;
+    color: #495057;
+    flex: 1;
+}
+
+.monitoring-status .status {
+    font-weight: 500;
+    flex: 1;
+    text-align: center;
+}
+
+.monitoring-status .risk-level {
+    font-weight: 600;
+    text-align: right;
+    padding: 4px 8px;
+    border-radius: 4px;
+    background-color: #fff;
 }

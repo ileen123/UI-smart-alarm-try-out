@@ -8,7 +8,26 @@ class HeartCircleComponent {
             ...options
         };
         
-        this.configurations = {
+        // Get configurations from data manager if available, otherwise use defaults
+        this.configurations = this.getConfigurations();
+        
+        this.init();
+    }
+    
+    getConfigurations() {
+        // Try to get configurations from global data manager
+        if (window.dataManager && window.dataManager.getCircleConfigurations) {
+            const configs = window.dataManager.getCircleConfigurations();
+            console.log('DataManager circle configurations:', configs);
+            if (configs && Object.keys(configs).length > 0) {
+                console.log('Using DataManager configurations');
+                return configs;
+            }
+        }
+        
+        console.log('DataManager not available or no configurations, using fallback defaults');
+        // Fallback to default configurations
+        return {
             'low': {
                 darkerBlueSize: 0.9, // ratio of total size
                 darkerBlueOffset: 0.05,
@@ -34,8 +53,6 @@ class HeartCircleComponent {
                 whiteCenterOffset: 0.35
             }
         };
-        
-        this.init();
     }
     
     init() {
@@ -130,7 +147,7 @@ class HeartCircleComponent {
     setupInteractions() {
         const container = document.getElementById(this.containerId);
         container.addEventListener('click', () => {
-            this.promptForRiskLevel();
+            console.log('Circle clicked, no changes');
         });
         
         // Also add keyboard listener for 'r' key
