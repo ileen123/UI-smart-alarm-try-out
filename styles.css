@@ -46,7 +46,7 @@ h1 {
     width: 200px;
     height: 200px;
     border-radius: 50%;
-    background: #1e40af;
+    background: #0020CB;
     top: 0;
     left: 0;
 }
@@ -57,7 +57,7 @@ h1 {
     width: 180px;
     height: 180px;
     border-radius: 50%;
-    background: #3b82f6;
+    background: #1191FA;
     top: 10px;
     left: 10px;
 }
@@ -68,7 +68,7 @@ h1 {
     width: 140px;
     height: 140px;
     border-radius: 50%;
-    background: #bfdbfe;
+    background: #C2E4FF;
     top: 30px;
     left: 30px;
 }
@@ -88,7 +88,9 @@ h1 {
     z-index: 10;
 }
 
-.white-center i {
-    font-size: 1.8rem;
-    color: black;
+.heart-icon {
+    width: 30px;
+    height: 30px;
+    object-fit: contain;
+    display: block;
 }
