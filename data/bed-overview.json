@@ -1,0 +1,58 @@
+{
+  "proposedPatients": [
+    {
+      "id": "1",
+      "name": "S. Groen",
+      "gender": "Vrouw",
+      "age": 16,
+      "weight": 55
+    },
+    {
+      "id": "2", 
+      "name": "M. Bunnik",
+      "gender": "Vrouw", 
+      "age": 44,
+      "weight": 70
+    },
+    {
+      "id": "3",
+      "name": "H. Demir", 
+      "gender": "Man",
+      "age": 35,
+      "weight": 81
+    },
+    {
+      "id": "4",
+      "name": "B. Al Salah",
+      "gender": "Man", 
+      "age": 65,
+      "weight": 73
+    }
+  ],
+  "beds": [
+    {
+      "bedNumber": 1,
+      "occupied": false,
+      "patientId": null,
+      "vpkCode": null
+    },
+    {
+      "bedNumber": 2, 
+      "occupied": false,
+      "patientId": null,
+      "vpkCode": null
+    },
+    {
+      "bedNumber": 3,
+      "occupied": false, 
+      "patientId": null,
+      "vpkCode": null
+    },
+    {
+      "bedNumber": 4,
+      "occupied": false,
+      "patientId": null, 
+      "vpkCode": null
+    }
+  ]
+}

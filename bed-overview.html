@@ -1,0 +1,622 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Patiënten Overzicht - Smart Alarm</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .header {
+            background: white;
+            padding: 15px 25px;
+            border-radius: 15px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            margin-bottom: 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header h1 {
+            font-size: 28px;
+            color: #2c3e50;
+            border-bottom: 3px solid #e74c3c;
+            padding-bottom: 5px;
+            display: inline-block;
+        }
+
+        .header-buttons {
+            display: flex;
+            gap: 10px;
+        }
+
+        .header-btn {
+            padding: 8px 16px;
+            background: #bdc3c7;
+            color: white;
+            border: none;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .floorplan-container {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .beds-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 30px;
+            align-items: start;
+        }
+
+        /* Left column - 2 beds */
+        .left-column {
+            display: flex;
+            flex-direction: column;
+            gap: 30px;
+        }
+
+        /* Middle column - patient selection area */
+        .middle-column {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        /* Right column - 2 beds */
+        .right-column {
+            display: flex;
+            flex-direction: column;
+            gap: 30px;
+        }
+
+        .bed-card {
+            background: #bdc3c7;
+            border-radius: 15px;
+            padding: 20px;
+            min-height: 160px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            align-items: center;
+            text-align: center;
+            position: relative;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .bed-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+        }
+
+        .bed-card.occupied {
+            background: linear-gradient(135deg, #3498db, #2980b9);
+            color: white;
+        }
+
+        .bed-card.alarm-active {
+            background: linear-gradient(135deg, #e74c3c, #c0392b);
+            color: white;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(231, 76, 60, 0.7); }
+            70% { box-shadow: 0 0 0 10px rgba(231, 76, 60, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(231, 76, 60, 0); }
+        }
+
+        .bed-number {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+
+        .bed-vpk {
+            position: absolute;
+            top: 10px;
+            right: 15px;
+            background: rgba(255,255,255,0.9);
+            color: #333;
+            padding: 4px 8px;
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        .bed-icon {
+            font-size: 40px;
+            margin: 10px 0;
+        }
+
+        .add-patient-btn {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            border: 3px dashed #7f8c8d;
+            background: transparent;
+            font-size: 30px;
+            color: #7f8c8d;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+        }
+
+        .add-patient-btn:hover {
+            border-color: #34495e;
+            color: #34495e;
+            transform: scale(1.1);
+        }
+
+        .alarm-btn {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            border: none;
+            background: #fff;
+            color: #e74c3c;
+            font-size: 24px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        }
+
+        .bed-status {
+            font-size: 14px;
+            color: #7f8c8d;
+            margin-top: 10px;
+        }
+
+        .bed-card.occupied .bed-status {
+            color: rgba(255,255,255,0.9);
+        }
+
+        .patient-name {
+            font-size: 16px;
+            font-weight: bold;
+            margin-top: 10px;
+        }
+
+        .patient-selection {
+            background: #ecf0f1;
+            border-radius: 15px;
+            padding: 30px;
+            min-height: 350px;
+            width: 280px;
+            text-align: center;
+            display: none;
+        }
+
+        .patient-selection.active {
+            display: block;
+        }
+
+        .patient-selection h3 {
+            color: #2c3e50;
+            margin-bottom: 20px;
+            font-size: 18px;
+        }
+
+        .patient-list {
+            list-style: none;
+            padding: 0;
+        }
+
+        .patient-item {
+            background: white;
+            margin: 10px 0;
+            padding: 15px;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: 2px solid transparent;
+        }
+
+        .patient-item:hover {
+            background: #3498db;
+            color: white;
+            transform: translateX(5px);
+        }
+
+        .patient-item.selected {
+            border-color: #2980b9;
+            background: #3498db;
+            color: white;
+        }
+
+        .patient-id {
+            font-weight: bold;
+            font-size: 16px;
+        }
+
+        .patient-details {
+            font-size: 12px;
+            margin-top: 5px;
+            opacity: 0.8;
+        }
+
+        .selection-buttons {
+            margin-top: 20px;
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+            transition: all 0.3s ease;
+        }
+
+        .btn-confirm {
+            background: #27ae60;
+            color: white;
+        }
+
+        .btn-confirm:hover {
+            background: #2ecc71;
+        }
+
+        .btn-confirm:disabled {
+            background: #bdc3c7;
+            cursor: not-allowed;
+        }
+
+        .btn-cancel {
+            background: #e74c3c;
+            color: white;
+        }
+
+        .btn-cancel:hover {
+            background: #c0392b;
+        }
+
+        .no-selection {
+            color: #7f8c8d;
+            font-style: italic;
+            padding: 50px 20px;
+            font-size: 16px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Patiënten Overzicht</h1>
+        <div class="header-buttons">
+            <button class="header-btn">Nachtdienst</button>
+            <button class="header-btn">Unit IB</button>
+        </div>
+    </div>
+
+    <div class="floorplan-container">
+        <div class="beds-grid">
+            <!-- Left Column - Beds 1 & 2 -->
+            <div class="left-column">
+                <div class="bed-card" id="bed-1" onclick="handleBedClick(1)">
+                    <div class="bed-number">1</div>
+                    <div class="bed-icon">
+                        <button class="add-patient-btn">+</button>
+                    </div>
+                    <div class="bed-status">Nieuwe Patiënt</div>
+                </div>
+
+                <div class="bed-card" id="bed-2" onclick="handleBedClick(2)">
+                    <div class="bed-number">2</div>
+                    <div class="bed-icon">
+                        <button class="add-patient-btn">+</button>
+                    </div>
+                    <div class="bed-status">Nieuwe Patiënt</div>
+                </div>
+            </div>
+
+            <!-- Middle Column - Patient Selection -->
+            <div class="middle-column">
+                <div class="patient-selection" id="patient-selection">
+                    <h3>Selecteer een patiënt voor bed <span id="selected-bed-number"></span></h3>
+                    <ul class="patient-list" id="patient-list">
+                        <!-- Patients will be populated here -->
+                    </ul>
+                    <div class="selection-buttons">
+                        <button class="btn btn-confirm" id="confirm-btn" onclick="confirmPatientSelection()" disabled>Bevestigen</button>
+                        <button class="btn btn-cancel" onclick="cancelSelection()">Annuleren</button>
+                    </div>
+                </div>
+                
+                <div class="no-selection" id="no-selection">
+                    <p>Geen patiënt geselecteerd</p>
+                    <p>Klik op een bed om een patiënt toe te voegen</p>
+                </div>
+            </div>
+
+            <!-- Right Column - Beds 3 & 4 -->
+            <div class="right-column">
+                <div class="bed-card" id="bed-3" onclick="handleBedClick(3)">
+                    <div class="bed-number">3</div>
+                    <div class="bed-icon">
+                        <button class="add-patient-btn">+</button>
+                    </div>
+                    <div class="bed-status">Nieuwe Patiënt</div>
+                </div>
+
+                <div class="bed-card" id="bed-4" onclick="handleBedClick(4)">
+                    <div class="bed-number">4</div>
+                    <div class="bed-icon">
+                        <button class="add-patient-btn">+</button>
+                    </div>
+                    <div class="bed-status">Nieuwe Patiënt</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let bedData = {};
+        let availablePatients = [];
+        let selectedBed = null;
+        let selectedPatient = null;
+
+        // Load initial data
+        async function loadData() {
+            try {
+                const response = await fetch('./data/bed-overview.json');
+                const data = await response.json();
+                bedData = {};
+                
+                // Convert beds array to object for easier lookup
+                data.beds.forEach(bed => {
+                    bedData[bed.bedNumber] = bed;
+                });
+                
+                availablePatients = [...data.proposedPatients];
+                updateDisplay();
+            } catch (error) {
+                console.error('Error loading bed data:', error);
+                // Initialize with default data
+                initializeDefaultData();
+            }
+        }
+
+        function initializeDefaultData() {
+            bedData = {
+                1: { bedNumber: 1, occupied: false, patientId: null, vpkCode: null },
+                2: { bedNumber: 2, occupied: false, patientId: null, vpkCode: null },
+                3: { bedNumber: 3, occupied: false, patientId: null, vpkCode: null },
+                4: { bedNumber: 4, occupied: false, patientId: null, vpkCode: null }
+            };
+            
+            availablePatients = [
+                { id: "1", name: "S. Groen", gender: "Vrouw", age: 16, weight: 55 },
+                { id: "2", name: "M. Bunnik", gender: "Vrouw", age: 44, weight: 70 },
+                { id: "3", name: "H. Demir", gender: "Man", age: 35, weight: 81 },
+                { id: "4", name: "B. Al Salah", gender: "Man", age: 65, weight: 73 }
+            ];
+            
+            updateDisplay();
+        }
+
+        function updateDisplay() {
+            // Update bed displays
+            Object.keys(bedData).forEach(bedNumber => {
+                updateBedDisplay(parseInt(bedNumber));
+            });
+        }
+
+        function updateBedDisplay(bedNumber) {
+            const bed = bedData[bedNumber];
+            const bedElement = document.getElementById(`bed-${bedNumber}`);
+            
+            if (bed.occupied) {
+                const patient = getPatientById(bed.patientId);
+                bedElement.className = 'bed-card occupied';
+                bedElement.innerHTML = `
+                    <div class="bed-number">${bedNumber}</div>
+                    <div class="bed-vpk">VPK: ${bed.vpkCode}</div>
+                    <div class="bed-icon">
+                        <button class="alarm-btn">🔔</button>
+                    </div>
+                    <div class="patient-name">${patient ? patient.name : 'Unknown'}</div>
+                    <div class="bed-status">Alarm Instellingen</div>
+                `;
+            } else {
+                bedElement.className = 'bed-card';
+                bedElement.innerHTML = `
+                    <div class="bed-number">${bedNumber}</div>
+                    <div class="bed-icon">
+                        <button class="add-patient-btn">+</button>
+                    </div>
+                    <div class="bed-status">Nieuwe Patiënt</div>
+                `;
+            }
+        }
+
+        function getPatientById(patientId) {
+            // Check both available and all patients (for occupied beds)
+            const allPatients = [
+                { id: "1", name: "S. Groen", gender: "Vrouw", age: 16, weight: 55 },
+                { id: "2", name: "M. Bunnik", gender: "Vrouw", age: 44, weight: 70 },
+                { id: "3", name: "H. Demir", gender: "Man", age: 35, weight: 81 },
+                { id: "4", name: "B. Al Salah", gender: "Man", age: 65, weight: 73 }
+            ];
+            return allPatients.find(p => p.id === patientId);
+        }
+
+        function handleBedClick(bedNumber) {
+            const bed = bedData[bedNumber];
+            
+            if (bed.occupied) {
+                // Navigate to alarm settings for occupied bed
+                navigateToAlarmSettings(bedNumber, bed.patientId);
+            } else {
+                // Show patient selection for empty bed
+                showPatientSelection(bedNumber);
+            }
+        }
+
+        function showPatientSelection(bedNumber) {
+            selectedBed = bedNumber;
+            selectedPatient = null;
+            
+            document.getElementById('selected-bed-number').textContent = bedNumber;
+            document.getElementById('no-selection').style.display = 'none';
+            document.getElementById('patient-selection').classList.add('active');
+            
+            updatePatientList();
+        }
+
+        function updatePatientList() {
+            const patientList = document.getElementById('patient-list');
+            patientList.innerHTML = '';
+            
+            availablePatients.forEach(patient => {
+                const li = document.createElement('li');
+                li.className = 'patient-item';
+                li.onclick = () => selectPatient(patient.id);
+                li.innerHTML = `
+                    <div class="patient-id">${patient.id} - ${patient.name}</div>
+                    <div class="patient-details">${patient.gender} - ${patient.age} jaar - ${patient.weight} kg</div>
+                `;
+                patientList.appendChild(li);
+            });
+            
+            document.getElementById('confirm-btn').disabled = true;
+        }
+
+        function selectPatient(patientId) {
+            selectedPatient = patientId;
+            
+            // Update visual selection
+            document.querySelectorAll('.patient-item').forEach(item => {
+                item.classList.remove('selected');
+            });
+            
+            event.target.closest('.patient-item').classList.add('selected');
+            document.getElementById('confirm-btn').disabled = false;
+        }
+
+        function confirmPatientSelection() {
+            if (!selectedPatient || !selectedBed) return;
+            
+            console.log(`Assigning patient ${selectedPatient} to bed ${selectedBed}`);
+            
+            // Generate VPK code
+            const vpkCodes = ['FG', 'AM', 'IB', 'GT'];
+            const vpkCode = vpkCodes[Math.floor(Math.random() * vpkCodes.length)];
+            
+            // Update bed data
+            bedData[selectedBed].occupied = true;
+            bedData[selectedBed].patientId = selectedPatient;
+            bedData[selectedBed].vpkCode = vpkCode;
+            
+            console.log('Updated bed data:', bedData[selectedBed]);
+            
+            // Remove patient from available list
+            availablePatients = availablePatients.filter(p => p.id !== selectedPatient);
+            
+            console.log('Remaining available patients:', availablePatients);
+            
+            // Update display
+            updateBedDisplay(selectedBed);
+            cancelSelection();
+            
+            // Navigate to patient setup
+            navigateToPatientSetup(selectedBed, selectedPatient);
+        }
+
+        function cancelSelection() {
+            selectedBed = null;
+            selectedPatient = null;
+            
+            document.getElementById('patient-selection').classList.remove('active');
+            document.getElementById('no-selection').style.display = 'block';
+        }
+
+        function navigateToPatientSetup(bedNumber, patientId) {
+            // Store current state
+            console.log('Saving state before navigation:', {
+                bedData: bedData,
+                availablePatients: availablePatients
+            });
+            
+            localStorage.setItem('currentBed', bedNumber);
+            localStorage.setItem('currentPatient', patientId);
+            localStorage.setItem('bedOverviewState', JSON.stringify({
+                bedData: bedData,
+                availablePatients: availablePatients
+            }));
+            
+            console.log('Navigating to patient setup for bed', bedNumber, 'patient', patientId);
+            
+            // Navigate to setup page
+            window.location.href = 'index.html';
+        }
+
+        function navigateToAlarmSettings(bedNumber, patientId) {
+            alert(`Navigating to alarm settings for bed ${bedNumber}, patient ${patientId}`);
+            // In the future, this could navigate to an alarm monitoring page
+        }
+
+        // Check if returning from patient setup
+        function checkReturnFromSetup() {
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.get('from') === 'setup') {
+                console.log('Returning from setup, restoring state...');
+                // Restore state from localStorage
+                const savedState = localStorage.getItem('bedOverviewState');
+                if (savedState) {
+                    const state = JSON.parse(savedState);
+                    bedData = state.bedData;
+                    availablePatients = state.availablePatients;
+                    console.log('Restored bed data:', bedData);
+                    console.log('Restored available patients:', availablePatients);
+                    updateDisplay();
+                    
+                    // Clean up
+                    localStorage.removeItem('currentBed');
+                    localStorage.removeItem('currentPatient');
+                    localStorage.removeItem('bedOverviewState');
+                    
+                    return true; // Indicate that state was restored
+                }
+            }
+            return false; // No state restored
+        }
+
+        // Initialize page
+        document.addEventListener('DOMContentLoaded', function() {
+            const stateRestored = checkReturnFromSetup();
+            if (!stateRestored) {
+                // Only load default data if no state was restored
+                loadData();
+            }
+        });
+    </script>
+</body>
+</html>

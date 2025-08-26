@@ -20,7 +20,7 @@
     <!-- Patient information header section -->
     <div class="header">
         <span class="user-icon">👤</span>
-        <span>34567 - S. Groen - Vrouw - 16 jaar - 55 kg</span>
+        <span id="patient-header-info">34567 - S. Groen - Vrouw - 16 jaar - 55 kg</span>
     </div>
     
     <!-- Main page title -->
@@ -204,9 +204,47 @@
                                 setTimeout(() => injectSVG(containerId, svgType), 50);
                             }
                         }
+                        
+                        // Function to load patient data when coming from bed overview
+                        function loadPatientFromBedOverview() {
+                            const currentPatient = localStorage.getItem('currentPatient');
+                            if (currentPatient) {
+                                // Patient data mapping
+                                const patients = {
+                                    "1": { id: "1", name: "S. Groen", gender: "Vrouw", age: 16, weight: 55 },
+                                    "2": { id: "2", name: "M. Bunnik", gender: "Vrouw", age: 44, weight: 70 },
+                                    "3": { id: "3", name: "H. Demir", gender: "Man", age: 35, weight: 81 },
+                                    "4": { id: "4", name: "B. Al Salah", gender: "Man", age: 65, weight: 73 }
+                                };
+                                
+                                const patient = patients[currentPatient];
+                                if (patient) {
+                                    // Update header with patient information
+                                    const headerInfo = document.getElementById('patient-header-info');
+                                    if (headerInfo) {
+                                        headerInfo.textContent = `${patient.id} - ${patient.name} - ${patient.gender} - ${patient.age} jaar - ${patient.weight} kg`;
+                                    }
+                                    
+                                    // Update patient data in data manager if available
+                                    if (window.dataManager) {
+                                        window.dataManager.updatePatientInfo({
+                                            id: patient.id,
+                                            name: patient.name,
+                                            gender: patient.gender,
+                                            age: patient.age,
+                                            weight: patient.weight
+                                        });
+                                    }
+                                }
+                            }
+                        }
+                        
                         // Wait for data manager to be ready
                         document.addEventListener('DOMContentLoaded', async function() {
                             console.log('DOM loaded, initializing data manager...');
+                            
+                            // Check if coming from bed overview and load patient data
+                            loadPatientFromBedOverview();
                             
                             // Wait for data manager initialization
                             if (window.dataManager) {
@@ -515,6 +553,15 @@ Overzicht instellingen:
                                 lastStep.classList.remove('inactive');
                                 lastStep.textContent = '✓';
                                 lastStep.style.backgroundColor = '#28a745';
+                                
+                                // Check if user came from bed overview and redirect back
+                                const currentBed = localStorage.getItem('currentBed');
+                                if (currentBed) {
+                                    // Small delay to let user see the completion
+                                    setTimeout(() => {
+                                        window.location.href = 'bed-overview.html?from=setup';
+                                    }, 1500);
+                                }
                             }
                         }
 
