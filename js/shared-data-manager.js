@@ -552,6 +552,29 @@ class SharedDataManager {
                     "high": 1
                 }
             },
+            thresholds: {
+                normal: {
+                    circulatoir: { 
+                        HR: { min: 70, max: 110, unit: "bpm" }, 
+                        BP_Mean: { min: 65, max: 85, unit: "mmHg" } 
+                    },
+                    respiratoir: { 
+                        Saturatie: { min: 90, max: 100, unit: "%" }, 
+                        AF: { min: 10, max: 25, unit: "/min" } 
+                    },
+                    overig: { 
+                        Temp: { min: 36.5, max: 39, unit: "°C" } 
+                    }
+                },
+                conditions: {
+                    sepsis: {
+                        circulatoir: { 
+                            HR: { min: 90, max: 130, unit: "bpm" }, 
+                            BP_Mean: { min: 60, max: 80, unit: "mmHg" } 
+                        }
+                    }
+                }
+            },
             circleConfigurations: {
                 "low": {
                     "darkerBlueSize": 0.9,
@@ -629,6 +652,22 @@ class SharedDataManager {
     getOrganSettings() {
         const appData = this.getAppData();
         return appData.organSettings || {};
+    }
+
+    /**
+     * Get threshold data for specific conditions (compatibility with old dataManager)
+     */
+    getThresholds(condition = 'normal') {
+        const config = this.getConfigData();
+        return config?.thresholds?.[condition] || config?.thresholds?.normal || {};
+    }
+
+    /**
+     * Get organ mappings (compatibility with old dataManager)
+     */
+    getOrganMappings() {
+        const config = this.getConfigData();
+        return config?.organMappings || {};
     }
 }
 

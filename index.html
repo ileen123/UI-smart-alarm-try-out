@@ -16,7 +16,8 @@
     <!-- Link to external CSS file for styling -->
     <link rel="stylesheet" href="styles.css">
     
-    <!-- Shared Data Manager for cross-page data synchronization -->
+    <!-- Data Manager for cross-page data synchronization -->
+    <script src="js/data-manager.js"></script>
     <script src="js/shared-data-manager.js"></script>
 </head>
 <body>
@@ -321,14 +322,14 @@
                             tagButtons.forEach(button => {
                                 button.addEventListener('click', function() {
                                     this.classList.toggle('selected');
-                                    const tagText = this.textContent;
+                                    const tagCondition = this.dataset.condition || this.textContent.trim(); // Use data-condition if available, fallback to text
                                     
                                     if (this.classList.contains('selected')) {
-                                        if (!selectedTags.includes(tagText)) {
-                                            selectedTags.push(tagText);
+                                        if (!selectedTags.includes(tagCondition)) {
+                                            selectedTags.push(tagCondition);
                                         }
                                     } else {
-                                        selectedTags = selectedTags.filter(tag => tag !== tagText);
+                                        selectedTags = selectedTags.filter(tag => tag !== tagCondition);
                                     }
                                     
                                     window.dataManager?.setSelectedTags(selectedTags);
@@ -439,33 +440,55 @@
                         }
 
                         function updateParameterRanges() {
-                            // Parameter range functionality is disabled for now as it requires threshold data
-                            console.log('Parameter range updates disabled (requires threshold implementation)');
+                            console.log('🔍 DEBUG: Updating parameter ranges for selected tags:', selectedTags);
+                            
+                            // Check if sepsis is selected
+                            const hasSepsis = selectedTags.some(tag => tag.toLowerCase().includes('sepsis'));
+                            console.log('🔍 DEBUG: Has sepsis tag:', hasSepsis);
+                            
+                            // Get thresholds from shared data manager
+                            const normalThresholds = window.sharedDataManager.getThresholds('normal');
+                            const sepsisThresholds = window.sharedDataManager.getThresholds('conditions')?.sepsis;
+                            
+                            console.log('🔍 DEBUG: Normal thresholds:', normalThresholds);
+                            console.log('🔍 DEBUG: Sepsis thresholds:', sepsisThresholds);
+                            
+                            // Determine which thresholds to use
+                            const currentThresholds = hasSepsis && sepsisThresholds ? 
+                                {
+                                    ...normalThresholds,
+                                    circulatoir: {
+                                        ...normalThresholds.circulatoir,
+                                        ...sepsisThresholds.circulatoir
+                                    }
+                                } : normalThresholds;
+                            
+                            console.log('🔍 DEBUG: Using thresholds:', currentThresholds);
                             
                             // Update circulatory parameters (HR)
                             const circulatoryCard = document.querySelector('.value-card');
-                            const hrRange = circulatoryCard.querySelector('.value-number');
+                            const hrRange = circulatoryCard?.querySelector('.value-number');
                             
-                            if (thresholds.circulatoir && thresholds.circulatoir.HR) {
-                                const hr = thresholds.circulatoir.HR;
-                                hrRange.textContent = hr.min + ' - ' + hr.max;
+                            if (hrRange && currentThresholds.circulatoir && currentThresholds.circulatoir.HR) {
+                                const hr = currentThresholds.circulatoir.HR;
+                                hrRange.textContent = hr.min + ' - ' + hr.max + ' ' + hr.unit;
                                 
-                                // Check if this is different from normal (highlight if modified)
-                                const normalThresholds = window.dataManager.getThresholds('normal');
-                                const isModified = normalThresholds.circulatoir?.HR && 
-                                    (hr.min !== normalThresholds.circulatoir.HR.min || hr.max !== normalThresholds.circulatoir.HR.max);
+                                console.log('🔍 DEBUG: Updated HR range to:', hr.min + ' - ' + hr.max + ' ' + hr.unit);
                                 
-                                if (isModified) {
+                                // Highlight if using sepsis thresholds
+                                if (hasSepsis && sepsisThresholds) {
                                     hrRange.style.backgroundColor = '#fff3cd'; // Light yellow highlight
                                     hrRange.style.border = '2px solid #ffc107'; // Yellow border
                                     hrRange.style.borderRadius = '4px';
                                     hrRange.style.padding = '2px 4px';
+                                    console.log('🔍 DEBUG: Applied sepsis highlighting to HR range');
                                 } else {
                                     // Reset to normal styling
                                     hrRange.style.backgroundColor = '';
                                     hrRange.style.border = '';
                                     hrRange.style.borderRadius = '';
                                     hrRange.style.padding = '';
+                                    console.log('🔍 DEBUG: Reset HR range to normal styling');
                                 }
                             }
                         }
@@ -575,6 +598,9 @@
                                         selectedRiskLevel: selectedRiskLevel,
                                         lastUpdated: new Date().toISOString()
                                     });
+                                    
+                                    // Ensure data synchronization between both managers
+                                    synchronizeDataManagers(currentPatient, patientMedicalInfo);
                                 }
                                 
                                 // alert('Instellingen opgeslagen! Patiënt monitoring is geactiveerd.');
@@ -624,6 +650,31 @@
                                 if (circle) {
                                     circle.style.opacity = isActive ? '1' : '0.3';
                                 }
+                            }
+                        }
+
+                        // Function to synchronize data between both data managers
+                        function synchronizeDataManagers(patientId, medicalInfo) {
+                            try {
+                                // Ensure old data manager has the patient info
+                                if (window.dataManager && medicalInfo) {
+                                    window.dataManager.updatePatientInfo({ id: patientId });
+                                    window.dataManager.setSelectedProblem(medicalInfo.selectedProblem);
+                                    window.dataManager.setSelectedRiskLevel(medicalInfo.selectedRiskLevel);
+                                    window.dataManager.setSelectedTags(medicalInfo.selectedTags);
+                                }
+                                
+                                // Save a combined localStorage entry that both can read
+                                const combinedData = {
+                                    patientId: patientId,
+                                    medicalInfo: medicalInfo,
+                                    timestamp: new Date().toISOString()
+                                };
+                                localStorage.setItem(`patient_${patientId}_medicalInfo`, JSON.stringify(combinedData));
+                                
+                                console.log('✅ Data synchronized between both managers for patient:', patientId);
+                            } catch (error) {
+                                console.error('❌ Error synchronizing data managers:', error);
                             }
                         }
             </script>

@@ -16,7 +16,8 @@
     <!-- Link to external CSS file for styling -->
     <link rel="stylesheet" href="styles.css">
     
-    <!-- Shared Data Manager for cross-page data synchronization -->
+    <!-- Data Manager for cross-page data synchronization -->
+    <script src="js/data-manager.js"></script>
     <script src="js/shared-data-manager.js"></script>
 </head>
 <body>
@@ -173,6 +174,9 @@
             initializeAlarmOverview();
             setupEventListeners();
             initializeCircleComponents();
+            
+            // Load existing settings after components are initialized
+            loadExistingSettings();
         });
 
         function initializeAlarmOverview() {
@@ -195,7 +199,6 @@
             
             // Load patient information and settings
             loadPatientInfo();
-            loadExistingSettings();
         }
 
         async function initializeCircleComponents() {
@@ -308,6 +311,9 @@
                         selectedTags.push(condition);
                     }
                     console.log('Selected tags:', selectedTags);
+                    
+                    // Update parameter ranges based on selected conditions
+                    updateParameterRanges();
                 });
             });
         }
@@ -335,9 +341,34 @@
             console.log('🔍 DEBUG: Starting loadExistingSettings');
             console.log('🔍 DEBUG: currentPatientId =', currentPatientId);
             
-            // Load saved medical info using shared data manager
-            const savedMedicalInfo = window.sharedDataManager.getPatientMedicalInfo(currentPatientId);
+            // Try to load from SharedDataManager first
+            let savedMedicalInfo = window.sharedDataManager.getPatientMedicalInfo(currentPatientId);
             console.log('🔍 DEBUG: savedMedicalInfo from shared manager =', savedMedicalInfo);
+            
+            // If not found, try to load from the synchronized localStorage entry
+            if (!savedMedicalInfo) {
+                const combinedData = localStorage.getItem(`patient_${currentPatientId}_medicalInfo`);
+                if (combinedData) {
+                    const parsed = JSON.parse(combinedData);
+                    savedMedicalInfo = parsed.medicalInfo;
+                    console.log('🔍 DEBUG: Found data in synchronized localStorage =', savedMedicalInfo);
+                }
+            }
+            
+            // If still not found, try old dataManager (if available)
+            if (!savedMedicalInfo && window.dataManager) {
+                const patientInfo = window.dataManager.getPatientInfo();
+                const currentSession = window.dataManager.getCurrentSession();
+                if (patientInfo.id === currentPatientId && currentSession) {
+                    savedMedicalInfo = {
+                        selectedProblem: currentSession.selectedProblem,
+                        selectedRiskLevel: currentSession.selectedRiskLevel,
+                        selectedTags: currentSession.selectedTags,
+                        organSettings: currentSession.organSettings
+                    };
+                    console.log('🔍 DEBUG: Found data in old dataManager =', savedMedicalInfo);
+                }
+            }
             
             if (savedMedicalInfo) {
                 console.log('✅ DEBUG: Found medicalInfo =', savedMedicalInfo);
@@ -367,6 +398,9 @@
                     savedMedicalInfo.selectedTags.forEach(tag => {
                         selectTag(tag);
                     });
+                    
+                    // Update parameter ranges after loading tags
+                    updateParameterRanges();
                 }
                 
                 console.log('✅ DEBUG: Loaded existing settings:', savedMedicalInfo);
@@ -411,6 +445,60 @@
             const tagElement = document.querySelector('[data-condition="' + tag + '"]');
             if (tagElement && !tagElement.classList.contains('selected')) {
                 tagElement.classList.add('selected');
+            }
+        }
+
+        function updateParameterRanges() {
+            console.log('🔍 DEBUG: Updating parameter ranges for selected tags:', selectedTags);
+            
+            // Check if sepsis is selected
+            const hasSepsis = selectedTags.some(tag => tag.toLowerCase().includes('sepsis'));
+            console.log('🔍 DEBUG: Has sepsis tag:', hasSepsis);
+            
+            // Get thresholds from shared data manager
+            const normalThresholds = window.sharedDataManager.getThresholds('normal');
+            const sepsisThresholds = window.sharedDataManager.getThresholds('conditions')?.sepsis;
+            
+            console.log('🔍 DEBUG: Normal thresholds:', normalThresholds);
+            console.log('🔍 DEBUG: Sepsis thresholds:', sepsisThresholds);
+            
+            // Determine which thresholds to use
+            const currentThresholds = hasSepsis && sepsisThresholds ? 
+                {
+                    ...normalThresholds,
+                    circulatoir: {
+                        ...normalThresholds.circulatoir,
+                        ...sepsisThresholds.circulatoir
+                    }
+                } : normalThresholds;
+            
+            console.log('🔍 DEBUG: Using thresholds:', currentThresholds);
+            
+            // Update circulatory parameters (HR) - find the heart rate display
+            const circulatoryCard = document.querySelector('.value-card');
+            const hrRange = circulatoryCard?.querySelector('.value-number');
+            
+            if (hrRange && currentThresholds.circulatoir && currentThresholds.circulatoir.HR) {
+                const hr = currentThresholds.circulatoir.HR;
+                hrRange.textContent = hr.min + ' - ' + hr.max + ' ' + hr.unit;
+                
+                console.log('🔍 DEBUG: Updated HR range to:', hr.min + ' - ' + hr.max + ' ' + hr.unit);
+                
+                // Highlight if using sepsis thresholds
+                if (hasSepsis && sepsisThresholds) {
+                    hrRange.style.backgroundColor = '#fff3cd'; // Light yellow highlight
+                    hrRange.style.border = '2px solid #ffc107'; // Yellow border
+                    hrRange.style.borderRadius = '4px';
+                    hrRange.style.padding = '2px 4px';
+                    console.log('🔍 DEBUG: Applied sepsis highlighting to HR range');
+                } else {
+                    // Reset to normal styling
+                    hrRange.style.backgroundColor = '';
+                    hrRange.style.border = '';
+                    hrRange.style.borderRadius = '';
+                    hrRange.style.padding = '';
+                    console.log('🔍 DEBUG: Reset HR range to normal styling');
+                }
             }
         }
 
@@ -522,11 +610,27 @@
             }
             
             // Use SharedDataManager to calculate organ states
+            console.log('🔍 DEBUG: Calculating organ states with problem:', selectedProblem, 'riskLevel:', selectedRiskLevel);
             const finalOrganStates = window.sharedDataManager.calculateOrganStates(selectedProblem, selectedRiskLevel);
+            console.log('🔍 DEBUG: Final organ states:', finalOrganStates);
+            console.log('🔍 DEBUG: Final organ states type:', typeof finalOrganStates);
+            console.log('🔍 DEBUG: Final organ states keys:', finalOrganStates ? Object.keys(finalOrganStates) : 'null');
+            console.log('🔍 DEBUG: Heart property:', finalOrganStates?.heart);
+            
+            if (!finalOrganStates || !finalOrganStates.heart) {
+                console.error('❌ DEBUG: Invalid organ states returned:', finalOrganStates);
+                return;
+            }
+            
             const isActivated = selectedProblem !== '';
             
+            // Debug organ components
+            console.log('🔍 DEBUG: window.organComponents:', window.organComponents);
+            console.log('🔍 DEBUG: window.organComponents type:', typeof window.organComponents);
+            
             // Update each organ component
-            if (window.organComponents.heart) {
+            if (window.organComponents && window.organComponents.heart) {
+                console.log('🔍 DEBUG: Heart component found, setting risk level:', finalOrganStates.heart);
                 window.organComponents.heart.setRiskLevel(finalOrganStates.heart);
                 window.sharedDataManager.setOrganSettings('circulatoir', { 
                     active: isActivated, 
@@ -534,6 +638,8 @@
                     riskLevel: finalOrganStates.heart 
                 });
                 console.log('Heart set to:', finalOrganStates.heart);
+            } else {
+                console.error('❌ DEBUG: Heart component not found in window.organComponents');
             }
             if (window.organComponents.lung) {
                 window.organComponents.lung.setRiskLevel(finalOrganStates.lung);
