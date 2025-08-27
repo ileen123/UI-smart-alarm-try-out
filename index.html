@@ -15,6 +15,9 @@
     
     <!-- Link to external CSS file for styling -->
     <link rel="stylesheet" href="styles.css">
+    
+    <!-- Shared Data Manager for cross-page data synchronization -->
+    <script src="js/shared-data-manager.js"></script>
 </head>
 <body>
     <!-- Patient information header section -->
@@ -156,8 +159,7 @@
         <button class="nav-btn primary" onclick="confirmSettings()">Bevestigen</button>
     </div>
 
-            <!-- Import Data Manager and Heart Circle Component -->
-            <script src="js/data-manager.js"></script>
+            <!-- Import Heart Circle Component -->
             <script src="heart-circle-component.js"></script>
             <script>
                 // Global variables for current session
@@ -207,17 +209,13 @@
                         
                         // Function to load patient data when coming from bed overview
                         function loadPatientFromBedOverview() {
-                            const currentPatient = localStorage.getItem('currentPatient');
+                            const initData = window.sharedDataManager.initializeIndexPage();
+                            const currentPatient = initData.sessionData.currentPatient;
+                            
                             if (currentPatient) {
-                                // Patient data mapping
-                                const patients = {
-                                    "1": { id: "1", name: "S. Groen", gender: "Vrouw", age: 16, weight: 55 },
-                                    "2": { id: "2", name: "M. Bunnik", gender: "Vrouw", age: 44, weight: 70 },
-                                    "3": { id: "3", name: "H. Demir", gender: "Man", age: 35, weight: 81 },
-                                    "4": { id: "4", name: "B. Al Salah", gender: "Man", age: 65, weight: 73 }
-                                };
+                                // Get patient info using shared data manager
+                                const patient = window.sharedDataManager.getPatientInfo(currentPatient);
                                 
-                                const patient = patients[currentPatient];
                                 if (patient) {
                                     // Update header with patient information
                                     const headerInfo = document.getElementById('patient-header-info');
@@ -225,45 +223,32 @@
                                         headerInfo.textContent = `${patient.id} - ${patient.name} - ${patient.gender} - ${patient.age} jaar - ${patient.weight} kg`;
                                     }
                                     
-                                    // Update patient data in data manager if available
-                                    if (window.dataManager) {
-                                        window.dataManager.updatePatientInfo({
-                                            id: patient.id,
-                                            name: patient.name,
-                                            gender: patient.gender,
-                                            age: patient.age,
-                                            weight: patient.weight
-                                        });
-                                    }
+                                    // Patient data is already managed by SharedDataManager
+                                    console.log('✅ Patient info loaded:', patient);
                                 }
                             }
                         }
                         
-                        // Wait for data manager to be ready
+                        // Wait for SharedDataManager to be ready
                         document.addEventListener('DOMContentLoaded', async function() {
-                            console.log('DOM loaded, initializing data manager...');
+                            console.log('DOM loaded, initializing SharedDataManager...');
                             
                             // Check if coming from bed overview and load patient data
                             loadPatientFromBedOverview();
                             
-                            // Wait for data manager initialization
-                            if (window.dataManager) {
-                                try {
-                                    await window.dataManager.init();
-                                    console.log('Data manager initialized successfully');
-                                    
-                                    // Verify configurations are available
-                                    const configs = window.dataManager.getCircleConfigurations();
-                                    console.log('Available circle configurations:', configs);
-                                    
-                                    // Load any existing session data
-                                    loadSessionData();
-                                } catch (error) {
-                                    console.error('Error initializing data manager:', error);
-                                }
+                            // SharedDataManager is already initialized when the script loads
+                            if (window.sharedDataManager) {
+                                console.log('SharedDataManager initialized successfully');
+                                
+                                // Verify configurations are available
+                                const configs = window.sharedDataManager.getCircleConfigurations();
+                                console.log('Available circle configurations:', configs);
+                                
+                                // Load any existing session data
+                                loadSessionData();
                             }
                             
-                            // Create circle components after data manager is ready
+                            // Create circle components after SharedDataManager is ready
                             await initializeCircleComponents();
                             
                             // Set up event listeners
@@ -356,7 +341,8 @@
                         // Always start with fresh session data (no restoration of previous selections)
                         function loadSessionData() {
                             // Check if coming from bed overview - if so, don't reset everything
-                            const currentBed = localStorage.getItem('currentBed');
+                            const sessionData = window.sharedDataManager.getSessionData();
+                            const currentBed = sessionData.currentBed;
                             const comingFromBedOverview = !!currentBed;
                             
                             if (!comingFromBedOverview) {
@@ -410,19 +396,19 @@
 
                         // Main function to update organ circles based on current problem and risk
                         function updateOrganCircles() {
-                            if (!window.dataManager) {
-                                console.warn('Data manager not available');
+                            if (!window.sharedDataManager) {
+                                console.warn('SharedDataManager not available');
                                 return;
                             }
                             
-                            // Use data manager to calculate organ states
-                            const finalOrganStates = window.dataManager.calculateOrganStates(selectedProblem, selectedRiskLevel);
+                            // Use SharedDataManager to calculate organ states
+                            const finalOrganStates = window.sharedDataManager.calculateOrganStates(selectedProblem, selectedRiskLevel);
                             const isActivated = selectedProblem !== '';
                             
                             // Update each organ component
                             if (window.organComponents.heart) {
                                 window.organComponents.heart.setRiskLevel(finalOrganStates.heart);
-                                window.dataManager.setOrganSettings('circulatoir', { 
+                                window.sharedDataManager.setOrganSettings('circulatoir', { 
                                     active: isActivated, 
                                     severity: isActivated ? 'active' : 'los', 
                                     riskLevel: finalOrganStates.heart 
@@ -431,7 +417,7 @@
                             }
                             if (window.organComponents.lung) {
                                 window.organComponents.lung.setRiskLevel(finalOrganStates.lung);
-                                window.dataManager.setOrganSettings('respiratoir', { 
+                                window.sharedDataManager.setOrganSettings('respiratoir', { 
                                     active: isActivated, 
                                     severity: isActivated ? 'active' : 'los', 
                                     riskLevel: finalOrganStates.lung 
@@ -440,7 +426,7 @@
                             }
                             if (window.organComponents.temp) {
                                 window.organComponents.temp.setRiskLevel(finalOrganStates.temp);
-                                window.dataManager.setOrganSettings('overig', { 
+                                window.sharedDataManager.setOrganSettings('overig', { 
                                     active: isActivated, 
                                     severity: isActivated ? 'active' : 'los', 
                                     riskLevel: finalOrganStates.temp 
@@ -453,10 +439,8 @@
                         }
 
                         function updateParameterRanges() {
-                            if (!window.dataManager) return;
-                            
-                            // Get modified thresholds based on selected tags
-                            const thresholds = window.dataManager.getThresholdsByTags(selectedTags);
+                            // Parameter range functionality is disabled for now as it requires threshold data
+                            console.log('Parameter range updates disabled (requires threshold implementation)');
                             
                             // Update circulatory parameters (HR)
                             const circulatoryCard = document.querySelector('.value-card');
@@ -552,11 +536,11 @@
                             const activeOrgans = Object.keys(organSettings).filter(organ => organSettings[organ].active);
                             
                             const summary = 
-'Overzicht instellingen:\n' +
-'- Hoofdprobleem: ' + selectedProblem + '\n' +
-'- Risico niveau: ' + selectedRiskLevel + '\n' +
-'- Additionele tags: ' + (selectedTags.length > 0 ? selectedTags.join(', ') : 'Geen') + '\n' +
-'- Actieve monitoring: ' + (activeOrgans.length > 0 ? activeOrgans.join(', ') : 'Geen');
+                                'Overzicht instellingen:\n' +
+                                '- Hoofdprobleem: ' + selectedProblem + '\n' +
+                                '- Risico niveau: ' + selectedRiskLevel + '\n' +
+                                '- Additionele tags: ' + (selectedTags.length > 0 ? selectedTags.join(', ') : 'Geen') + '\n' +
+                                '- Actieve monitoring: ' + (activeOrgans.length > 0 ? activeOrgans.join(', ') : 'Geen');
                             
                             if (confirm(summary + '\n\nWil je deze instellingen bevestigen?')) {
                                 // Save all the selected data to patient-data.json
@@ -568,7 +552,10 @@
                                 }
                                 
                                 // Save patient medical information permanently
-                                const currentPatient = localStorage.getItem('currentPatient');
+                                const sessionData = window.sharedDataManager.getSessionData();
+                                const currentPatient = sessionData.currentPatient;
+                                const currentBed = sessionData.currentBed; // Declare at function level
+                                
                                 if (currentPatient) {
                                     const patientMedicalInfo = {
                                         selectedProblem: selectedProblem,
@@ -578,19 +565,19 @@
                                         lastUpdated: new Date().toISOString()
                                     };
                                     
-                                    // Save to localStorage for bed overview to pick up
-                                    localStorage.setItem('patient_' + currentPatient + '_medicalInfo', JSON.stringify(patientMedicalInfo));
-                                    console.log('Saved medical info for patient ' + currentPatient + ':', patientMedicalInfo);
+                                    // Save using shared data manager for cross-page access
+                                    window.sharedDataManager.savePatientMedicalInfo(currentPatient, patientMedicalInfo);
+                                    
+                                    // Also save session data including risk level
+                                    window.sharedDataManager.saveSessionData({
+                                        currentPatient: currentPatient,
+                                        currentBed: currentBed,
+                                        selectedRiskLevel: selectedRiskLevel,
+                                        lastUpdated: new Date().toISOString()
+                                    });
                                 }
                                 
-                                // Save risk level for bed overview
-                                const currentBed = localStorage.getItem('currentBed');
-                                if (currentBed) {
-                                    console.log('Saving risk level to localStorage:', selectedRiskLevel);
-                                    localStorage.setItem('selectedRiskLevel', selectedRiskLevel);
-                                }
-                                
-                                alert('Instellingen opgeslagen! Patiënt monitoring is geactiveerd.');
+                                // alert('Instellingen opgeslagen! Patiënt monitoring is geactiveerd.');
                                 
                                 // Simulate moving to next step
                                 const lastStep = document.querySelector('.step:last-child .step-number');
@@ -599,12 +586,7 @@
                                 lastStep.style.backgroundColor = '#28a745';
                                 
                                 // Check if user came from bed overview and redirect back
-                                if (currentBed) {
-                                    // Small delay to let user see the completion
-                                    setTimeout(() => {
-                                        window.location.href = 'bed-overview.html?from=setup';
-                                    }, 1500);
-                                }
+                                window.location.href = 'bed-overview.html?from=setup';
                             }
                         }
 

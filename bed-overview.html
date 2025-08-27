@@ -369,6 +369,9 @@
             background: #c0392b;
         }
     </style>
+    
+    <!-- Shared Data Manager for cross-page data synchronization -->
+    <script src="js/shared-data-manager.js"></script>
 </head>
 <body>
     <div class="header">
@@ -444,26 +447,25 @@
         let selectedBed = null;
         let selectedPatient = null;
 
-        // Function to save bed states to JSON file via localStorage (since we can't write files directly)
+        // Function to save bed states using shared data manager
         function saveBedStatesToStorage() {
             try {
-                localStorage.setItem('bedStates', JSON.stringify(bedData));
-                console.log('✅ Bed states saved to localStorage:', bedData);
+                window.sharedDataManager.saveBedStates(bedData);
+                console.log('✅ Bed states saved via shared data manager:', bedData);
             } catch (error) {
                 console.error('❌ Error saving bed states:', error);
             }
         }
 
-        // Function to load bed states from localStorage (simulating JSON file read)
+        // Function to load bed states using shared data manager
         function loadBedStatesFromStorage() {
             try {
-                const savedBedStates = localStorage.getItem('bedStates');
+                const savedBedStates = window.sharedDataManager.getBedStates();
                 if (savedBedStates) {
-                    const parsedStates = JSON.parse(savedBedStates);
-                    console.log('✅ Loaded bed states from localStorage:', parsedStates);
-                    return parsedStates;
+                    console.log('✅ Loaded bed states via shared data manager:', savedBedStates);
+                    return savedBedStates;
                 } else {
-                    console.log('ℹ️ No bed states found in localStorage');
+                    console.log('ℹ️ No bed states found in shared data manager');
                 }
             } catch (error) {
                 console.error('❌ Error loading bed states:', error);
@@ -471,24 +473,23 @@
             return null;
         }
 
-        // Function to save patient medical information
+        // Function to save patient medical information using shared data manager
         function savePatientMedicalInfo(patientId, medicalInfo) {
             try {
-                localStorage.setItem('patient_' + patientId + '_medicalInfo', JSON.stringify(medicalInfo));
-                console.log('✅ Saved medical info for patient ' + patientId + ':', medicalInfo);
+                window.sharedDataManager.savePatientMedicalInfo(patientId, medicalInfo);
+                console.log('✅ Saved medical info for patient ' + patientId + ' via shared data manager:', medicalInfo);
             } catch (error) {
                 console.error('❌ Error saving patient medical info:', error);
             }
         }
 
-        // Function to load patient medical information
+        // Function to load patient medical information using shared data manager
         function loadPatientMedicalInfo(patientId) {
             try {
-                const savedInfo = localStorage.getItem('patient_' + patientId + '_medicalInfo');
+                const savedInfo = window.sharedDataManager.getPatientMedicalInfo(patientId);
                 if (savedInfo) {
-                    const parsedInfo = JSON.parse(savedInfo);
-                    console.log('✅ Loaded medical info for patient ' + patientId + ':', parsedInfo);
-                    return parsedInfo;
+                    console.log('✅ Loaded medical info for patient ' + patientId + ' via shared data manager:', savedInfo);
+                    return savedInfo;
                 } else {
                     console.log('ℹ️ No medical info found for patient ' + patientId);
                 }
@@ -513,20 +514,15 @@
                 initializeDefaultData();
             }
 
-            // Try to load patient list from JSON file
-            console.log('🌐 Attempting to fetch hospital-data.json...');
+            // Try to load patient list from shared data manager
+            console.log('👥 Patient data already loaded via shared data manager initialization');
             try {
-                const response = await fetch('./data/hospital-data.json');
-                console.log('📥 Fetch response status:', response.status, response.statusText);
-                if (!response.ok) {
-                    throw new Error('HTTP error! status: ' + response.status);
-                }
-                const data = await response.json();
-                console.log('📄 Raw JSON data:', data);
+                const hospitalData = window.sharedDataManager.getHospitalData();
+                console.log('� Hospital data from shared manager:', hospitalData);
                 
-                // Check if data and patients array exist
-                if (data && data.patients && Array.isArray(data.patients)) {
-                    availablePatients = [...data.patients];
+                // Get available patients
+                if (hospitalData && hospitalData.patients && Array.isArray(hospitalData.patients)) {
+                    availablePatients = [...hospitalData.patients];
                     console.log('✅ Successfully loaded patients:', availablePatients);
                     
                     // Remove patients that are already assigned to beds
@@ -536,14 +532,14 @@
                         }
                     });
                     
-                    console.log('Successfully loaded patients from unified hospital-data.json file');
+                    console.log('Successfully loaded patients from shared data manager');
                     console.log('Available patients after filtering:', availablePatients);
                 } else {
                     throw new Error('Invalid data structure - missing patients array');
                 }
             } catch (error) {
-                console.warn('Could not load patient data from hospital-data.json, using default data:', error.message);
-                // Use default patient data if fetch fails (CORS or other issues)
+                console.warn('Could not load patient data from shared data manager, using fallback:', error.message);
+                // Use fallback patient data
                 if (availablePatients.length === 0) {
                     // Only set default patients if we don't already have them
                     availablePatients = [
@@ -630,14 +626,8 @@
         }
 
         function getPatientById(patientId) {
-            // Check both available and all patients (for occupied beds)
-            const allPatients = [
-                { id: "1", name: "S. Groen", gender: "Vrouw", age: 16, weight: 55 },
-                { id: "2", name: "M. Bunnik", gender: "Vrouw", age: 44, weight: 70 },
-                { id: "3", name: "H. Demir", gender: "Man", age: 35, weight: 81 },
-                { id: "4", name: "B. Al Salah", gender: "Man", age: 65, weight: 73 }
-            ];
-            return allPatients.find(p => p.id === patientId);
+            // Use shared data manager to get patient info
+            return window.sharedDataManager.getPatientInfo(patientId);
         }
 
         function handleBedClick(bedNumber) {
@@ -699,6 +689,7 @@
         }
 
         function selectPatient(patientId) {
+            console.log('✅ Patient selected:', patientId);
             selectedPatient = patientId;
             
             // Update visual selection
@@ -708,12 +699,23 @@
             
             event.target.closest('.patient-item').classList.add('selected');
             document.getElementById('confirm-btn').disabled = false;
+            console.log('✅ Confirm button enabled for patient:', patientId);
         }
 
         function confirmPatientSelection() {
-            if (!selectedPatient || !selectedBed) return;
+            if (!selectedPatient || !selectedBed) {
+                console.error('❌ Missing selectedPatient or selectedBed:', {selectedPatient, selectedBed});
+                return;
+            }
             
-            console.log('Assigning patient ' + selectedPatient + ' to bed ' + selectedBed);
+            console.log('✅ Assigning patient ' + selectedPatient + ' to bed ' + selectedBed);
+            
+            // Validate that the patient exists
+            const patientExists = availablePatients.find(p => p.id === selectedPatient);
+            if (!patientExists) {
+                console.error('❌ Selected patient not found in available patients:', selectedPatient);
+                return;
+            }
             
             // Generate VPK code
             const vpkCodes = ['FG', 'AM', 'IB', 'GT'];
@@ -725,7 +727,7 @@
             bedData[selectedBed].vpkCode = vpkCode;
             bedData[selectedBed].riskLevel = 'med'; // default risk level
             
-            console.log('Updated bed data:', bedData[selectedBed]);
+            console.log('✅ Updated bed data:', bedData[selectedBed]);
             
             // Save bed states immediately
             saveBedStatesToStorage();
@@ -737,10 +739,10 @@
             
             // Update display
             updateBedDisplay(selectedBed);
-            cancelSelection();
+            // cancelSelection();
             
             // Navigate to patient setup
-            navigateToPatientSetup(selectedBed, selectedPatient);
+            navigateToPatientSetup(bedNumber = selectedBed, patientId = selectedPatient);
         }
 
         function cancelSelection() {
@@ -752,18 +754,40 @@
         }
 
         function navigateToPatientSetup(bedNumber, patientId) {
-            // Store current state
+            console.log('Navigating to patient setup for bed', bedNumber, 'patient', patientId);
+            // Store current state using shared data manager
             console.log('Saving state before navigation:', {
                 bedData: bedData,
                 availablePatients: availablePatients
             });
             
-            localStorage.setItem('currentBed', bedNumber);
-            localStorage.setItem('currentPatient', patientId);
-            localStorage.setItem('bedOverviewState', JSON.stringify({
-                bedData: bedData,
-                availablePatients: availablePatients
-            }));
+            // Validate patient ID
+            if (!patientId) {
+                console.error('❌ No patient ID provided to navigateToPatientSetup');
+                return;
+            }
+            
+            console.log('✅ Setting session data with patientId:', patientId, 'bedNumber:', bedNumber);
+            
+            // Save session data
+            window.sharedDataManager.saveSessionData({
+                currentBed: bedNumber,
+                currentPatient: patientId,
+                bedOverviewState: {
+                    bedData: bedData,
+                    availablePatients: availablePatients
+                },
+                timestamp: new Date().toISOString()
+            });
+            
+            // Verify the data was saved correctly
+            const verifyData = window.sharedDataManager.getSessionData();
+            console.log('✅ Verified session data after save:', verifyData);
+            
+            if (verifyData.currentPatient !== patientId) {
+                console.error('❌ Patient ID was not saved correctly!');
+                return;
+            }
             
             console.log('Navigating to patient setup for bed', bedNumber, 'patient', patientId);
             
@@ -791,9 +815,9 @@
             if (confirm('Weet je zeker dat je ' + patientName + ' wilt ontslaan uit bed ' + bedNumber + '?')) {
                 console.log('Discharging patient ' + bed.patientId + ' from bed ' + bedNumber);
                 
-                // Clear patient medical info (they can start fresh if readmitted)
-                localStorage.removeItem('patient_' + bed.patientId + '_medicalInfo');
-                console.log('Cleared medical info for patient ' + bed.patientId);
+                // Clear patient medical info using shared data manager
+                window.sharedDataManager.removePatient(bed.patientId);
+                console.log('Cleared medical info for patient ' + bed.patientId + ' via shared data manager');
                 
                 // Add patient back to available patients list if not already there
                 const patientExists = availablePatients.find(p => p.id === bed.patientId);
@@ -825,10 +849,11 @@
             if (urlParams.get('from') === 'setup') {
                 console.log('Returning from setup, updating risk level...');
                 
-                // Get the risk level and bed from localStorage (temporary storage during workflow)
-                const currentBed = localStorage.getItem('currentBed');
-                const savedRiskLevel = localStorage.getItem('selectedRiskLevel');
-                console.log('Retrieved from localStorage - currentBed:', currentBed, 'savedRiskLevel:', savedRiskLevel);
+                // Get the risk level and bed from shared data manager
+                const sessionData = window.sharedDataManager.getSessionData();
+                const currentBed = sessionData.currentBed;
+                const savedRiskLevel = sessionData.selectedRiskLevel;
+                console.log('Retrieved from shared data manager - currentBed:', currentBed, 'savedRiskLevel:', savedRiskLevel);
                 
                 if (currentBed && savedRiskLevel) {
                     // Load current bed states
@@ -849,10 +874,8 @@
                     }
                 }
                 
-                // Clean up temporary localStorage items
-                localStorage.removeItem('currentBed');
-                localStorage.removeItem('currentPatient');
-                localStorage.removeItem('selectedRiskLevel');
+                // Clean up temporary session data
+                window.sharedDataManager.clearSessionData();
                 localStorage.removeItem('bedOverviewState'); // Clean up old system
                 
                 // Load the updated data and display
@@ -865,6 +888,16 @@
         // Initialize page
         document.addEventListener('DOMContentLoaded', function() {
             console.log('🚀 DOMContentLoaded event fired');
+            
+            // Initialize using shared data manager
+            const initData = window.sharedDataManager.initializeBedOverviewPage();
+            console.log('📊 Initialized bed overview data:', initData);
+            
+            // Use initialized available patients
+            if (initData.availablePatients) {
+                availablePatients = [...initData.availablePatients];
+                console.log('✅ Using available patients from shared data manager:', availablePatients);
+            }
             
             // Clear any old localStorage data that might conflict
             localStorage.removeItem('bedOverviewState');
@@ -894,13 +927,16 @@
             updateDisplay();
         }
 
-        // Test localStorage flow
+        // Test shared data manager flow
         function testLocalStorageFlow(bedNum, riskLevel) {
-            console.log('Testing localStorage flow for bed ' + bedNum + ' with risk ' + riskLevel);
+            console.log('Testing shared data manager flow for bed ' + bedNum + ' with risk ' + riskLevel);
             
-            // Simulate the workflow
-            localStorage.setItem('currentBed', bedNum);
-            localStorage.setItem('selectedRiskLevel', riskLevel);
+            // Simulate the workflow using shared data manager
+            window.sharedDataManager.saveSessionData({
+                currentBed: bedNum,
+                selectedRiskLevel: riskLevel,
+                timestamp: new Date().toISOString()
+            });
             
             // Simulate returning from setup
             const urlParams = new URLSearchParams('?from=setup');

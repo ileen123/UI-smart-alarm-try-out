@@ -15,6 +15,9 @@
     
     <!-- Link to external CSS file for styling -->
     <link rel="stylesheet" href="styles.css">
+    
+    <!-- Shared Data Manager for cross-page data synchronization -->
+    <script src="js/shared-data-manager.js"></script>
 </head>
 <body>
     <!-- Patient information header section -->
@@ -138,14 +141,11 @@
     <div class="navigation">
         <!-- Back button with onclick event -->
         <button class="nav-btn" onclick="goBackToBedOverview()">← Terug naar Bedoverzicht</button>
-        <!-- Test button to debug localStorage -->
-        <button class="nav-btn" onclick="testLocalStorage()" style="background-color: #ffc107;">🔍 Test Data</button>
         <!-- Save button with onclick event -->
         <button class="nav-btn primary" onclick="saveAlarmSettings()">Instellingen Opslaan</button>
     </div>
 
-    <!-- Import Data Manager and Heart Circle Component -->
-    <script src="js/data-manager.js"></script>
+    <!-- Import Heart Circle Component -->
     <script src="heart-circle-component.js"></script>
     <script>
         // Global variables for current session
@@ -188,6 +188,10 @@
                 goBackToBedOverview();
                 return;
             }
+            
+            // Initialize data using shared data manager
+            const initData = window.sharedDataManager.initializeAlarmOverviewPage(currentPatientId);
+            console.log('📊 Initialized alarm overview data:', initData);
             
             // Load patient information and settings
             loadPatientInfo();
@@ -309,21 +313,17 @@
         }
 
         function loadPatientInfo() {
-            // Try to get patient info from hospital data
-            fetch('hospital-data.json')
-                .then(response => response.json())
-                .then(data => {
-                    const patient = data.patients.find(p => p.id === currentPatientId);
-                    if (patient) {
-                        updatePatientHeader(patient);
-                    } else {
-                        document.getElementById('patient-header-info').textContent = currentPatientId + ' - Patiëntgegevens niet gevonden';
-                    }
-                })
-                .catch(error => {
-                    console.error('Error loading patient data:', error);
-                    document.getElementById('patient-header-info').textContent = currentPatientId + ' - Gegevens laden mislukt';
-                });
+            // Get patient info from shared data manager
+            const patient = window.sharedDataManager.getPatientInfo(currentPatientId);
+            
+            if (patient) {
+                updatePatientHeader(patient);
+                console.log('✅ Loaded patient info from shared data manager:', patient);
+            } else {
+                // If patient not found, show error
+                console.error('❌ Patient not found:', currentPatientId);
+                document.getElementById('patient-header-info').textContent = currentPatientId + ' - Patiëntgegevens niet gevonden';
+            }
         }
 
         function updatePatientHeader(patient) {
@@ -335,63 +335,53 @@
             console.log('🔍 DEBUG: Starting loadExistingSettings');
             console.log('🔍 DEBUG: currentPatientId =', currentPatientId);
             
-            // Load saved medical info from localStorage
-            const savedMedicalInfo = localStorage.getItem('patient_' + currentPatientId + '_medicalInfo');
-            console.log('🔍 DEBUG: localStorage key =', 'patient_' + currentPatientId + '_medicalInfo');
-            console.log('🔍 DEBUG: savedMedicalInfo =', savedMedicalInfo);
+            // Load saved medical info using shared data manager
+            const savedMedicalInfo = window.sharedDataManager.getPatientMedicalInfo(currentPatientId);
+            console.log('🔍 DEBUG: savedMedicalInfo from shared manager =', savedMedicalInfo);
             
             if (savedMedicalInfo) {
-                try {
-                    const medicalInfo = JSON.parse(savedMedicalInfo);
-                    console.log('✅ DEBUG: Parsed medicalInfo =', medicalInfo);
-                    
-                    // Load problem selection in dropdown
-                    if (medicalInfo.selectedProblem) {
-                        selectedProblem = medicalInfo.selectedProblem;
-                        const dropdown = document.getElementById('problem-dropdown');
-                        console.log('🔍 DEBUG: dropdown element =', dropdown);
-                        if (dropdown) {
-                            dropdown.value = selectedProblem;
-                            console.log('✅ DEBUG: Set dropdown value to:', selectedProblem);
-                        }
+                console.log('✅ DEBUG: Found medicalInfo =', savedMedicalInfo);
+                
+                // Load problem selection in dropdown
+                if (savedMedicalInfo.selectedProblem) {
+                    selectedProblem = savedMedicalInfo.selectedProblem;
+                    const dropdown = document.getElementById('problem-dropdown');
+                    console.log('🔍 DEBUG: dropdown element =', dropdown);
+                    if (dropdown) {
+                        dropdown.value = selectedProblem;
+                        console.log('✅ DEBUG: Set dropdown value to:', selectedProblem);
                     }
+                }
                     
-                    // Load risk level
-                    if (medicalInfo.selectedRiskLevel) {
-                        selectedRiskLevel = medicalInfo.selectedRiskLevel;
-                        console.log('✅ DEBUG: Loading risk level:', selectedRiskLevel);
-                        selectRiskLevel(selectedRiskLevel);
-                    }
-                    
-                    // Load tags
-                    if (medicalInfo.selectedTags && Array.isArray(medicalInfo.selectedTags)) {
-                        selectedTags = medicalInfo.selectedTags;
-                        console.log('✅ DEBUG: Loading tags:', selectedTags);
-                        medicalInfo.selectedTags.forEach(tag => {
-                            selectTag(tag);
-                        });
-                    }
-                    
-                    console.log('✅ DEBUG: Loaded existing settings:', medicalInfo);
-                    
-                    // Update organ circles based on loaded data
-                    if (selectedProblem && selectedRiskLevel) {
-                        console.log('✅ DEBUG: Updating organ circles with:', selectedProblem, selectedRiskLevel);
-                        updateOrganCircles();
-                    }
-                    
-                } catch (error) {
-                    console.error('❌ DEBUG: Error parsing saved medical info:', error);
+                // Load risk level
+                if (savedMedicalInfo.selectedRiskLevel) {
+                    selectedRiskLevel = savedMedicalInfo.selectedRiskLevel;
+                    console.log('✅ DEBUG: Loading risk level:', selectedRiskLevel);
+                    selectRiskLevel(selectedRiskLevel);
+                }
+                
+                // Load tags
+                if (savedMedicalInfo.selectedTags && Array.isArray(savedMedicalInfo.selectedTags)) {
+                    selectedTags = savedMedicalInfo.selectedTags;
+                    console.log('✅ DEBUG: Loading tags:', selectedTags);
+                    savedMedicalInfo.selectedTags.forEach(tag => {
+                        selectTag(tag);
+                    });
+                }
+                
+                console.log('✅ DEBUG: Loaded existing settings:', savedMedicalInfo);
+                
+                // Update organ circles based on loaded data
+                if (selectedProblem && selectedRiskLevel) {
+                    console.log('✅ DEBUG: Updating organ circles with:', selectedProblem, selectedRiskLevel);
+                    updateOrganCircles();
                 }
             } else {
                 console.log('❌ DEBUG: No existing medical info found for patient:', currentPatientId);
                 
-                // Let's check what keys exist in localStorage
-                console.log('🔍 DEBUG: All localStorage keys:');
-                for (let i = 0; i < localStorage.length; i++) {
-                    const key = localStorage.key(i);
-                    console.log('  -', key, '=', localStorage.getItem(key));
-                }
+                // Debug: show all available data
+                console.log('🔍 DEBUG: All patients data:', window.sharedDataManager.getAllPatients());
+                window.sharedDataManager.debugLocalStorage();
             }
         }
 
@@ -438,8 +428,8 @@
                 return;
             }
             
-            // Get organ settings from dataManager or use defaults
-            const organSettings = (window.dataManager && typeof window.dataManager.getOrganSettings === 'function') ? window.dataManager.getOrganSettings() : {};
+            // Get organ settings from SharedDataManager
+            const organSettings = window.sharedDataManager.getOrganSettings();
             
             const updatedMedicalInfo = {
                 selectedProblem: selectedProblem,
@@ -449,14 +439,19 @@
                 lastUpdated: new Date().toISOString()
             };
             
-            // Save to localStorage
-            localStorage.setItem('patient_' + currentPatientId + '_medicalInfo', JSON.stringify(updatedMedicalInfo));
-            console.log('Updated medical info for patient ' + currentPatientId + ':', updatedMedicalInfo);
+            // Save using shared data manager
+            window.sharedDataManager.savePatientMedicalInfo(currentPatientId, updatedMedicalInfo);
             
-            // Also save risk level for bed overview
-            localStorage.setItem('selectedRiskLevel', selectedRiskLevel);
+            // Also update session data
+            const sessionData = window.sharedDataManager.getSessionData();
+            window.sharedDataManager.saveSessionData({
+                ...sessionData,
+                selectedRiskLevel: selectedRiskLevel,
+                lastUpdated: new Date().toISOString()
+            });
             
             alert('Alarm instellingen succesvol opgeslagen!');
+            goBackToBedOverview()
         }
 
         function goBackToBedOverview() {
@@ -464,16 +459,13 @@
         }
 
         function testLocalStorage() {
-            console.log('🔍 TESTING LOCALSTORAGE:');
+            console.log('🔍 TESTING SHARED DATA MANAGER:');
             console.log('Current Patient ID from URL:', currentPatientId);
-            console.log('All localStorage keys:');
-            for (let i = 0; i < localStorage.length; i++) {
-                const key = localStorage.key(i);
-                const value = localStorage.getItem(key);
-                console.log(`  ${key} = ${value}`);
-            }
             
-            // Try to manually set some test data
+            // Use shared data manager debug function
+            window.sharedDataManager.debugLocalStorage();
+            
+            // Try to manually set some test data using shared data manager
             const testData = {
                 selectedProblem: "respiratoire-insufficientie",
                 selectedRiskLevel: "high",
@@ -481,8 +473,8 @@
                 organSettings: {},
                 lastUpdated: new Date().toISOString()
             };
-            localStorage.setItem('patient_' + currentPatientId + '_medicalInfo', JSON.stringify(testData));
-            console.log('✅ Set test data for patient:', currentPatientId);
+            window.sharedDataManager.savePatientMedicalInfo(currentPatientId, testData);
+            console.log('✅ Set test data for patient via shared data manager:', currentPatientId);
             
             // Try to reload the data
             loadExistingSettings();
@@ -522,19 +514,21 @@
 
         // Main function to update organ circles based on current problem and risk
         function updateOrganCircles() {
-            if (!window.dataManager) {
-                console.warn('Data manager not available');
+            console.log('Updating organ circles for problem:', selectedProblem, 'risk:', selectedRiskLevel);
+            
+            if (!window.sharedDataManager) {
+                console.warn('SharedDataManager not available');
                 return;
             }
             
-            // Use data manager to calculate organ states
-            const finalOrganStates = window.dataManager.calculateOrganStates(selectedProblem, selectedRiskLevel);
+            // Use SharedDataManager to calculate organ states
+            const finalOrganStates = window.sharedDataManager.calculateOrganStates(selectedProblem, selectedRiskLevel);
             const isActivated = selectedProblem !== '';
             
             // Update each organ component
             if (window.organComponents.heart) {
                 window.organComponents.heart.setRiskLevel(finalOrganStates.heart);
-                window.dataManager.setOrganSettings('circulatoir', { 
+                window.sharedDataManager.setOrganSettings('circulatoir', { 
                     active: isActivated, 
                     severity: isActivated ? 'active' : 'los', 
                     riskLevel: finalOrganStates.heart 
@@ -543,7 +537,7 @@
             }
             if (window.organComponents.lung) {
                 window.organComponents.lung.setRiskLevel(finalOrganStates.lung);
-                window.dataManager.setOrganSettings('respiratoir', { 
+                window.sharedDataManager.setOrganSettings('respiratoir', { 
                     active: isActivated, 
                     severity: isActivated ? 'active' : 'los', 
                     riskLevel: finalOrganStates.lung 
@@ -552,7 +546,7 @@
             }
             if (window.organComponents.temp) {
                 window.organComponents.temp.setRiskLevel(finalOrganStates.temp);
-                window.dataManager.setOrganSettings('overig', { 
+                window.sharedDataManager.setOrganSettings('overig', { 
                     active: isActivated, 
                     severity: isActivated ? 'active' : 'los', 
                     riskLevel: finalOrganStates.temp 

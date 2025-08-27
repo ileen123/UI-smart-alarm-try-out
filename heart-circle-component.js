@@ -15,7 +15,17 @@ class HeartCircleComponent {
     }
     
     getConfigurations() {
-        // Try to get configurations from global data manager
+        // Try to get configurations from SharedDataManager first
+        if (window.sharedDataManager && window.sharedDataManager.getCircleConfigurations) {
+            const configs = window.sharedDataManager.getCircleConfigurations();
+            console.log('SharedDataManager circle configurations:', configs);
+            if (configs && Object.keys(configs).length > 0) {
+                console.log('Using SharedDataManager configurations');
+                return configs;
+            }
+        }
+        
+        // Fallback: Try to get configurations from old data manager
         if (window.dataManager && window.dataManager.getCircleConfigurations) {
             const configs = window.dataManager.getCircleConfigurations();
             console.log('DataManager circle configurations:', configs);
@@ -25,7 +35,7 @@ class HeartCircleComponent {
             }
         }
         
-        console.log('DataManager not available or no configurations, using fallback defaults');
+        console.log('No data manager available, using fallback defaults');
         // Fallback to default configurations
         return {
             'low': {
