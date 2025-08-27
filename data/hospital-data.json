@@ -16,6 +16,19 @@
           "overig": { "active": false, "severity": "los", "riskLevel": "mid" }
         },
         "lastUpdated": null
+      },
+      "targetRanges": {
+        "circulatoir": {
+          "HR": { "min": 75, "max": 115, "unit": "bpm" },
+          "BP_Mean": { "min": 70, "max": 90, "unit": "mmHg" }
+        },
+        "respiratoir": {
+          "Saturatie": { "min": 92, "max": 100, "unit": "%" },
+          "AF": { "min": 12, "max": 22, "unit": "/min" }
+        },
+        "overig": {
+          "Temp": { "min": 36.0, "max": 38.5, "unit": "°C" }
+        }
       }
     },
     {
@@ -34,6 +47,19 @@
           "overig": { "active": false, "severity": "los", "riskLevel": "mid" }
         },
         "lastUpdated": null
+      },
+      "targetRanges": {
+        "circulatoir": {
+          "HR": { "min": 65, "max": 105, "unit": "bpm" },
+          "BP_Mean": { "min": 65, "max": 85, "unit": "mmHg" }
+        },
+        "respiratoir": {
+          "Saturatie": { "min": 90, "max": 100, "unit": "%" },
+          "AF": { "min": 10, "max": 25, "unit": "/min" }
+        },
+        "overig": {
+          "Temp": { "min": 36.5, "max": 39.0, "unit": "°C" }
+        }
       }
     },
     {
@@ -52,6 +78,19 @@
           "overig": { "active": false, "severity": "los", "riskLevel": "mid" }
         },
         "lastUpdated": null
+      },
+      "targetRanges": {
+        "circulatoir": {
+          "HR": { "min": 70, "max": 110, "unit": "bpm" },
+          "BP_Mean": { "min": 70, "max": 90, "unit": "mmHg" }
+        },
+        "respiratoir": {
+          "Saturatie": { "min": 90, "max": 100, "unit": "%" },
+          "AF": { "min": 10, "max": 25, "unit": "/min" }
+        },
+        "overig": {
+          "Temp": { "min": 36.5, "max": 39.0, "unit": "°C" }
+        }
       }
     },
     {
@@ -70,6 +109,19 @@
           "overig": { "active": false, "severity": "los", "riskLevel": "mid" }
         },
         "lastUpdated": null
+      },
+      "targetRanges": {
+        "circulatoir": {
+          "HR": { "min": 60, "max": 100, "unit": "bpm" },
+          "BP_Mean": { "min": 65, "max": 85, "unit": "mmHg" }
+        },
+        "respiratoir": {
+          "Saturatie": { "min": 88, "max": 100, "unit": "%" },
+          "AF": { "min": 12, "max": 28, "unit": "/min" }
+        },
+        "overig": {
+          "Temp": { "min": 36.5, "max": 39.0, "unit": "°C" }
+        }
       }
     }
   ],

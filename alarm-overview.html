@@ -360,6 +360,11 @@
                     
                     console.log('Loaded existing settings:', medicalInfo);
                     
+                    // Update organ circles based on loaded data
+                    if (selectedProblem && selectedRiskLevel) {
+                        updateOrganCircles();
+                    }
+                    
                 } catch (error) {
                     console.error('Error parsing saved medical info:', error);
                 }
@@ -370,19 +375,28 @@
 
         function selectRiskLevel(riskLevel) {
             // Clear previous selection
-            document.querySelectorAll('.risk-btn').forEach(btn => {
+            document.querySelectorAll('.btn.risk-low, .btn.risk-med, .btn.risk-high').forEach(btn => {
                 btn.classList.remove('selected');
             });
             
-            // Select the current risk level
-            const riskButton = document.querySelector('[data-risk="' + riskLevel + '"]');
+            // Select the current risk level based on class name
+            let riskButton;
+            if (riskLevel === 'low') {
+                riskButton = document.querySelector('.btn.risk-low');
+            } else if (riskLevel === 'med') {
+                riskButton = document.querySelector('.btn.risk-med');
+            } else if (riskLevel === 'high') {
+                riskButton = document.querySelector('.btn.risk-high');
+            }
+            
             if (riskButton) {
                 riskButton.classList.add('selected');
+                updateAlarmIndicator(riskLevel);
             }
         }
 
         function selectTag(tag) {
-            const tagElement = document.querySelector('[data-tag="' + tag + '"]');
+            const tagElement = document.querySelector('[data-condition="' + tag + '"]');
             if (tagElement && !tagElement.classList.contains('selected')) {
                 tagElement.classList.add('selected');
             }
