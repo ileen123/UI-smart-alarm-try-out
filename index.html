@@ -279,6 +279,15 @@
                                 }
                             });
                             
+                            // Listen for HR range changes from sepsis selection
+                            window.addEventListener('hrRangesChanged', function(event) {
+                                console.log('💓 HR ranges changed event received in index:', event.detail);
+                                if (event.detail.patientId === currentPatientId) {
+                                    // Update the HR display immediately
+                                    updateHRDisplay(event.detail.HR_low, event.detail.HR_high, event.detail.source === 'sepsis');
+                                }
+                            });
+                            
                             // Lung (respiratoir) - start inactive
                             console.log('Creating lung component...');
                             window.organComponents.lung = new HeartCircleComponent('lung-circle-container', { size: circleSize, initialState: 'low' });
@@ -330,15 +339,28 @@
                             const tagButtons = document.querySelectorAll('.tags-section .btn:not(.more-btn)');
                             tagButtons.forEach(button => {
                                 button.addEventListener('click', function() {
-                                    this.classList.toggle('selected');
                                     const tagCondition = this.dataset.condition || this.textContent.trim(); // Use data-condition if available, fallback to text
                                     
                                     if (this.classList.contains('selected')) {
+                                        // Deselect tag
+                                        this.classList.remove('selected');
+                                        selectedTags = selectedTags.filter(tag => tag !== tagCondition);
+                                        
+                                        // Handle sepsis deselection
+                                        if (tagCondition === 'sepsis' && currentPatientId && window.sharedDataManager) {
+                                            window.sharedDataManager.handleSepsisTagChange(currentPatientId, false);
+                                        }
+                                    } else {
+                                        // Select tag
+                                        this.classList.add('selected');
                                         if (!selectedTags.includes(tagCondition)) {
                                             selectedTags.push(tagCondition);
                                         }
-                                    } else {
-                                        selectedTags = selectedTags.filter(tag => tag !== tagCondition);
+                                        
+                                        // Handle sepsis selection
+                                        if (tagCondition === 'sepsis' && currentPatientId && window.sharedDataManager) {
+                                            window.sharedDataManager.handleSepsisTagChange(currentPatientId, true);
+                                        }
                                     }
                                     
                                     window.dataManager?.setSelectedTags(selectedTags);
@@ -518,6 +540,34 @@
                                     hrRange.style.borderRadius = '';
                                     hrRange.style.padding = '';
                                     console.log('🔍 DEBUG: Reset HR range to normal styling');
+                                }
+                            }
+                        }
+
+                        function updateHRDisplay(hrLow, hrHigh, isSepsis) {
+                            console.log('💓 Updating HR display in index:', hrLow, '-', hrHigh, 'sepsis:', isSepsis);
+                            
+                            // Find the HR display element
+                            const circulatoryCard = document.querySelector('.value-card');
+                            const hrRange = circulatoryCard?.querySelector('.value-number');
+                            
+                            if (hrRange) {
+                                // Update the display text
+                                hrRange.textContent = hrLow + ' - ' + hrHigh + ' bpm';
+                                
+                                // Apply styling based on source
+                                if (isSepsis) {
+                                    hrRange.style.backgroundColor = '#fff3cd'; // Light yellow highlight for sepsis
+                                    hrRange.style.border = '2px solid #ffc107'; // Yellow border
+                                    hrRange.style.borderRadius = '4px';
+                                    hrRange.style.padding = '2px 4px';
+                                    console.log('🦠 Applied sepsis styling to HR display in index');
+                                } else {
+                                    hrRange.style.backgroundColor = '#e8f5e8'; // Light green for restored
+                                    hrRange.style.border = '2px solid #28a745'; // Green border
+                                    hrRange.style.borderRadius = '4px';
+                                    hrRange.style.padding = '2px 4px';
+                                    console.log('🔙 Applied restored styling to HR display in index');
                                 }
                             }
                         }

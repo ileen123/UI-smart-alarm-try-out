@@ -16,6 +16,7 @@ class SharedDataManager {
         };
         
         this.initializeAppData();
+        this.initializeGlobalHRVariables();
     }
 
     /**
@@ -928,6 +929,147 @@ class SharedDataManager {
         sessionStorage.setItem('manualTargetRangesChange', Date.now().toString());
         
         console.log('🌐 Global target ranges updated for patient:', patientId);
+    }
+
+    /**
+     * Initialize global HR variables with default values
+     */
+    initializeGlobalHRVariables() {
+        if (!window.HR_low) {
+            window.HR_low = 70; // Default low HR
+        }
+        if (!window.HR_high) {
+            window.HR_high = 110; // Default high HR
+        }
+        console.log('🔧 Initialized global HR variables:', window.HR_low, '-', window.HR_high);
+    }
+
+    /**
+     * Save current HR values as backup before applying sepsis ranges
+     */
+    saveHRBackup(patientId) {
+        const backupData = {
+            HR_low: window.HR_low,
+            HR_high: window.HR_high,
+            timestamp: new Date().toISOString()
+        };
+        
+        const backupKey = `${this.storageKeys.PATIENT_PREFIX}${patientId}_hrBackup`;
+        localStorage.setItem(backupKey, JSON.stringify(backupData));
+        
+        console.log('💾 Saved HR backup for patient:', patientId, backupData);
+        return backupData;
+    }
+
+    /**
+     * Get HR backup values for restoration
+     */
+    getHRBackup(patientId) {
+        try {
+            const backupKey = `${this.storageKeys.PATIENT_PREFIX}${patientId}_hrBackup`;
+            const data = localStorage.getItem(backupKey);
+            return data ? JSON.parse(data) : null;
+        } catch (error) {
+            console.error('❌ Error getting HR backup:', error);
+            return null;
+        }
+    }
+
+    /**
+     * Apply sepsis HR ranges (90-130) and notify all pages
+     */
+    applySepsisHRRanges(patientId) {
+        // Save current values as backup
+        this.saveHRBackup(patientId);
+        
+        // Set sepsis values
+        window.HR_low = 90;
+        window.HR_high = 130;
+        
+        // Save to target ranges for consistency
+        const targetRanges = this.getPatientTargetRanges(patientId) || this.getDefaultTargetRanges();
+        targetRanges.HR = {
+            min: 90,
+            max: 130,
+            unit: 'bpm'
+        };
+        this.savePatientTargetRanges(patientId, targetRanges);
+        
+        // Emit event to update all pages
+        const event = new CustomEvent('hrRangesChanged', {
+            detail: { 
+                patientId, 
+                HR_low: window.HR_low, 
+                HR_high: window.HR_high,
+                source: 'sepsis' 
+            }
+        });
+        window.dispatchEvent(event);
+        
+        console.log('🦠 Applied sepsis HR ranges:', window.HR_low, '-', window.HR_high);
+    }
+
+    /**
+     * Restore previous HR ranges when sepsis is deselected
+     */
+    restorePreviousHRRanges(patientId) {
+        const backup = this.getHRBackup(patientId);
+        
+        if (backup) {
+            window.HR_low = backup.HR_low;
+            window.HR_high = backup.HR_high;
+            
+            // Update target ranges
+            const targetRanges = this.getPatientTargetRanges(patientId) || this.getDefaultTargetRanges();
+            targetRanges.HR = {
+                min: backup.HR_low,
+                max: backup.HR_high,
+                unit: 'bpm'
+            };
+            this.savePatientTargetRanges(patientId, targetRanges);
+            
+            console.log('🔙 Restored previous HR ranges:', window.HR_low, '-', window.HR_high);
+        } else {
+            // Fallback to default normal ranges
+            const normalThresholds = this.getThresholds('normal');
+            if (normalThresholds && normalThresholds.circulatoir.HR) {
+                window.HR_low = normalThresholds.circulatoir.HR.min;
+                window.HR_high = normalThresholds.circulatoir.HR.max;
+                
+                // Update target ranges
+                const targetRanges = this.getPatientTargetRanges(patientId) || this.getDefaultTargetRanges();
+                targetRanges.HR = {
+                    min: window.HR_low,
+                    max: window.HR_high,
+                    unit: 'bpm'
+                };
+                this.savePatientTargetRanges(patientId, targetRanges);
+                
+                console.log('🔙 Restored default HR ranges:', window.HR_low, '-', window.HR_high);
+            }
+        }
+        
+        // Emit event to update all pages
+        const event = new CustomEvent('hrRangesChanged', {
+            detail: { 
+                patientId, 
+                HR_low: window.HR_low, 
+                HR_high: window.HR_high,
+                source: 'restore' 
+            }
+        });
+        window.dispatchEvent(event);
+    }
+
+    /**
+     * Handle sepsis tag selection/deselection
+     */
+    handleSepsisTagChange(patientId, isSelected) {
+        if (isSelected) {
+            this.applySepsisHRRanges(patientId);
+        } else {
+            this.restorePreviousHRRanges(patientId);
+        }
     }
 }
 

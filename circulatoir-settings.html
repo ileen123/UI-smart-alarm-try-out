@@ -893,6 +893,37 @@
                 }
             });
             
+            // Listen for HR range changes from sepsis selection/deselection
+            window.addEventListener('hrRangesChanged', function(event) {
+                console.log('💓 HR ranges changed event received in circulatoir-settings:', event.detail);
+                
+                const { patientId, HR_low, HR_high, source } = event.detail;
+                
+                // Only update if it's for the current patient
+                if (patientId === currentPatientId) {
+                    console.log('🔄 Updating HR slider with new ranges:', HR_low, '-', HR_high, 'source:', source);
+                    
+                    // Update currentSettings
+                    currentSettings.hr = {
+                        min: HR_low,
+                        max: HR_high
+                    };
+                    
+                    // Update HR slider if it exists
+                    if (hrSlider && typeof hrSlider.updateTargetRange === 'function') {
+                        hrSlider.updateTargetRange(HR_low, HR_high);
+                        console.log('✅ HR slider updated with sepsis ranges');
+                        
+                        // Apply visual indication for sepsis
+                        if (source === 'sepsis') {
+                            hrSlider.highlightAsSepsis();
+                        } else {
+                            hrSlider.removeHighlight();
+                        }
+                    }
+                }
+            });
+            
             // Event listeners are now handled by the slider components
         }
 
