@@ -503,9 +503,27 @@
         }
 
         function adjustOrganSettings(organType) {
-            alert('Aanpassingen voor ' + organType + ' systeem - functionaliteit komt binnenkort!');
-            // Here you would open a modal or navigate to a detailed settings page
-            // For now, just show a placeholder message
+            console.log('🔧 Adjusting settings for:', organType);
+            
+            if (organType === 'circulatoir') {
+                // Navigate to the circulatoir settings page with current patient and bed data
+                console.log('🫀 Opening circulatoir settings page for patient:', currentPatientId, 'bed:', currentBedNumber);
+                
+                if (currentPatientId && currentBedNumber) {
+                    const circulatoirUrl = `circulatoir-settings.html?patient=${currentPatientId}&bed=${currentBedNumber}`;
+                    console.log('🔗 Navigating to:', circulatoirUrl);
+                    window.location.href = circulatoirUrl;
+                } else {
+                    console.warn('⚠️ Missing patient or bed data');
+                    alert('Patiëntgegevens niet beschikbaar. Ga terug naar bedoverzicht.');
+                    window.location.href = 'circulatoir-settings.html';
+                }
+            } else {
+                // For other organ types, show placeholder message
+                alert('Aanpassingen voor ' + organType + ' systeem - functionaliteit komt binnenkort!');
+            }
+            
+            // Here you would open a modal or navigate to detailed settings pages
         }
 
         function saveAlarmSettings() {

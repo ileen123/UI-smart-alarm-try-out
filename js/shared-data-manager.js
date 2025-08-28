@@ -669,6 +669,78 @@ class SharedDataManager {
         const config = this.getConfigData();
         return config?.organMappings || {};
     }
+
+    /**
+     * Get thresholds by tags (for dynamic threshold updates)
+     */
+    getThresholdsByTags(tags) {
+        const config = this.getConfigData();
+        const normalThresholds = config.thresholds.normal;
+        
+        // Check for sepsis tag
+        const hasSepsis = tags.some(tag => tag.toLowerCase().includes('sepsis'));
+        
+        if (hasSepsis && config.thresholds.conditions?.sepsis) {
+            const sepsisThresholds = config.thresholds.conditions.sepsis;
+            return {
+                ...normalThresholds,
+                circulatoir: {
+                    ...normalThresholds.circulatoir,
+                    ...sepsisThresholds.circulatoir
+                }
+            };
+        }
+        
+        return normalThresholds;
+    }
+
+    /**
+     * Save patient-specific circulatoir settings
+     */
+    savePatientCirculatoirSettings(patientId, circulatoirSettings) {
+        try {
+            const settingsKey = `${this.storageKeys.PATIENT_PREFIX}${patientId}_circulatoirSettings`;
+            localStorage.setItem(settingsKey, JSON.stringify(circulatoirSettings));
+            
+            // Also save to centralized app data
+            const appData = this.getAppData();
+            if (appData) {
+                if (!appData.patients[patientId]) {
+                    appData.patients[patientId] = {};
+                }
+                appData.patients[patientId].circulatoirSettings = circulatoirSettings;
+                appData.patients[patientId].lastUpdated = new Date().toISOString();
+                this.saveAppData(appData);
+            }
+            
+            console.log('✅ Circulatoir settings saved for patient:', patientId, circulatoirSettings);
+            return true;
+        } catch (error) {
+            console.error('❌ Error saving circulatoir settings:', error);
+            return false;
+        }
+    }
+
+    /**
+     * Get patient-specific circulatoir settings
+     */
+    getPatientCirculatoirSettings(patientId) {
+        try {
+            // Try centralized app data first
+            const appData = this.getAppData();
+            if (appData && appData.patients[patientId] && appData.patients[patientId].circulatoirSettings) {
+                return appData.patients[patientId].circulatoirSettings;
+            }
+            
+            // Fallback to individual storage
+            const settingsKey = `${this.storageKeys.PATIENT_PREFIX}${patientId}_circulatoirSettings`;
+            const data = localStorage.getItem(settingsKey);
+            return data ? JSON.parse(data) : null;
+        } catch (error) {
+            console.error('❌ Error getting circulatoir settings:', error);
+            return null;
+        }
+    }
 }
 
 // Create global instance

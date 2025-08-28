@@ -1,0 +1,685 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <!-- Meta tags for character encoding and responsive design -->
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    
+    <!-- Page title that appears in browser tab -->
+    <title>Circulatoir Instellingen</title>
+    
+    <!-- Google Fonts - Open Sans with multiple weights -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Open+Sans:ital,wght@0,300;0,400;0,600;0,700;1,400;1,600&display=swap" rel="stylesheet">
+    
+    <!-- Link to external CSS file for styling -->
+    <link rel="stylesheet" href="styles.css">
+    
+    <!-- Data Manager for cross-page data synchronization -->
+    <script src="js/data-manager.js"></script>
+    <script src="js/shared-data-manager.js"></script>
+</head>
+<body>
+    <!-- Patient information header section -->
+    <div class="header">
+        <span class="user-icon">👤</span>
+        <span id="patient-header-info">Loading patient info...</span>
+    </div>
+    
+    <!-- Navigation section with back button -->
+    <div class="navigation-section">
+        <button class="nav-button back-button" onclick="goBackToAlarmOverview()">
+            ← Terug naar Alarm Overzicht
+        </button>
+    </div>
+    
+    <!-- Main page title -->
+    <h1 class="main-title">Circulatoir Instellingen</h1>
+    <p class="subtitle">Pas de hart- en bloeddruk parameters aan voor deze patiënt</p>
+    
+    <!-- Main content container -->
+    <div class="circulatoir-settings-container">
+        
+        <!-- Heart Rate Settings Section -->
+        <div class="parameter-section">
+            <h2 class="parameter-title">
+                <span class="heart-icon">💓</span>
+                Hartslag (HR)
+            </h2>
+            
+            <div class="parameter-controls">
+                <div class="range-display">
+                    <span class="current-range" id="hr-current-range">70 - 110 bpm</span>
+                    <span class="range-status" id="hr-range-status">Normaal bereik</span>
+                </div>
+                
+                <div class="adjustment-controls">
+                    <div class="range-input-group">
+                        <label for="hr-min">Minimum waarde:</label>
+                        <div class="input-with-unit">
+                            <input type="number" id="hr-min" value="70" min="40" max="150">
+                            <span class="unit">bpm</span>
+                        </div>
+                    </div>
+                    
+                    <div class="range-input-group">
+                        <label for="hr-max">Maximum waarde:</label>
+                        <div class="input-with-unit">
+                            <input type="number" id="hr-max" value="110" min="40" max="200">
+                            <span class="unit">bpm</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="preset-buttons">
+                    <button class="preset-btn" onclick="setHRPreset('normal')">Normaal (70-110)</button>
+                    <button class="preset-btn" onclick="setHRPreset('sepsis')">Sepsis (90-130)</button>
+                    <button class="preset-btn" onclick="setHRPreset('postop')">Post-op (60-100)</button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Blood Pressure Settings Section -->
+        <div class="parameter-section">
+            <h2 class="parameter-title">
+                <span class="bp-icon">🩸</span>
+                Bloeddruk Gemiddelde (MAP)
+            </h2>
+            
+            <div class="parameter-controls">
+                <div class="range-display">
+                    <span class="current-range" id="bp-current-range">65 - 85 mmHg</span>
+                    <span class="range-status" id="bp-range-status">Normaal bereik</span>
+                </div>
+                
+                <div class="adjustment-controls">
+                    <div class="range-input-group">
+                        <label for="bp-min">Minimum waarde:</label>
+                        <div class="input-with-unit">
+                            <input type="number" id="bp-min" value="65" min="40" max="120">
+                            <span class="unit">mmHg</span>
+                        </div>
+                    </div>
+                    
+                    <div class="range-input-group">
+                        <label for="bp-max">Maximum waarde:</label>
+                        <div class="input-with-unit">
+                            <input type="number" id="bp-max" value="85" min="40" max="150">
+                            <span class="unit">mmHg</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="preset-buttons">
+                    <button class="preset-btn" onclick="setBPPreset('normal')">Normaal (65-85)</button>
+                    <button class="preset-btn" onclick="setBPPreset('sepsis')">Sepsis (60-80)</button>
+                    <button class="preset-btn" onclick="setBPPreset('hypertensive')">Hypertensief (70-95)</button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Action Buttons -->
+        <div class="action-buttons">
+            <button class="action-btn reset-btn" onclick="resetToDefaults()">
+                Standaardwaarden Herstellen
+            </button>
+            <button class="action-btn save-btn" onclick="saveCirculatoirSettings()">
+                Instellingen Opslaan
+            </button>
+        </div>
+        
+        <!-- Current Settings Preview -->
+        <div class="settings-preview">
+            <h3>Huidige Instellingen Overzicht</h3>
+            <div class="preview-content" id="settings-preview">
+                <div class="preview-item">
+                    <span class="preview-label">Hartslag bereik:</span>
+                    <span class="preview-value" id="preview-hr">70 - 110 bpm</span>
+                </div>
+                <div class="preview-item">
+                    <span class="preview-label">Bloeddruk bereik:</span>
+                    <span class="preview-value" id="preview-bp">65 - 85 mmHg</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <style>
+        /* Additional styles specific to circulatoir settings page */
+        .navigation-section {
+            margin: 20px 0;
+            padding: 0 20px;
+        }
+        
+        .nav-button {
+            background-color: #f8f9fa;
+            border: 2px solid #dee2e6;
+            border-radius: 8px;
+            padding: 12px 20px;
+            font-size: 16px;
+            font-weight: 600;
+            color: #495057;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
+        }
+        
+        .nav-button:hover {
+            background-color: #e9ecef;
+            border-color: #adb5bd;
+            transform: translateY(-2px);
+        }
+        
+        .subtitle {
+            text-align: center;
+            color: #6c757d;
+            font-size: 18px;
+            margin-bottom: 30px;
+            font-weight: 400;
+        }
+        
+        .circulatoir-settings-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .parameter-section {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            border: 1px solid #e9ecef;
+        }
+        
+        .parameter-title {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 25px;
+            color: #2c3e50;
+            font-size: 24px;
+            font-weight: 600;
+        }
+        
+        .heart-icon, .bp-icon {
+            font-size: 32px;
+        }
+        
+        .range-display {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #f8f9fa;
+            padding: 15px 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        
+        .current-range {
+            font-size: 20px;
+            font-weight: 600;
+            color: #2c3e50;
+        }
+        
+        .range-status {
+            font-size: 14px;
+            color: #28a745;
+            font-weight: 500;
+        }
+        
+        .adjustment-controls {
+            margin-bottom: 20px;
+        }
+        
+        .range-input-group {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        
+        .range-input-group label {
+            font-weight: 600;
+            color: #495057;
+            flex: 1;
+        }
+        
+        .input-with-unit {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .input-with-unit input {
+            width: 80px;
+            padding: 8px 12px;
+            border: 2px solid #dee2e6;
+            border-radius: 6px;
+            font-size: 16px;
+            text-align: center;
+        }
+        
+        .input-with-unit input:focus {
+            outline: none;
+            border-color: #007bff;
+            box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
+        }
+        
+        .unit {
+            font-weight: 600;
+            color: #6c757d;
+            min-width: 50px;
+        }
+        
+        .preset-buttons {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        
+        .preset-btn {
+            background-color: #e9ecef;
+            border: 2px solid #dee2e6;
+            border-radius: 6px;
+            padding: 8px 16px;
+            font-size: 14px;
+            font-weight: 500;
+            color: #495057;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        
+        .preset-btn:hover {
+            background-color: #007bff;
+            border-color: #007bff;
+            color: white;
+        }
+        
+        .action-buttons {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            margin: 40px 0;
+        }
+        
+        .action-btn {
+            padding: 15px 30px;
+            font-size: 16px;
+            font-weight: 600;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            min-width: 200px;
+        }
+        
+        .reset-btn {
+            background-color: #6c757d;
+            color: white;
+        }
+        
+        .reset-btn:hover {
+            background-color: #5a6268;
+            transform: translateY(-2px);
+        }
+        
+        .save-btn {
+            background-color: #28a745;
+            color: white;
+        }
+        
+        .save-btn:hover {
+            background-color: #218838;
+            transform: translateY(-2px);
+        }
+        
+        .settings-preview {
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 25px;
+            border: 2px solid #dee2e6;
+        }
+        
+        .settings-preview h3 {
+            margin-bottom: 20px;
+            color: #2c3e50;
+            font-size: 20px;
+            text-align: center;
+        }
+        
+        .preview-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            padding: 12px 0;
+            border-bottom: 1px solid #dee2e6;
+        }
+        
+        .preview-item:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+        }
+        
+        .preview-label {
+            font-weight: 600;
+            color: #495057;
+        }
+        
+        .preview-value {
+            font-weight: 600;
+            color: #007bff;
+            font-size: 16px;
+        }
+        
+        /* Responsive design */
+        @media (max-width: 768px) {
+            .circulatoir-settings-container {
+                padding: 10px;
+            }
+            
+            .parameter-section {
+                padding: 20px;
+            }
+            
+            .range-input-group {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 8px;
+            }
+            
+            .action-buttons {
+                flex-direction: column;
+                align-items: center;
+            }
+            
+            .preset-buttons {
+                justify-content: center;
+            }
+        }
+    </style>
+
+    <script>
+        // Global variables
+        let currentPatientId = null;
+        let currentBed = null;
+        let currentSettings = {
+            hr: { min: 70, max: 110 },
+            bp: { min: 65, max: 85 }
+        };
+
+        // Initialize page when DOM is loaded
+        document.addEventListener('DOMContentLoaded', function() {
+            initializePage();
+            setupEventListeners();
+            loadCurrentSettings();
+        });
+
+        function initializePage() {
+            console.log('🔄 Initializing circulatoir settings page...');
+            
+            // Try to get patient and session data from multiple sources
+            if (window.sharedDataManager) {
+                // First, try to get from URL parameters (if navigated directly)
+                const urlParams = new URLSearchParams(window.location.search);
+                const urlPatient = urlParams.get('patient');
+                const urlBed = urlParams.get('bed');
+                
+                // Second, try to get from session data
+                const sessionData = window.sharedDataManager.getSessionData();
+                
+                // Use URL parameters if available, otherwise use session data
+                currentPatientId = urlPatient || sessionData.currentPatient;
+                currentBed = urlBed || sessionData.currentBed;
+                
+                console.log('📋 Patient sources - URL:', urlPatient, 'Session:', sessionData.currentPatient);
+                console.log('🛏️ Bed sources - URL:', urlBed, 'Session:', sessionData.currentBed);
+                console.log('✅ Final selection - Patient:', currentPatientId, 'Bed:', currentBed);
+                
+                // If still no patient/bed data, redirect to bed overview
+                if (!currentPatientId || !currentBed) {
+                    console.warn('⚠️ No patient or bed data found, redirecting to bed overview');
+                    alert('Geen patiëntgegevens gevonden. Ga terug naar het bedoverzicht om een patiënt te selecteren.');
+                    window.location.href = 'bed-overview.html';
+                    return;
+                }
+                
+                // Update session data to ensure consistency
+                window.sharedDataManager.saveSessionData({
+                    currentPatient: currentPatientId,
+                    currentBed: currentBed,
+                    lastUpdated: new Date().toISOString()
+                });
+                
+                // Update header with patient info
+                updatePatientHeader();
+            } else {
+                console.error('❌ SharedDataManager not available');
+                alert('Data manager niet beschikbaar. Herlaad de pagina.');
+            }
+        }
+
+        function updatePatientHeader() {
+            const headerElement = document.getElementById('patient-header-info');
+            if (currentPatientId && currentBed) {
+                const patientInfo = window.sharedDataManager.getPatientInfo(currentPatientId);
+                const displayName = patientInfo?.name || `Patiënt ${currentPatientId}`;
+                headerElement.textContent = `${displayName} - Bed ${currentBed} - Circulatoir Instellingen`;
+            } else {
+                headerElement.textContent = 'Circulatoir Instellingen';
+            }
+        }
+
+        function setupEventListeners() {
+            // Heart rate inputs
+            document.getElementById('hr-min').addEventListener('input', updateHRDisplay);
+            document.getElementById('hr-max').addEventListener('input', updateHRDisplay);
+            
+            // Blood pressure inputs
+            document.getElementById('bp-min').addEventListener('input', updateBPDisplay);
+            document.getElementById('bp-max').addEventListener('input', updateBPDisplay);
+        }
+
+        function loadCurrentSettings() {
+            console.log('📊 Loading current circulatoir settings...');
+            
+            if (currentPatientId && window.sharedDataManager) {
+                // Try to load existing patient-specific settings
+                const savedSettings = window.sharedDataManager.getPatientCirculatoirSettings(currentPatientId);
+                
+                if (savedSettings) {
+                    console.log('✅ Found saved settings:', savedSettings);
+                    currentSettings = savedSettings;
+                } else {
+                    // Load from medical info and apply condition-based thresholds
+                    const medicalInfo = window.sharedDataManager.getPatientMedicalInfo(currentPatientId);
+                    if (medicalInfo && medicalInfo.selectedTags) {
+                        const thresholds = window.sharedDataManager.getThresholdsByTags(medicalInfo.selectedTags);
+                        if (thresholds && thresholds.circulatoir) {
+                            currentSettings = {
+                                hr: thresholds.circulatoir.HR || { min: 70, max: 110 },
+                                bp: thresholds.circulatoir.BP_Mean || { min: 65, max: 85 }
+                            };
+                            console.log('✅ Applied condition-based thresholds:', currentSettings);
+                        }
+                    }
+                }
+                
+                // Update the UI with loaded settings
+                applySettingsToUI();
+            }
+        }
+
+        function applySettingsToUI() {
+            // Update input fields
+            document.getElementById('hr-min').value = currentSettings.hr.min;
+            document.getElementById('hr-max').value = currentSettings.hr.max;
+            document.getElementById('bp-min').value = currentSettings.bp.min;
+            document.getElementById('bp-max').value = currentSettings.bp.max;
+            
+            // Update displays
+            updateHRDisplay();
+            updateBPDisplay();
+            updatePreview();
+        }
+
+        function updateHRDisplay() {
+            const minVal = parseInt(document.getElementById('hr-min').value);
+            const maxVal = parseInt(document.getElementById('hr-max').value);
+            
+            currentSettings.hr = { min: minVal, max: maxVal };
+            
+            document.getElementById('hr-current-range').textContent = `${minVal} - ${maxVal} bpm`;
+            updateRangeStatus('hr', minVal, maxVal);
+            updatePreview();
+        }
+
+        function updateBPDisplay() {
+            const minVal = parseInt(document.getElementById('bp-min').value);
+            const maxVal = parseInt(document.getElementById('bp-max').value);
+            
+            currentSettings.bp = { min: minVal, max: maxVal };
+            
+            document.getElementById('bp-current-range').textContent = `${minVal} - ${maxVal} mmHg`;
+            updateRangeStatus('bp', minVal, maxVal);
+            updatePreview();
+        }
+
+        function updateRangeStatus(type, min, max) {
+            const statusElement = document.getElementById(`${type}-range-status`);
+            let status = 'Aangepast bereik';
+            let color = '#007bff';
+            
+            // Determine status based on standard ranges
+            if (type === 'hr') {
+                if (min === 70 && max === 110) {
+                    status = 'Normaal bereik';
+                    color = '#28a745';
+                } else if (min === 90 && max === 130) {
+                    status = 'Sepsis bereik';
+                    color = '#ffc107';
+                }
+            } else if (type === 'bp') {
+                if (min === 65 && max === 85) {
+                    status = 'Normaal bereik';
+                    color = '#28a745';
+                } else if (min === 60 && max === 80) {
+                    status = 'Sepsis bereik';
+                    color = '#ffc107';
+                }
+            }
+            
+            statusElement.textContent = status;
+            statusElement.style.color = color;
+        }
+
+        function updatePreview() {
+            document.getElementById('preview-hr').textContent = `${currentSettings.hr.min} - ${currentSettings.hr.max} bpm`;
+            document.getElementById('preview-bp').textContent = `${currentSettings.bp.min} - ${currentSettings.bp.max} mmHg`;
+        }
+
+        // Preset functions
+        function setHRPreset(preset) {
+            let min, max;
+            switch(preset) {
+                case 'normal':
+                    min = 70; max = 110;
+                    break;
+                case 'sepsis':
+                    min = 90; max = 130;
+                    break;
+                case 'postop':
+                    min = 60; max = 100;
+                    break;
+            }
+            
+            document.getElementById('hr-min').value = min;
+            document.getElementById('hr-max').value = max;
+            updateHRDisplay();
+        }
+
+        function setBPPreset(preset) {
+            let min, max;
+            switch(preset) {
+                case 'normal':
+                    min = 65; max = 85;
+                    break;
+                case 'sepsis':
+                    min = 60; max = 80;
+                    break;
+                case 'hypertensive':
+                    min = 70; max = 95;
+                    break;
+            }
+            
+            document.getElementById('bp-min').value = min;
+            document.getElementById('bp-max').value = max;
+            updateBPDisplay();
+        }
+
+        function resetToDefaults() {
+            if (confirm('Weet je zeker dat je alle instellingen wilt terugzetten naar de standaardwaarden?')) {
+                setHRPreset('normal');
+                setBPPreset('normal');
+                console.log('🔄 Reset to default values');
+            }
+        }
+
+        function saveCirculatoirSettings() {
+            console.log('💾 Saving circulatoir settings...', currentSettings);
+            
+            if (currentPatientId && window.sharedDataManager) {
+                // Save patient-specific circulatoir settings
+                window.sharedDataManager.savePatientCirculatoirSettings(currentPatientId, currentSettings);
+                
+                // Also update the medical info with new thresholds
+                const medicalInfo = window.sharedDataManager.getPatientMedicalInfo(currentPatientId) || {};
+                if (!medicalInfo.customThresholds) {
+                    medicalInfo.customThresholds = {};
+                }
+                medicalInfo.customThresholds.circulatoir = {
+                    HR: currentSettings.hr,
+                    BP_Mean: currentSettings.bp
+                };
+                medicalInfo.lastUpdated = new Date().toISOString();
+                
+                window.sharedDataManager.savePatientMedicalInfo(currentPatientId, medicalInfo);
+                
+                alert('✅ Circulatoir instellingen succesvol opgeslagen!');
+                console.log('✅ Settings saved for patient:', currentPatientId);
+            } else {
+                alert('❌ Fout bij opslaan. Probeer opnieuw.');
+                console.error('❌ Cannot save - missing patient ID or data manager');
+            }
+        }
+
+        function goBackToAlarmOverview() {
+            console.log('🔙 Navigating back to alarm overview');
+            
+            // Ensure session data is preserved when going back
+            if (currentPatientId && currentBed && window.sharedDataManager) {
+                // Update session data to maintain patient context
+                window.sharedDataManager.saveSessionData({
+                    currentPatient: currentPatientId,
+                    currentBed: currentBed,
+                    lastUpdated: new Date().toISOString()
+                });
+                
+                console.log('✅ Session data preserved for patient:', currentPatientId, 'bed:', currentBed);
+                
+                // Navigate back to alarm overview with proper URL parameters
+                const alarmUrl = `alarm-overview.html?bed=${currentBed}&patient=${currentPatientId}`;
+                console.log('🔗 Navigating to:', alarmUrl);
+                window.location.href = alarmUrl;
+            } else {
+                console.warn('⚠️ Missing patient or bed data, redirecting to bed overview');
+                window.location.href = 'bed-overview.html';
+            }
+        }
+    </script>
+</body>
+</html>
