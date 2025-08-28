@@ -23,6 +23,9 @@
     
     <!-- Slider Component -->
     <script src="slider-component.js"></script>
+    
+    <!-- Heart Circle Component -->
+    <script src="heart-circle-component.js"></script>
 </head>
 <body>
     <!-- Patient information header section -->
@@ -49,10 +52,21 @@
         <div class="monitoring-level-controls">
             <h2 class="section-title">Monitoring Level Circulatoir</h2>
             <p class="monitoring-description">Kies de monitoring intensiteit voor de visuele weergave:</p>
-            <div class="button-group">
-                <button class="btn risk-low" data-level="loose" onclick="changeMonitoringLevel('loose')">Los</button>
-                <button class="btn risk-med selected" data-level="mid" onclick="changeMonitoringLevel('mid')">Mid</button>
-                <button class="btn risk-high" data-level="tight" onclick="changeMonitoringLevel('tight')">Strak</button>
+            
+            <!-- Container for buttons and heart circle -->
+            <div class="monitoring-controls-layout">
+                <div class="monitoring-buttons" style="flex: none;">
+                    <div class="button-group">
+                        <button class="btn risk-low" data-level="loose" onclick="changeMonitoringLevel('loose')">Los</button>
+                        <button class="btn risk-med selected" data-level="mid" onclick="changeMonitoringLevel('mid')">Mid</button>
+                        <button class="btn risk-high" data-level="tight" onclick="changeMonitoringLevel('tight')">Strak</button>
+                    </div>
+                </div>
+                <div class="heart-circle-wrapper">
+                    <div class="heart-circle-section">
+                        <div id="circulatoir-heart-circle-container"></div>
+                    </div>
+                </div>
             </div>
         </div>
         
@@ -74,6 +88,11 @@
         .monitoring-level-controls {
             margin: 30px 0;
             text-align: left; /* Changed from center to left */
+            background: white;
+            padding: 25px;
+            border-radius: 10px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            border: 1px solid #e9ecef;
         }
         
         .monitoring-level-controls .section-title {
@@ -89,6 +108,58 @@
             font-size: 16px;
             margin-bottom: 20px;
             text-align: left; /* Changed from default to explicitly left */
+        }
+        
+        /* Layout for monitoring controls and heart circle */
+        .monitoring-controls-layout {
+            display: flex;
+            align-items: center;
+            gap: 40px;
+            margin-top: 20px;
+            width: 100%;
+            position: relative;
+        }
+        
+        .monitoring-buttons {
+            flex: 0 0 auto;
+        }
+        
+        .heart-circle-wrapper {
+            flex: 0 0 auto;
+            padding: 20px;
+            margin-left: 20px;
+            min-width: 120px;
+            min-height: 120px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .heart-circle-section {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+            flex: 0 0 auto;
+            position: relative;
+        }
+        
+        .heart-circle-label {
+            color: #6c757d;
+            font-size: 14px;
+            font-weight: 500;
+            text-align: center;
+        }
+        
+        #circulatoir-heart-circle-container {
+            width: 80px;
+            height: 80px;
+            position: relative;
+            z-index: 1;
+        }
+        .heart-organ-circle {
+            opacity: 1 !important;
+            position: relative !important;
         }
         
         /* Slider containers and titles */
@@ -517,11 +588,45 @@
             initializePage();
             setupEventListeners();
             loadCurrentSettings();
-            
-            // Initialize sliders after a delay to ensure all components are loaded
+
+            // Initialize heart circle component (same as alarm overview)
             setTimeout(() => {
+                initializeHeartCircleComponent();
                 initializeSliders();
             }, 1000);
+        // Heart SVG content (copied from alarm overview)
+        const svgContent = {
+            heart: `<svg class="organ-icon" viewBox="0 0 22 26" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M13.22 10.3743C12.0679 12.132 10.9163 15.0615 10.9163 19.1628M13.22 10.3743C12.0681 12.132 11.4922 14.4756 6.30842 14.4756M13.22 10.3743C14.6766 8.39884 16.9516 6.83964 19.3552 6.3986C20.0557 6.27006 20.6011 5.62288 20.4841 4.90863L20.2921 3.73684C20.1996 3.17181 19.7182 2.75127 19.159 2.81881C16.3987 3.15222 12.9705 4.8327 10.9162 7.44486C10.9162 6.27307 10.9162 2.75769 10.3402 1M5.73245 6.85896C5.15648 5.10127 4.00454 3.92948 2.27663 3.92948M1.70071 15.6441C2.85258 20.9171 7.26892 25 10.3401 25C13.4113 25 17.6365 20.9175 18.9799 15.6441C20.3232 10.3707 16.1 6.85563 13.2201 10.371C13.2201 8.61732 11.4922 6.85906 8.03639 6.85906C4.58057 6.85906 0.548838 10.371 1.70071 15.6441Z" stroke="black" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>`
+        };
+
+        // Utility to inject SVG content into the heart circle
+        function injectSVG(containerId, svgType) {
+            const container = document.getElementById(containerId);
+            if (!container) return;
+            const iconDiv = container.querySelector('.heart-white-center');
+            if (iconDiv) {
+                iconDiv.innerHTML = svgContent[svgType];
+                const svgEl = iconDiv.querySelector('svg');
+                if (svgEl) {
+                    svgEl.style.width = '70%';
+                    svgEl.style.height = '70%';
+                    svgEl.style.display = 'block';
+                    svgEl.style.margin = '0 auto';
+                }
+            } else {
+                setTimeout(() => injectSVG(containerId, svgType), 50);
+            }
+        }
+
+        // Initialize the heart circle component in circulatoir settings
+        function initializeHeartCircleComponent() {
+            // Use same size as alarm overview
+            const circleSize = 130;
+            window.circulatoirHeartCircle = new HeartCircleComponent('circulatoir-heart-circle-container', { size: circleSize, initialState: 'mid' });
+            setTimeout(() => injectSVG('circulatoir-heart-circle-container', 'heart'), 100);
+        }
         });
 
         // Function to change monitoring level for all sliders
