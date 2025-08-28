@@ -69,6 +69,7 @@ class VitalParameterSlider {
     render() {
         const sliderHTML = `
             <div class="vital-slider" data-vital="${this.config.parameter}">
+                <div class="slider-title">${this.config.name}</div>
                 <div class="value-display"></div>
 
                 <div class="chart-container">

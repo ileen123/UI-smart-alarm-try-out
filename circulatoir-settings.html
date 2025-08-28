@@ -45,152 +45,90 @@
     <!-- Main content container -->
     <div class="circulatoir-settings-container">
         
-        <!-- Heart Rate Settings Section -->
-        <div class="parameter-section">
-            <h2 class="parameter-title">
-                <span class="heart-icon">💓</span>
-                Hartslag (HR)
-            </h2>
-            
-            <div class="parameter-controls">
-                <div class="range-display">
-                    <span class="current-range" id="hr-current-range">70 - 110 bpm</span>
-                    <span class="range-status" id="hr-range-status">Normaal bereik</span>
-                </div>
-                
-                <div class="adjustment-controls">
-                    <div class="range-input-group">
-                        <label for="hr-min">Minimum waarde:</label>
-                        <div class="input-with-unit">
-                            <input type="number" id="hr-min" value="70" min="40" max="150">
-                            <span class="unit">bpm</span>
-                        </div>
-                    </div>
-                    
-                    <div class="range-input-group">
-                        <label for="hr-max">Maximum waarde:</label>
-                        <div class="input-with-unit">
-                            <input type="number" id="hr-max" value="110" min="40" max="200">
-                            <span class="unit">bpm</span>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="preset-buttons">
-                    <button class="preset-btn" onclick="setHRPreset('normal')">Normaal (70-110)</button>
-                    <button class="preset-btn" onclick="setHRPreset('sepsis')">Sepsis (90-130)</button>
-                    <button class="preset-btn" onclick="setHRPreset('postop')">Post-op (60-100)</button>
-                </div>
-            </div>
-        </div>
-        
-        <!-- Blood Pressure Settings Section -->
-        <div class="parameter-section">
-            <h2 class="parameter-title">
-                <span class="bp-icon">🩸</span>
-                Bloeddruk Gemiddelde (MAP)
-            </h2>
-            
-            <div class="parameter-controls">
-                <div class="range-display">
-                    <span class="current-range" id="bp-current-range">65 - 85 mmHg</span>
-                    <span class="range-status" id="bp-range-status">Normaal bereik</span>
-                </div>
-                
-                <div class="adjustment-controls">
-                    <div class="range-input-group">
-                        <label for="bp-min">Minimum waarde:</label>
-                        <div class="input-with-unit">
-                            <input type="number" id="bp-min" value="65" min="40" max="120">
-                            <span class="unit">mmHg</span>
-                        </div>
-                    </div>
-                    
-                    <div class="range-input-group">
-                        <label for="bp-max">Maximum waarde:</label>
-                        <div class="input-with-unit">
-                            <input type="number" id="bp-max" value="85" min="40" max="150">
-                            <span class="unit">mmHg</span>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="preset-buttons">
-                    <button class="preset-btn" onclick="setBPPreset('normal')">Normaal (65-85)</button>
-                    <button class="preset-btn" onclick="setBPPreset('sepsis')">Sepsis (60-80)</button>
-                    <button class="preset-btn" onclick="setBPPreset('hypertensive')">Hypertensief (70-95)</button>
-                </div>
-            </div>
-        </div>
-        
-        <!-- Action Buttons -->
-        <div class="action-buttons">
-            <button class="action-btn reset-btn" onclick="resetToDefaults()">
-                Standaardwaarden Herstellen
-            </button>
-            <button class="action-btn save-btn" onclick="saveCirculatoirSettings()">
-                Instellingen Opslaan
-            </button>
-        </div>
-        
-        <!-- Current Settings Preview -->
-        <div class="settings-preview">
-            <h3>Huidige Instellingen Overzicht</h3>
-            <div class="preview-content" id="settings-preview">
-                <div class="preview-item">
-                    <span class="preview-label">Hartslag bereik:</span>
-                    <span class="preview-value" id="preview-hr">70 - 110 bpm</span>
-                </div>
-                <div class="preview-item">
-                    <span class="preview-label">Bloeddruk bereik:</span>
-                    <span class="preview-value" id="preview-bp">65 - 85 mmHg</span>
-                </div>
+        <!-- Monitoring Level Controls -->
+        <div class="monitoring-level-controls">
+            <h2 class="section-title">Monitoring Level Circulatoir</h2>
+            <p class="monitoring-description">Kies de monitoring intensiteit voor de visuele weergave:</p>
+            <div class="button-group">
+                <button class="btn risk-low" data-level="loose" onclick="changeMonitoringLevel('loose')">Los</button>
+                <button class="btn risk-med selected" data-level="mid" onclick="changeMonitoringLevel('mid')">Mid</button>
+                <button class="btn risk-high" data-level="tight" onclick="changeMonitoringLevel('tight')">Strak</button>
             </div>
         </div>
         
         <!-- Interactive Slider Demo Section -->
         <div class="slider-demo-section">
-            <h3>🎛️ Interactieve Slider Configuratie</h3>
-            <p class="demo-description">
-                Gebruik de onderstaande sliders voor een meer visuele en interactieve manier om de circulatoir parameters in te stellen.
-            </p>
+            <h2 class="section-title">🎛️ Circulatoire Parameters Aanpassen</h2>
             
-            <!-- Monitoring Level Controls -->
-            <div class="monitoring-level-controls">
-                <h4>Monitoring Level</h4>
-                <p class="monitoring-description">Kies de monitoring intensiteit voor de visuele weergave:</p>
-                <div class="level-buttons">
-                    <button class="level-btn" data-level="loose" onclick="changeMonitoringLevel('loose')">
-                        <strong>Loose</strong><br>
-                        <span>Brede tolerantie</span>
-                    </button>
-                    <button class="level-btn active" data-level="mid" onclick="changeMonitoringLevel('mid')">
-                        <strong>Mid</strong><br>
-                        <span>Standaard monitoring</span>
-                    </button>
-                    <button class="level-btn" data-level="tight" onclick="changeMonitoringLevel('tight')">
-                        <strong>Tight</strong><br>
-                        <span>Strikte controle</span>
-                    </button>
-                </div>
-            </div>
             
-            <div class="slider-containers">
-                <div class="slider-container">
-                    <h4>Hartslag (HR) Slider</h4>
-                    <div id="hr-slider-container"></div>
-                </div>
-                
-                <div class="slider-container">
-                    <h4>Bloeddruk (MAP) Slider</h4>
-                    <div id="bp-slider-container"></div>
-                </div>
+            <!-- Direct slider containers without extra wrappers -->
+            <div class="sliders-layout">
+                <div id="hr-slider-container" class="individual-slider"></div>
+                <div id="bp-slider-container" class="individual-slider"></div>
             </div>
         </div>
     </div>
 
     <style>
-        /* Additional styles specific to circulatoir settings page */
+        /* Monitoring Level Controls - matching risk level button styling */
+        .monitoring-level-controls {
+            margin: 30px 0;
+            text-align: left; /* Changed from center to left */
+        }
+        
+        .monitoring-level-controls .section-title {
+            color: #2c3e50;
+            font-size: 24px;
+            font-weight: 600;
+            margin-bottom: 10px;
+            text-align: left; /* Ensure title is also left-aligned */
+        }
+        
+        .monitoring-description {
+            color: #6c757d;
+            font-size: 16px;
+            margin-bottom: 20px;
+            text-align: left; /* Changed from default to explicitly left */
+        }
+        
+        /* Slider containers and titles */
+        .slider-demo-section {
+            margin: 40px 0;
+            max-width: 1600px; /* Much wider container */
+            margin-left: auto;
+            margin-right: auto;
+            padding: 0 20px;
+        }
+        
+        .slider-demo-section .section-title {
+            color: #2c3e50;
+            font-size: 24px;
+            font-weight: 600;
+            margin-bottom: 10px;
+            text-align: center;
+        }
+        
+        .demo-description {
+            color: #6c757d;
+            font-size: 16px;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+        
+        .sliders-layout {
+            display: flex;
+            gap: 120px; /* Very large gap to ensure no overlap */
+            justify-content: center;
+            flex-wrap: nowrap; /* Force horizontal layout, no wrapping */
+            margin: 0 auto;
+            align-items: flex-start; /* Align sliders at the top */
+        }
+        
+        .individual-slider {
+            flex: 0 0 auto; /* Don't grow or shrink, use natural size */
+            min-width: 500px; /* Ensure enough space for each slider */
+            max-width: 600px; /* Prevent sliders from getting too wide */
+        }
         .navigation-section {
             margin: 20px 0;
             padding: 0 20px;
@@ -217,7 +155,7 @@
         }
         
         .subtitle {
-            text-align: center;
+            text-align: left; /* Changed from center to left */
             color: #6c757d;
             font-size: 18px;
             margin-bottom: 30px;
@@ -225,7 +163,7 @@
         }
         
         .circulatoir-settings-container {
-            max-width: 800px;
+            max-width: 1600px; /* Much wider to accommodate side-by-side sliders */
             margin: 0 auto;
             padding: 20px;
         }
@@ -584,62 +522,22 @@
             setTimeout(() => {
                 initializeSliders();
             }, 1000);
-            
-            // Simple test to verify slider component works
-            setTimeout(() => {
-                testSliderBasic();
-            }, 2000);
         });
-
-        function testSliderBasic() {
-            console.log('🧪 Testing basic slider functionality...');
-            
-            if (window.VitalParameterSlider) {
-                console.log('✅ VitalParameterSlider class is available');
-                
-                // Create a simple test container
-                const testContainer = document.createElement('div');
-                testContainer.style.cssText = 'position: fixed; top: 10px; right: 10px; width: 200px; height: 150px; background: white; border: 1px solid #ccc; z-index: 9999;';
-                document.body.appendChild(testContainer);
-                
-                try {
-                    // Create a basic slider
-                    const testSlider = new window.VitalParameterSlider(testContainer, {
-                        parameter: 'HR',
-                        name: 'Test Heart Rate',
-                        unit: 'bpm',
-                        targetRange: { min: 70, max: 110 },
-                        yAxis: { min: 40, max: 140, step: 20 },
-                        monitoringLevel: 'tight',
-                        patientId: 'test',
-                        patientName: 'Test Patient'
-                    });
-                    
-                    console.log('✅ Basic slider created successfully');
-                    
-                    // Remove test after 5 seconds
-                    setTimeout(() => {
-                        document.body.removeChild(testContainer);
-                    }, 5000);
-                    
-                } catch (error) {
-                    console.error('❌ Basic slider test failed:', error);
-                    testContainer.innerHTML = `<p style="color: red; font-size: 12px; padding: 5px;">Slider Error: ${error.message}</p>`;
-                }
-            } else {
-                console.error('❌ VitalParameterSlider class not found');
-            }
-        }
 
         // Function to change monitoring level for all sliders
         function changeMonitoringLevel(level) {
             console.log(`🔄 Changing monitoring level to: ${level}`);
             
-            // Update button states
-            document.querySelectorAll('.level-btn').forEach(btn => {
-                btn.classList.remove('active');
+            // Update button states - remove active/selected from all buttons
+            document.querySelectorAll('.button-group .btn').forEach(btn => {
+                btn.classList.remove('active', 'selected');
             });
-            document.querySelector(`[data-level="${level}"]`).classList.add('active');
+            
+            // Add selected class to the clicked button
+            const selectedButton = document.querySelector(`[data-level="${level}"]`);
+            if (selectedButton) {
+                selectedButton.classList.add('selected');
+            }
             
             // Update sliders if they exist
             if (hrSlider && typeof hrSlider.updateMonitoringLevel === 'function') {
@@ -711,13 +609,8 @@
         }
 
         function setupEventListeners() {
-            // Heart rate inputs
-            document.getElementById('hr-min').addEventListener('input', updateHRDisplay);
-            document.getElementById('hr-max').addEventListener('input', updateHRDisplay);
-            
-            // Blood pressure inputs
-            document.getElementById('bp-min').addEventListener('input', updateBPDisplay);
-            document.getElementById('bp-max').addEventListener('input', updateBPDisplay);
+            console.log('🔧 Setting up event listeners...');
+            // Event listeners are now handled by the slider components
         }
 
         function loadCurrentSettings() {
@@ -745,98 +638,131 @@
                     }
                 }
                 
-                // Update the UI with loaded settings
-                applySettingsToUI();
+                // Settings are now applied directly by the sliders when they initialize
+                console.log('✅ Current settings loaded:', currentSettings);
             }
         }
 
         function initializeSliders() {
             console.log('🎛️ Initializing interactive sliders...');
             
+            // Debug: Check if containers exist
+            const hrContainer = document.getElementById('hr-slider-container');
+            const bpContainer = document.getElementById('bp-slider-container');
+            console.log('HR Container found:', !!hrContainer);
+            console.log('BP Container found:', !!bpContainer);
+            
             // Check if slider components are loaded
+            console.log('VitalParameterSlider available:', !!window.VitalParameterSlider);
+            console.log('PatientConfigurationHelper available:', !!window.PatientConfigurationHelper);
+            console.log('SharedDataManager available:', !!window.sharedDataManager);
+            
             if (!window.VitalParameterSlider) {
                 console.error('❌ VitalParameterSlider class not found');
-                document.getElementById('hr-slider-container').innerHTML = '<p style="color: red;">Slider component not loaded - VitalParameterSlider missing</p>';
+                if (hrContainer) hrContainer.innerHTML = '<p style="color: red;">Slider component not loaded - VitalParameterSlider missing</p>';
                 return;
             }
             
             if (!window.PatientConfigurationHelper) {
                 console.error('❌ PatientConfigurationHelper class not found');
-                document.getElementById('bp-slider-container').innerHTML = '<p style="color: red;">Slider component not loaded - PatientConfigurationHelper missing</p>';
+                if (bpContainer) bpContainer.innerHTML = '<p style="color: red;">Slider component not loaded - PatientConfigurationHelper missing</p>';
                 return;
             }
             
             if (!currentPatientId) {
                 console.error('❌ No patient ID available for sliders');
-                document.getElementById('hr-slider-container').innerHTML = '<p style="color: orange;">No patient ID available</p>';
-                document.getElementById('bp-slider-container').innerHTML = '<p style="color: orange;">No patient ID available</p>';
+                if (hrContainer) hrContainer.innerHTML = '<p style="color: orange;">No patient ID available</p>';
+                if (bpContainer) bpContainer.innerHTML = '<p style="color: orange;">No patient ID available</p>';
                 return;
             }
             
             console.log('✅ All prerequisites met, creating sliders for patient:', currentPatientId);
             
             try {
-                // Initialize HR Slider
+                // Debug: Check what data we have
+                console.log('Current patient ID:', currentPatientId);
+                const patientInfo = window.sharedDataManager ? window.sharedDataManager.getPatientInfo(currentPatientId) : null;
+                const patientSettings = window.sharedDataManager ? window.sharedDataManager.getPatientCirculatoirSettings(currentPatientId) : null;
+                console.log('Patient info:', patientInfo);
+                console.log('Patient settings:', patientSettings);
+                
+                // Initialize HR Slider with direct approach
                 const hrContainer = document.getElementById('hr-slider-container');
                 if (hrContainer) {
                     console.log('🫀 Creating HR slider...');
                     hrContainer.innerHTML = '<p style="color: blue;">Loading HR slider...</p>';
                     
-                    hrSlider = window.PatientConfigurationHelper.createSliderFromSharedData(
-                        hrContainer, 
-                        'HR', 
-                        currentPatientId,
-                        {
+                    try {
+                        // Try direct instantiation first
+                        hrSlider = new window.VitalParameterSlider(hrContainer, {
+                            parameter: 'HR',
+                            name: 'HR',
+                            unit: 'bpm',
+                            targetRange: currentSettings.hr || { min: 70, max: 110 },
+                            yAxis: { min: 40, max: 140, step: 20 },
                             monitoringLevel: 'mid',
+                            patientId: currentPatientId,
+                            patientName: patientInfo?.name || `Patiënt ${currentPatientId}`,
                             onChange: (data) => {
                                 console.log('HR Slider changed:', data);
-                                if (data.type === 'save') {
-                                    // Sync with main form
-                                    document.getElementById('hr-min').value = data.min;
-                                    document.getElementById('hr-max').value = data.max;
-                                    updateHRDisplay();
+                                if (window.sharedDataManager && data.type === 'save') {
+                                    // Save to SharedDataManager
+                                    const newSettings = { hr: { min: data.min, max: data.max }, bp: currentSettings.bp };
+                                    window.sharedDataManager.savePatientCirculatoirSettings(currentPatientId, newSettings);
+                                    currentSettings = newSettings;
                                 }
                             }
+                        });
+                        
+                        if (hrSlider) {
+                            console.log('✅ HR Slider initialized successfully');
+                        } else {
+                            console.error('❌ HR Slider initialization returned null');
+                            hrContainer.innerHTML = '<p style="color: red;">HR Slider initialization returned null</p>';
                         }
-                    );
-                    
-                    if (hrSlider) {
-                        console.log('✅ HR Slider initialized successfully');
-                    } else {
-                        console.error('❌ HR Slider initialization failed');
-                        hrContainer.innerHTML = '<p style="color: red;">HR Slider initialization failed</p>';
+                    } catch (error) {
+                        console.error('❌ HR Slider creation error:', error);
+                        hrContainer.innerHTML = `<p style="color: red;">HR Slider error: ${error.message}</p>`;
                     }
                 }
                 
-                // Initialize BP Slider
+                // Initialize BP Slider with direct approach
                 const bpContainer = document.getElementById('bp-slider-container');
                 if (bpContainer) {
                     console.log('🩸 Creating BP slider...');
                     bpContainer.innerHTML = '<p style="color: blue;">Loading BP slider...</p>';
                     
-                    bpSlider = window.PatientConfigurationHelper.createSliderFromSharedData(
-                        bpContainer, 
-                        'BP_Mean', 
-                        currentPatientId,
-                        {
+                    try {
+                        // Try direct instantiation
+                        bpSlider = new window.VitalParameterSlider(bpContainer, {
+                            parameter: 'BP_Mean',
+                            name: 'BP Mean',
+                            unit: 'mmHg',
+                            targetRange: currentSettings.bp || { min: 65, max: 85 },
+                            yAxis: { min: 30, max: 100, step: 10 },
                             monitoringLevel: 'mid',
+                            patientId: currentPatientId,
+                            patientName: patientInfo?.name || `Patiënt ${currentPatientId}`,
                             onChange: (data) => {
                                 console.log('BP Slider changed:', data);
-                                if (data.type === 'save') {
-                                    // Sync with main form
-                                    document.getElementById('bp-min').value = data.min;
-                                    document.getElementById('bp-max').value = data.max;
-                                    updateBPDisplay();
+                                if (window.sharedDataManager && data.type === 'save') {
+                                    // Save to SharedDataManager
+                                    const newSettings = { hr: currentSettings.hr, bp: { min: data.min, max: data.max } };
+                                    window.sharedDataManager.savePatientCirculatoirSettings(currentPatientId, newSettings);
+                                    currentSettings = newSettings;
                                 }
                             }
+                        });
+                        
+                        if (bpSlider) {
+                            console.log('✅ BP Slider initialized successfully');
+                        } else {
+                            console.error('❌ BP Slider initialization returned null');
+                            bpContainer.innerHTML = '<p style="color: red;">BP Slider initialization returned null</p>';
                         }
-                    );
-                    
-                    if (bpSlider) {
-                        console.log('✅ BP Slider initialized successfully');
-                    } else {
-                        console.error('❌ BP Slider initialization failed');
-                        bpContainer.innerHTML = '<p style="color: red;">BP Slider initialization failed</p>';
+                    } catch (error) {
+                        console.error('❌ BP Slider creation error:', error);
+                        bpContainer.innerHTML = `<p style="color: red;">BP Slider error: ${error.message}</p>`;
                     }
                 }
                 
@@ -847,148 +773,7 @@
             }
         }
 
-        function applySettingsToUI() {
-            // Update input fields
-            document.getElementById('hr-min').value = currentSettings.hr.min;
-            document.getElementById('hr-max').value = currentSettings.hr.max;
-            document.getElementById('bp-min').value = currentSettings.bp.min;
-            document.getElementById('bp-max').value = currentSettings.bp.max;
-            
-            // Update displays
-            updateHRDisplay();
-            updateBPDisplay();
-            updatePreview();
-        }
-
-        function updateHRDisplay() {
-            const minVal = parseInt(document.getElementById('hr-min').value);
-            const maxVal = parseInt(document.getElementById('hr-max').value);
-            
-            currentSettings.hr = { min: minVal, max: maxVal };
-            
-            document.getElementById('hr-current-range').textContent = `${minVal} - ${maxVal} bpm`;
-            updateRangeStatus('hr', minVal, maxVal);
-            updatePreview();
-        }
-
-        function updateBPDisplay() {
-            const minVal = parseInt(document.getElementById('bp-min').value);
-            const maxVal = parseInt(document.getElementById('bp-max').value);
-            
-            currentSettings.bp = { min: minVal, max: maxVal };
-            
-            document.getElementById('bp-current-range').textContent = `${minVal} - ${maxVal} mmHg`;
-            updateRangeStatus('bp', minVal, maxVal);
-            updatePreview();
-        }
-
-        function updateRangeStatus(type, min, max) {
-            const statusElement = document.getElementById(`${type}-range-status`);
-            let status = 'Aangepast bereik';
-            let color = '#007bff';
-            
-            // Determine status based on standard ranges
-            if (type === 'hr') {
-                if (min === 70 && max === 110) {
-                    status = 'Normaal bereik';
-                    color = '#28a745';
-                } else if (min === 90 && max === 130) {
-                    status = 'Sepsis bereik';
-                    color = '#ffc107';
-                }
-            } else if (type === 'bp') {
-                if (min === 65 && max === 85) {
-                    status = 'Normaal bereik';
-                    color = '#28a745';
-                } else if (min === 60 && max === 80) {
-                    status = 'Sepsis bereik';
-                    color = '#ffc107';
-                }
-            }
-            
-            statusElement.textContent = status;
-            statusElement.style.color = color;
-        }
-
-        function updatePreview() {
-            document.getElementById('preview-hr').textContent = `${currentSettings.hr.min} - ${currentSettings.hr.max} bpm`;
-            document.getElementById('preview-bp').textContent = `${currentSettings.bp.min} - ${currentSettings.bp.max} mmHg`;
-        }
-
-        // Preset functions
-        function setHRPreset(preset) {
-            let min, max;
-            switch(preset) {
-                case 'normal':
-                    min = 70; max = 110;
-                    break;
-                case 'sepsis':
-                    min = 90; max = 130;
-                    break;
-                case 'postop':
-                    min = 60; max = 100;
-                    break;
-            }
-            
-            document.getElementById('hr-min').value = min;
-            document.getElementById('hr-max').value = max;
-            updateHRDisplay();
-        }
-
-        function setBPPreset(preset) {
-            let min, max;
-            switch(preset) {
-                case 'normal':
-                    min = 65; max = 85;
-                    break;
-                case 'sepsis':
-                    min = 60; max = 80;
-                    break;
-                case 'hypertensive':
-                    min = 70; max = 95;
-                    break;
-            }
-            
-            document.getElementById('bp-min').value = min;
-            document.getElementById('bp-max').value = max;
-            updateBPDisplay();
-        }
-
-        function resetToDefaults() {
-            if (confirm('Weet je zeker dat je alle instellingen wilt terugzetten naar de standaardwaarden?')) {
-                setHRPreset('normal');
-                setBPPreset('normal');
-                console.log('🔄 Reset to default values');
-            }
-        }
-
-        function saveCirculatoirSettings() {
-            console.log('💾 Saving circulatoir settings...', currentSettings);
-            
-            if (currentPatientId && window.sharedDataManager) {
-                // Save patient-specific circulatoir settings
-                window.sharedDataManager.savePatientCirculatoirSettings(currentPatientId, currentSettings);
-                
-                // Also update the medical info with new thresholds
-                const medicalInfo = window.sharedDataManager.getPatientMedicalInfo(currentPatientId) || {};
-                if (!medicalInfo.customThresholds) {
-                    medicalInfo.customThresholds = {};
-                }
-                medicalInfo.customThresholds.circulatoir = {
-                    HR: currentSettings.hr,
-                    BP_Mean: currentSettings.bp
-                };
-                medicalInfo.lastUpdated = new Date().toISOString();
-                
-                window.sharedDataManager.savePatientMedicalInfo(currentPatientId, medicalInfo);
-                
-                alert('✅ Circulatoir instellingen succesvol opgeslagen!');
-                console.log('✅ Settings saved for patient:', currentPatientId);
-            } else {
-                alert('❌ Fout bij opslaan. Probeer opnieuw.');
-                console.error('❌ Cannot save - missing patient ID or data manager');
-            }
-        }
+        // Legacy functions removed - functionality now handled by slider components
 
         function goBackToAlarmOverview() {
             console.log('🔙 Navigating back to alarm overview');
