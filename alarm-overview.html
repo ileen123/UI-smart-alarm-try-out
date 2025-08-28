@@ -207,12 +207,19 @@
             
             console.log('Initializing heart circle components...');
             
+            // Get current heart monitoring level from SharedDataManager
+            let heartLevel = 'low';
+            if (currentPatientId && window.sharedDataManager) {
+                heartLevel = window.sharedDataManager.getHeartMonitoringLevel(currentPatientId);
+                console.log(`Loading heart monitoring level for patient ${currentPatientId}:`, heartLevel);
+            }
+            
             // Store references to the components for later control
             window.organComponents = {};
             
-            // Heart (circulatoir) - start active since patient is already assigned
+            // Heart (circulatoir) - use saved monitoring level
             console.log('Creating heart component...');
-            window.organComponents.heart = new HeartCircleComponent('heart-circle-container', { size: circleSize, initialState: 'low' });
+            window.organComponents.heart = new HeartCircleComponent('heart-circle-container', { size: circleSize, initialState: heartLevel });
             setTimeout(() => injectSVG('heart-circle-container', 'heart'), 100);
             
             // Lung (respiratoir) - start active since patient is already assigned
@@ -224,6 +231,15 @@
             console.log('Creating temp component...');
             window.organComponents.temp = new HeartCircleComponent('temp-circle-container', { size: circleSize, initialState: 'low' });
             setTimeout(() => injectSVG('temp-circle-container', 'temp'), 100);
+            
+            // Listen for global heart monitoring level changes
+            document.addEventListener('heartMonitoringLevelChanged', function(event) {
+                const { patientId, level } = event.detail;
+                if (patientId === currentPatientId && window.organComponents?.heart) {
+                    console.log(`Received heart monitoring level change for patient ${patientId}:`, level);
+                    window.organComponents.heart.setRiskLevel(level);
+                }
+            });
             
             // Make all circles appear active since patient is already assigned
             setTimeout(() => {
@@ -294,6 +310,11 @@
                     selectedRiskLevel = riskLevel;
                     console.log('Risk button clicked, detected risk level:', selectedRiskLevel);
                     updateOrganCirclesWithRisk(riskLevel);
+                    
+                    // Update global heart monitoring level
+                    if (currentPatientId && window.sharedDataManager) {
+                        window.sharedDataManager.updateGlobalHeartMonitoringLevel(currentPatientId, riskLevel);
+                    }
                 });
             });
 

@@ -655,6 +655,54 @@ class SharedDataManager {
     }
 
     /**
+     * Set heart monitoring level (loose, mid, tight)
+     */
+    setHeartMonitoringLevel(patientId, level) {
+        const appData = this.getAppData();
+        if (!appData.patients[patientId]) {
+            appData.patients[patientId] = {};
+        }
+        if (!appData.patients[patientId].monitoring) {
+            appData.patients[patientId].monitoring = {};
+        }
+        appData.patients[patientId].monitoring.heartLevel = level;
+        this.saveAppData(appData);
+        console.log(`Heart monitoring level set for patient ${patientId}:`, level);
+    }
+
+    /**
+     * Get heart monitoring level (returns 'mid' as default)
+     */
+    getHeartMonitoringLevel(patientId) {
+        const appData = this.getAppData();
+        return appData.patients?.[patientId]?.monitoring?.heartLevel || 'mid';
+    }
+
+    /**
+     * Update heart monitoring level globally across all components
+     */
+    updateGlobalHeartMonitoringLevel(patientId, level) {
+        // Save the level
+        this.setHeartMonitoringLevel(patientId, level);
+        
+        // Update all heart circle components if they exist
+        if (window.organComponents?.heart) {
+            window.organComponents.heart.setRiskLevel(level);
+        }
+        if (window.circulatoirHeartCircle) {
+            window.circulatoirHeartCircle.setRiskLevel(level);
+        }
+        
+        // Trigger custom event for any other listeners
+        const event = new CustomEvent('heartMonitoringLevelChanged', {
+            detail: { patientId, level }
+        });
+        document.dispatchEvent(event);
+        
+        console.log(`Global heart monitoring level updated for patient ${patientId}:`, level);
+    }
+
+    /**
      * Get threshold data for specific conditions (compatibility with old dataManager)
      */
     getThresholds(condition = 'normal') {

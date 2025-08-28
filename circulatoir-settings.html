@@ -624,14 +624,78 @@
         function initializeHeartCircleComponent() {
             // Use same size as alarm overview
             const circleSize = 130;
-            window.circulatoirHeartCircle = new HeartCircleComponent('circulatoir-heart-circle-container', { size: circleSize, initialState: 'mid' });
+            
+            // Get current monitoring level from SharedDataManager
+            let initialLevel = 'mid';
+            if (currentPatientId && window.sharedDataManager) {
+                initialLevel = window.sharedDataManager.getHeartMonitoringLevel(currentPatientId);
+                console.log(`Loading heart monitoring level for patient ${currentPatientId}:`, initialLevel);
+            }
+            
+            window.circulatoirHeartCircle = new HeartCircleComponent('circulatoir-heart-circle-container', { 
+                size: circleSize, 
+                initialState: initialLevel 
+            });
             setTimeout(() => injectSVG('circulatoir-heart-circle-container', 'heart'), 100);
+            
+            // Update button states to match loaded level
+            updateButtonStates(initialLevel);
+            
+            // Listen for global heart monitoring level changes
+            document.addEventListener('heartMonitoringLevelChanged', function(event) {
+                const { patientId, level } = event.detail;
+                if (patientId === currentPatientId) {
+                    console.log(`Received heart monitoring level change for patient ${patientId}:`, level);
+                    if (window.circulatoirHeartCircle) {
+                        window.circulatoirHeartCircle.setRiskLevel(level);
+                    }
+                    updateButtonStates(level);
+                }
+            });
+        }
+        
+        // Helper function to update button states
+        function updateButtonStates(level) {
+            // Map heart circle levels back to button levels
+            const levelMapping = {
+                'low': 'loose',
+                'mid': 'mid', 
+                'high': 'tight',
+                'loose': 'loose',  // fallback mappings
+                'tight': 'tight'
+            };
+            
+            const mappedLevel = levelMapping[level] || level;
+            console.log(`Updating button states: ${level} → ${mappedLevel}`);
+            
+            // Update button states
+            document.querySelectorAll('.button-group .btn').forEach(btn => {
+                btn.classList.remove('active', 'selected');
+            });
+            
+            const selectedButton = document.querySelector(`[data-level="${mappedLevel}"]`);
+            if (selectedButton) {
+                selectedButton.classList.add('selected');
+                console.log(`✅ Button ${mappedLevel} selected in updateButtonStates`);
+            } else {
+                console.warn(`❌ Button with data-level="${mappedLevel}" not found`);
+            }
         }
         });
 
         // Function to change monitoring level for all sliders
         function changeMonitoringLevel(level) {
             console.log(`🔄 Changing monitoring level to: ${level}`);
+            
+            // Map button levels to heart circle levels
+            const levelMapping = {
+                'loose': 'low',
+                'mid': 'mid',
+                'tight': 'high'
+            };
+            
+            const heartLevel = levelMapping[level] || level;
+            console.log(`Mapped ${level} to heart level: ${heartLevel}`);
             
             // Update button states - remove active/selected from all buttons
             document.querySelectorAll('.button-group .btn').forEach(btn => {
@@ -642,6 +706,21 @@
             const selectedButton = document.querySelector(`[data-level="${level}"]`);
             if (selectedButton) {
                 selectedButton.classList.add('selected');
+                console.log(`✅ Button ${level} selected`);
+            }
+            
+            // Update heart circle if it exists
+            if (window.circulatoirHeartCircle) {
+                console.log(`🫀 Updating heart circle to: ${heartLevel}`);
+                window.circulatoirHeartCircle.setRiskLevel(heartLevel);
+            } else {
+                console.warn('❌ circulatoirHeartCircle not found');
+            }
+            
+            // Save to SharedDataManager for global sync
+            if (currentPatientId && window.sharedDataManager) {
+                window.sharedDataManager.updateGlobalHeartMonitoringLevel(currentPatientId, heartLevel);
+                console.log(`✅ Saved heart level ${heartLevel} for patient ${currentPatientId}`);
             }
             
             // Update sliders if they exist
@@ -655,7 +734,7 @@
                 console.log('✅ BP slider monitoring level updated');
             }
             
-            console.log(`✅ Monitoring level changed to: ${level}`);
+            console.log(`✅ Monitoring level changed to: ${level} (heart: ${heartLevel})`);
         }
 
         function initializePage() {

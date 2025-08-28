@@ -270,6 +270,15 @@
                             window.organComponents.heart = new HeartCircleComponent('heart-circle-container', { size: circleSize, initialState: 'low' });
                             setTimeout(() => injectSVG('heart-circle-container', 'heart'), 100);
                             
+                            // Listen for global heart monitoring level changes
+                            document.addEventListener('heartMonitoringLevelChanged', function(event) {
+                                const { level } = event.detail;
+                                if (window.organComponents?.heart) {
+                                    console.log(`Received heart monitoring level change:`, level);
+                                    window.organComponents.heart.setRiskLevel(level);
+                                }
+                            });
+                            
                             // Lung (respiratoir) - start inactive
                             console.log('Creating lung component...');
                             window.organComponents.lung = new HeartCircleComponent('lung-circle-container', { size: circleSize, initialState: 'low' });
