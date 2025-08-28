@@ -177,6 +177,11 @@
             
             // Load existing settings after components are initialized
             loadExistingSettings();
+            
+            // Load saved heart monitoring level and apply it
+            setTimeout(() => {
+                loadSavedHeartMonitoringLevel();
+            }, 1000); // Increased delay to ensure it runs after loadExistingSettings
         });
 
         function initializeAlarmOverview() {
@@ -440,6 +445,42 @@
             }
         }
 
+        // Load and apply saved heart monitoring level from circulatoir settings
+        function loadSavedHeartMonitoringLevel() {
+            if (currentPatientId && window.sharedDataManager && window.organComponents?.heart) {
+                const savedHeartLevel = window.sharedDataManager.getHeartMonitoringLevel(currentPatientId);
+                console.log(`🫀 Loading saved heart monitoring level for patient ${currentPatientId}:`, savedHeartLevel);
+                
+                // Apply the saved level to the heart circle
+                window.organComponents.heart.setRiskLevel(savedHeartLevel);
+                console.log(`✅ Applied saved heart monitoring level: ${savedHeartLevel}`);
+                
+                // Update the risk level buttons if they correspond to the heart level
+                updateRiskButtonsForHeartLevel(savedHeartLevel);
+            }
+        }
+        
+        // Helper function to update risk level buttons based on heart monitoring level
+        function updateRiskButtonsForHeartLevel(heartLevel) {
+            // Only update buttons if the heart level was manually set in circulatoir settings
+            // (not if it was derived from a problem/risk selection)
+            const riskLevelMapping = {
+                'low': 'low',
+                'mid': 'med', 
+                'high': 'high'
+            };
+            
+            const correspondingRiskLevel = riskLevelMapping[heartLevel];
+            if (correspondingRiskLevel) {
+                // Check if this matches the currently selected risk level
+                if (!selectedRiskLevel || selectedRiskLevel !== correspondingRiskLevel) {
+                    console.log(`🔄 Heart monitoring level (${heartLevel}) suggests risk level: ${correspondingRiskLevel}`);
+                    // Note: We don't automatically change the risk buttons as they might have been set independently
+                    // The heart circle level can be different from the overall risk level
+                }
+            }
+        }
+
         function selectRiskLevel(riskLevel) {
             // Clear previous selection
             document.querySelectorAll('.btn.risk-low, .btn.risk-med, .btn.risk-high').forEach(btn => {
@@ -612,6 +653,14 @@
             console.log('Problem selected:', problemValue);
             selectedProblem = problemValue;
             updateOrganCircles();
+            
+            // Save current medical info including the problem selection
+            if (currentPatientId && window.sharedDataManager) {
+                const currentMedicalInfo = window.sharedDataManager.getPatientMedicalInfo(currentPatientId) || {};
+                currentMedicalInfo.selectedProblem = problemValue;
+                window.sharedDataManager.savePatientMedicalInfo(currentPatientId, currentMedicalInfo);
+                console.log('✅ Problem selection saved for patient:', currentPatientId, problemValue);
+            }
         }
         
         // Function to update organ circles based on risk level
@@ -669,14 +718,49 @@
             
             // Update each organ component
             if (window.organComponents && window.organComponents.heart) {
-                console.log('🔍 DEBUG: Heart component found, setting risk level:', finalOrganStates.heart);
-                window.organComponents.heart.setRiskLevel(finalOrganStates.heart);
+                console.log('🔍 DEBUG: Heart component found, checking for manual override...');
+                
+                // Check if there's a manually set heart monitoring level that should take precedence
+                const currentSavedLevel = window.sharedDataManager.getHeartMonitoringLevel(currentPatientId);
+                const calculatedLevel = finalOrganStates.heart;
+                
+                console.log('🔍 DEBUG: Current saved heart level:', currentSavedLevel);
+                console.log('🔍 DEBUG: Calculated heart level:', calculatedLevel);
+                
+                // Use manually set level if it exists and is different from default 'mid'
+                // OR if it was recently changed (within last 1 second) to prioritize manual changes
+                let levelToUse = calculatedLevel;
+                const recentManualChange = sessionStorage.getItem('recentHeartLevelChange');
+                
+                if (recentManualChange) {
+                    const changeTime = parseInt(recentManualChange);
+                    const timeDiff = Date.now() - changeTime;
+                    if (timeDiff < 1000) { // Within last 1 second
+                        levelToUse = currentSavedLevel;
+                        console.log('🫀 Using recently manually set heart level:', levelToUse);
+                    } else {
+                        sessionStorage.removeItem('recentHeartLevelChange');
+                    }
+                } else if (currentSavedLevel !== 'mid' && currentSavedLevel !== calculatedLevel) {
+                    // Manual level exists and differs from calculated - ask user or use manual
+                    levelToUse = currentSavedLevel;
+                    console.log('🫀 Using existing manual heart level:', levelToUse);
+                }
+                
+                window.organComponents.heart.setRiskLevel(levelToUse);
+                
+                // Only save if we're using the calculated level (not overriding manual setting)
+                if (levelToUse === calculatedLevel) {
+                    window.sharedDataManager.updateGlobalHeartMonitoringLevel(currentPatientId, levelToUse);
+                    console.log('✅ Heart monitoring level saved globally:', levelToUse);
+                }
+                
                 window.sharedDataManager.setOrganSettings('circulatoir', { 
                     active: isActivated, 
                     severity: isActivated ? 'active' : 'los', 
-                    riskLevel: finalOrganStates.heart 
+                    riskLevel: levelToUse 
                 });
-                console.log('Heart set to:', finalOrganStates.heart);
+                console.log('Heart set to:', levelToUse);
             } else {
                 console.error('❌ DEBUG: Heart component not found in window.organComponents');
             }

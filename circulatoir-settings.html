@@ -638,8 +638,22 @@
             });
             setTimeout(() => injectSVG('circulatoir-heart-circle-container', 'heart'), 100);
             
+            // Map heart circle levels to button levels for initial setup
+            const levelMapping = {
+                'low': 'loose',
+                'mid': 'mid', 
+                'high': 'tight'
+            };
+            
+            const buttonLevel = levelMapping[initialLevel] || 'mid';
+            
             // Update button states to match loaded level
-            updateButtonStates(initialLevel);
+            updateButtonStates(buttonLevel);
+            
+            // Update sliders to match loaded level (wait for sliders to be initialized)
+            setTimeout(() => {
+                updateSlidersMonitoringLevel(buttonLevel);
+            }, 1500); // Wait for sliders to be fully initialized
             
             // Listen for global heart monitoring level changes
             document.addEventListener('heartMonitoringLevelChanged', function(event) {
@@ -649,7 +663,10 @@
                     if (window.circulatoirHeartCircle) {
                         window.circulatoirHeartCircle.setRiskLevel(level);
                     }
-                    updateButtonStates(level);
+                    
+                    const buttonLevel = levelMapping[level] || 'mid';
+                    updateButtonStates(buttonLevel);
+                    updateSlidersMonitoringLevel(buttonLevel);
                 }
             });
         }
@@ -679,6 +696,27 @@
                 console.log(`✅ Button ${mappedLevel} selected in updateButtonStates`);
             } else {
                 console.warn(`❌ Button with data-level="${mappedLevel}" not found`);
+            }
+        }
+        
+        // Helper function to update sliders monitoring level
+        function updateSlidersMonitoringLevel(level) {
+            console.log(`🎛️ Updating sliders monitoring level to: ${level}`);
+            
+            // Update HR slider if it exists
+            if (hrSlider && typeof hrSlider.updateMonitoringLevel === 'function') {
+                hrSlider.updateMonitoringLevel(level);
+                console.log('✅ HR slider monitoring level updated to:', level);
+            } else {
+                console.warn('❌ HR slider not found or updateMonitoringLevel method not available');
+            }
+            
+            // Update BP slider if it exists
+            if (bpSlider && typeof bpSlider.updateMonitoringLevel === 'function') {
+                bpSlider.updateMonitoringLevel(level);
+                console.log('✅ BP slider monitoring level updated to:', level);
+            } else {
+                console.warn('❌ BP slider not found or updateMonitoringLevel method not available');
             }
         }
         });
@@ -721,18 +759,13 @@
             if (currentPatientId && window.sharedDataManager) {
                 window.sharedDataManager.updateGlobalHeartMonitoringLevel(currentPatientId, heartLevel);
                 console.log(`✅ Saved heart level ${heartLevel} for patient ${currentPatientId}`);
+                
+                // Mark this as a recent manual change to prioritize it over calculated values
+                sessionStorage.setItem('recentHeartLevelChange', Date.now().toString());
             }
             
             // Update sliders if they exist
-            if (hrSlider && typeof hrSlider.updateMonitoringLevel === 'function') {
-                hrSlider.updateMonitoringLevel(level);
-                console.log('✅ HR slider monitoring level updated');
-            }
-            
-            if (bpSlider && typeof bpSlider.updateMonitoringLevel === 'function') {
-                bpSlider.updateMonitoringLevel(level);
-                console.log('✅ BP slider monitoring level updated');
-            }
+            updateSlidersMonitoringLevel(level);
             
             console.log(`✅ Monitoring level changed to: ${level} (heart: ${heartLevel})`);
         }
