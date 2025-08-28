@@ -38,6 +38,11 @@ class VitalParameterSlider {
         
         this.render();
         this.attachEventListeners();
+        
+        // Load existing settings from SharedDataManager after initial render
+        setTimeout(() => {
+            this.loadExistingSettings();
+        }, 100);
     }
 
     calculateScale() {
@@ -179,8 +184,8 @@ class VitalParameterSlider {
         try {
             // Determine SVG file names based on monitoring level
             const level = this.config.monitoringLevel.charAt(0).toUpperCase() + this.config.monitoringLevel.slice(1);
-            const upperSvgFile = `./${level}.svg`;
-            const lowerSvgFile = `./${level}_down.svg`;
+            const upperSvgFile = `./svg's/${level}.svg`;
+            const lowerSvgFile = `./svg's/${level}_down.svg`;
             
             console.log(`Loading SVG files: ${upperSvgFile} and ${lowerSvgFile}`);
             
@@ -425,6 +430,110 @@ class VitalParameterSlider {
         this.container.querySelector('.vital-slider').style.boxShadow = '0 10px 30px rgba(0, 0, 0, 0.1)';
     }
 
+    /**
+     * Load existing settings from SharedDataManager
+     */
+    loadExistingSettings() {
+        if (window.sharedDataManager && this.config.patientId) {
+            try {
+                console.log(`🔄 Loading existing settings for ${this.config.parameter} from patient ${this.config.patientId}`);
+                
+                // Get patient medical info
+                const medicalInfo = window.sharedDataManager.getPatientMedicalInfo(this.config.patientId);
+                
+                if (medicalInfo && medicalInfo.customThresholds) {
+                    // Determine which organ system this parameter belongs to
+                    let organSystem = 'overig'; // default
+                    if (['HR', 'BP_Mean'].includes(this.config.parameter)) {
+                        organSystem = 'circulatoir';
+                    } else if (['Saturatie', 'RR', 'AF'].includes(this.config.parameter)) {
+                        organSystem = 'respiratoir';
+                    } else if (['Temp'].includes(this.config.parameter)) {
+                        organSystem = 'overig';
+                    }
+                    
+                    // Check if custom thresholds exist for this parameter
+                    const customThreshold = medicalInfo.customThresholds[organSystem]?.[this.config.parameter];
+                    
+                    if (customThreshold) {
+                        console.log(`✅ Found custom threshold for ${this.config.parameter}:`, customThreshold);
+                        
+                        // Update current values
+                        this.currentMin = customThreshold.min;
+                        this.currentMax = customThreshold.max;
+                        
+                        // Update the configuration
+                        this.config.targetRange.min = customThreshold.min;
+                        this.config.targetRange.max = customThreshold.max;
+                        
+                        // Update the UI
+                        this.updateSliderPosition();
+                        this.updateDisplayValues();
+                        
+                        console.log(`✅ Loaded settings: ${this.currentMin}-${this.currentMax} ${this.config.unit}`);
+                        return true;
+                    }
+                }
+                
+                // Try to load from condition-based thresholds (sepsis, etc.)
+                if (medicalInfo && medicalInfo.selectedTags) {
+                    const thresholds = window.sharedDataManager.getThresholdsByTags(medicalInfo.selectedTags);
+                    
+                    if (thresholds && this.config.parameter === 'HR' && thresholds.circulatoir?.HR) {
+                        const hrThresholds = thresholds.circulatoir.HR;
+                        this.currentMin = hrThresholds.min;
+                        this.currentMax = hrThresholds.max;
+                        this.config.targetRange.min = hrThresholds.min;
+                        this.config.targetRange.max = hrThresholds.max;
+                        
+                        this.updateSliderPosition();
+                        this.updateDisplayValues();
+                        
+                        console.log(`✅ Loaded condition-based HR thresholds: ${this.currentMin}-${this.currentMax} ${this.config.unit}`);
+                        return true;
+                    } else if (thresholds && this.config.parameter === 'BP_Mean' && thresholds.circulatoir?.BP_Mean) {
+                        const bpThresholds = thresholds.circulatoir.BP_Mean;
+                        this.currentMin = bpThresholds.min;
+                        this.currentMax = bpThresholds.max;
+                        this.config.targetRange.min = bpThresholds.min;
+                        this.config.targetRange.max = bpThresholds.max;
+                        
+                        this.updateSliderPosition();
+                        this.updateDisplayValues();
+                        
+                        console.log(`✅ Loaded condition-based BP thresholds: ${this.currentMin}-${this.currentMax} ${this.config.unit}`);
+                        return true;
+                    }
+                }
+                
+                console.log(`ℹ️ No custom settings found for ${this.config.parameter}, using defaults`);
+                return false;
+                
+            } catch (error) {
+                console.error('❌ Error loading existing settings:', error);
+                return false;
+            }
+        } else {
+            console.log('⚠️ SharedDataManager or patientId not available');
+            return false;
+        }
+    }
+
+    /**
+     * Update display values in the UI
+     */
+    updateDisplayValues() {
+        const maxValueElement = this.container.querySelector('.sliding-value-outside.max-value');
+        const minValueElement = this.container.querySelector('.sliding-value-outside.min-value');
+        
+        if (maxValueElement) {
+            maxValueElement.textContent = this.currentMax;
+        }
+        if (minValueElement) {
+            minValueElement.textContent = this.currentMin;
+        }
+    }
+
     saveChanges() {
         const button = this.container.querySelector('.save-button');
         const originalText = button.textContent;
@@ -432,17 +541,110 @@ class VitalParameterSlider {
         button.textContent = 'Saving...';
         button.disabled = true;
         
-        // Simulate save operation
-        setTimeout(() => {
-            button.textContent = 'Saved ✓';
-            button.style.background = 'linear-gradient(135deg, #00b894, #00a085)';
-            
+        // Save to SharedDataManager if available
+        if (window.sharedDataManager && this.config.patientId) {
+            try {
+                // Create the settings object based on parameter type
+                const settingsData = {
+                    [this.config.parameter]: {
+                        min: this.currentMin,
+                        max: this.currentMax,
+                        unit: this.config.unit
+                    }
+                };
+                
+                // Determine which organ system this parameter belongs to
+                let organSystem = 'overig'; // default
+                if (['HR', 'BP_Mean'].includes(this.config.parameter)) {
+                    organSystem = 'circulatoir';
+                } else if (['Saturatie', 'RR', 'AF'].includes(this.config.parameter)) {
+                    organSystem = 'respiratoir';
+                } else if (['Temp'].includes(this.config.parameter)) {
+                    organSystem = 'overig';
+                }
+                
+                // Get existing patient medical info
+                const medicalInfo = window.sharedDataManager.getPatientMedicalInfo(this.config.patientId) || {};
+                
+                // Initialize custom thresholds if not exists
+                if (!medicalInfo.customThresholds) {
+                    medicalInfo.customThresholds = {};
+                }
+                if (!medicalInfo.customThresholds[organSystem]) {
+                    medicalInfo.customThresholds[organSystem] = {};
+                }
+                
+                // Update the specific parameter
+                medicalInfo.customThresholds[organSystem][this.config.parameter] = {
+                    min: this.currentMin,
+                    max: this.currentMax,
+                    unit: this.config.unit
+                };
+                medicalInfo.lastUpdated = new Date().toISOString();
+                
+                // Save updated medical info
+                window.sharedDataManager.savePatientMedicalInfo(this.config.patientId, medicalInfo);
+                
+                // For circulatoir parameters, also save to specific circulatoir settings
+                if (organSystem === 'circulatoir') {
+                    const circulatoirSettings = window.sharedDataManager.getPatientCirculatoirSettings(this.config.patientId) || {
+                        hr: { min: 70, max: 110 },
+                        bp: { min: 65, max: 85 }
+                    };
+                    
+                    if (this.config.parameter === 'HR') {
+                        circulatoirSettings.hr = { min: this.currentMin, max: this.currentMax };
+                    } else if (this.config.parameter === 'BP_Mean') {
+                        circulatoirSettings.bp = { min: this.currentMin, max: this.currentMax };
+                    }
+                    
+                    window.sharedDataManager.savePatientCirculatoirSettings(this.config.patientId, circulatoirSettings);
+                }
+                
+                console.log(`✅ Saved ${this.config.parameter} settings to SharedDataManager for patient ${this.config.patientId}`);
+                
+                // Real save with success feedback
+                setTimeout(() => {
+                    button.textContent = 'Saved ✓';
+                    button.style.background = 'linear-gradient(135deg, #00b894, #00a085)';
+                    
+                    setTimeout(() => {
+                        button.textContent = originalText;
+                        button.disabled = false;
+                        button.style.background = '';
+                    }, 1500);
+                }, 300);
+                
+            } catch (error) {
+                console.error('❌ Error saving to SharedDataManager:', error);
+                
+                // Show error feedback
+                setTimeout(() => {
+                    button.textContent = 'Error ✗';
+                    button.style.background = 'linear-gradient(135deg, #e74c3c, #c0392b)';
+                    
+                    setTimeout(() => {
+                        button.textContent = originalText;
+                        button.disabled = false;
+                        button.style.background = '';
+                    }, 2000);
+                }, 300);
+            }
+        } else {
+            // Fallback to simulation if no data manager available
             setTimeout(() => {
-                button.textContent = originalText;
-                button.disabled = false;
-                button.style.background = '';
-            }, 1500);
-        }, 800);
+                button.textContent = 'Saved ✓';
+                button.style.background = 'linear-gradient(135deg, #00b894, #00a085)';
+                
+                setTimeout(() => {
+                    button.textContent = originalText;
+                    button.disabled = false;
+                    button.style.background = '';
+                }, 1500);
+            }, 800);
+            
+            console.log('⚠️ SharedDataManager not available, using simulation mode');
+        }
         
         this.notifyChange('save');
         console.log(`Saved changes for ${this.config.name}:`, {
@@ -614,6 +816,124 @@ class PatientConfigurationHelper {
             targetRange: targetRange,
             yAxis: yAxisConfig
         };
+    }
+
+    /**
+     * Create a VitalParameterSlider with patient data from SharedDataManager
+     */
+    static createSliderFromSharedData(container, parameter, patientId, options = {}) {
+        if (!window.sharedDataManager || !patientId) {
+            console.error('❌ SharedDataManager or patientId not available');
+            return null;
+        }
+
+        try {
+            // Get patient info
+            const patientInfo = window.sharedDataManager.getPatientInfo(patientId);
+            if (!patientInfo) {
+                console.error(`❌ Patient info not found for ID: ${patientId}`);
+                return null;
+            }
+
+            // Get patient medical info to check for existing thresholds
+            const medicalInfo = window.sharedDataManager.getPatientMedicalInfo(patientId);
+            
+            // Determine default target range based on parameter
+            let defaultTargetRange;
+            const thresholds = window.sharedDataManager.getThresholds('normal');
+            
+            switch (parameter) {
+                case 'HR':
+                    defaultTargetRange = thresholds.circulatoir?.HR ? 
+                        { min: thresholds.circulatoir.HR.min, max: thresholds.circulatoir.HR.max } :
+                        { min: 70, max: 110 };
+                    break;
+                case 'BP_Mean':
+                    defaultTargetRange = thresholds.circulatoir?.BP_Mean ? 
+                        { min: thresholds.circulatoir.BP_Mean.min, max: thresholds.circulatoir.BP_Mean.max } :
+                        { min: 65, max: 85 };
+                    break;
+                case 'Saturatie':
+                    defaultTargetRange = thresholds.respiratoir?.Saturatie ? 
+                        { min: thresholds.respiratoir.Saturatie.min, max: thresholds.respiratoir.Saturatie.max } :
+                        { min: 90, max: 100 };
+                    break;
+                case 'RR':
+                case 'AF':
+                    defaultTargetRange = thresholds.respiratoir?.AF ? 
+                        { min: thresholds.respiratoir.AF.min, max: thresholds.respiratoir.AF.max } :
+                        { min: 10, max: 25 };
+                    break;
+                case 'Temp':
+                    defaultTargetRange = thresholds.overig?.Temp ? 
+                        { min: thresholds.overig.Temp.min, max: thresholds.overig.Temp.max } :
+                        { min: 36.5, max: 39 };
+                    break;
+                default:
+                    defaultTargetRange = { min: 0, max: 100 };
+            }
+
+            // Check for condition-based thresholds (sepsis, etc.)
+            if (medicalInfo && medicalInfo.selectedTags) {
+                const conditionThresholds = window.sharedDataManager.getThresholdsByTags(medicalInfo.selectedTags);
+                if (conditionThresholds) {
+                    if (parameter === 'HR' && conditionThresholds.circulatoir?.HR) {
+                        defaultTargetRange = {
+                            min: conditionThresholds.circulatoir.HR.min,
+                            max: conditionThresholds.circulatoir.HR.max
+                        };
+                    } else if (parameter === 'BP_Mean' && conditionThresholds.circulatoir?.BP_Mean) {
+                        defaultTargetRange = {
+                            min: conditionThresholds.circulatoir.BP_Mean.min,
+                            max: conditionThresholds.circulatoir.BP_Mean.max
+                        };
+                    }
+                }
+            }
+
+            // Get parameter-specific configuration
+            let parameterConfig;
+            switch (parameter) {
+                case 'HR':
+                    parameterConfig = this.getHeartRateConfig(patientInfo, defaultTargetRange);
+                    break;
+                case 'BP_Mean':
+                    parameterConfig = this.getBloodPressureConfig(patientInfo, defaultTargetRange);
+                    break;
+                case 'Temp':
+                    parameterConfig = this.getTemperatureConfig(patientInfo, defaultTargetRange);
+                    break;
+                case 'Saturatie':
+                    parameterConfig = this.getSaturationConfig(patientInfo, defaultTargetRange);
+                    break;
+                case 'RR':
+                case 'AF':
+                    parameterConfig = this.getRespiratoryRateConfig(patientInfo, defaultTargetRange);
+                    break;
+                default:
+                    console.error(`❌ Unknown parameter: ${parameter}`);
+                    return null;
+            }
+
+            // Merge with any provided options
+            const config = {
+                ...parameterConfig,
+                patientId: patientId,
+                patientName: patientInfo.name,
+                monitoringLevel: options.monitoringLevel || 'mid',
+                onChange: options.onChange || (() => {}),
+                ...options
+            };
+
+            console.log(`✅ Creating slider for ${parameter} with config:`, config);
+
+            // Create and return the slider
+            return new VitalParameterSlider(container, config);
+
+        } catch (error) {
+            console.error('❌ Error creating slider from shared data:', error);
+            return null;
+        }
     }
 }
 

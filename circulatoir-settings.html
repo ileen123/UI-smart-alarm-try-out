@@ -15,10 +15,14 @@
     
     <!-- Link to external CSS file for styling -->
     <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="slider-component.css">
     
     <!-- Data Manager for cross-page data synchronization -->
     <script src="js/data-manager.js"></script>
     <script src="js/shared-data-manager.js"></script>
+    
+    <!-- Slider Component -->
+    <script src="slider-component.js"></script>
 </head>
 <body>
     <!-- Patient information header section -->
@@ -140,6 +144,46 @@
                 <div class="preview-item">
                     <span class="preview-label">Bloeddruk bereik:</span>
                     <span class="preview-value" id="preview-bp">65 - 85 mmHg</span>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Interactive Slider Demo Section -->
+        <div class="slider-demo-section">
+            <h3>🎛️ Interactieve Slider Configuratie</h3>
+            <p class="demo-description">
+                Gebruik de onderstaande sliders voor een meer visuele en interactieve manier om de circulatoir parameters in te stellen.
+            </p>
+            
+            <!-- Monitoring Level Controls -->
+            <div class="monitoring-level-controls">
+                <h4>Monitoring Level</h4>
+                <p class="monitoring-description">Kies de monitoring intensiteit voor de visuele weergave:</p>
+                <div class="level-buttons">
+                    <button class="level-btn" data-level="loose" onclick="changeMonitoringLevel('loose')">
+                        <strong>Loose</strong><br>
+                        <span>Brede tolerantie</span>
+                    </button>
+                    <button class="level-btn active" data-level="mid" onclick="changeMonitoringLevel('mid')">
+                        <strong>Mid</strong><br>
+                        <span>Standaard monitoring</span>
+                    </button>
+                    <button class="level-btn" data-level="tight" onclick="changeMonitoringLevel('tight')">
+                        <strong>Tight</strong><br>
+                        <span>Strikte controle</span>
+                    </button>
+                </div>
+            </div>
+            
+            <div class="slider-containers">
+                <div class="slider-container">
+                    <h4>Hartslag (HR) Slider</h4>
+                    <div id="hr-slider-container"></div>
+                </div>
+                
+                <div class="slider-container">
+                    <h4>Bloeddruk (MAP) Slider</h4>
+                    <div id="bp-slider-container"></div>
                 </div>
             </div>
         </div>
@@ -376,6 +420,120 @@
             font-size: 16px;
         }
         
+        /* Slider Demo Section Styles */
+        .slider-demo-section {
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 30px;
+            margin-top: 30px;
+            border: 2px solid #dee2e6;
+        }
+        
+        .slider-demo-section h3 {
+            color: #2c3e50;
+            font-size: 22px;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+        
+        .demo-description {
+            text-align: center;
+            color: #6c757d;
+            font-size: 16px;
+            margin-bottom: 25px;
+            line-height: 1.5;
+        }
+        
+        .slider-containers {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+        }
+        
+        .slider-container {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            border: 1px solid #e9ecef;
+        }
+        
+        .slider-container h4 {
+            color: #495057;
+            font-size: 18px;
+            margin-bottom: 15px;
+            text-align: center;
+            font-weight: 600;
+        }
+        
+        .slider-container > div {
+            min-height: 300px;
+        }
+        
+        /* Monitoring Level Controls */
+        .monitoring-level-controls {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: white;
+            border-radius: 8px;
+            border: 1px solid #e9ecef;
+        }
+        
+        .monitoring-level-controls h4 {
+            color: #495057;
+            font-size: 18px;
+            margin-bottom: 10px;
+            font-weight: 600;
+        }
+        
+        .monitoring-description {
+            color: #6c757d;
+            font-size: 14px;
+            margin-bottom: 20px;
+        }
+        
+        .level-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+        }
+        
+        .level-btn {
+            background: #f8f9fa;
+            border: 2px solid #dee2e6;
+            border-radius: 8px;
+            padding: 15px 20px;
+            font-size: 14px;
+            color: #495057;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            min-width: 120px;
+        }
+        
+        .level-btn:hover {
+            background: #e9ecef;
+            border-color: #adb5bd;
+            transform: translateY(-2px);
+        }
+        
+        .level-btn.active {
+            background: #007bff;
+            border-color: #007bff;
+            color: white;
+        }
+        
+        .level-btn strong {
+            display: block;
+            margin-bottom: 5px;
+            font-size: 16px;
+        }
+        
+        .level-btn span {
+            font-size: 12px;
+            opacity: 0.8;
+        }
+        
         /* Responsive design */
         @media (max-width: 768px) {
             .circulatoir-settings-container {
@@ -411,13 +569,91 @@
             hr: { min: 70, max: 110 },
             bp: { min: 65, max: 85 }
         };
+        
+        // Store slider references for monitoring level changes
+        let hrSlider = null;
+        let bpSlider = null;
 
         // Initialize page when DOM is loaded
         document.addEventListener('DOMContentLoaded', function() {
             initializePage();
             setupEventListeners();
             loadCurrentSettings();
+            
+            // Initialize sliders after a delay to ensure all components are loaded
+            setTimeout(() => {
+                initializeSliders();
+            }, 1000);
+            
+            // Simple test to verify slider component works
+            setTimeout(() => {
+                testSliderBasic();
+            }, 2000);
         });
+
+        function testSliderBasic() {
+            console.log('🧪 Testing basic slider functionality...');
+            
+            if (window.VitalParameterSlider) {
+                console.log('✅ VitalParameterSlider class is available');
+                
+                // Create a simple test container
+                const testContainer = document.createElement('div');
+                testContainer.style.cssText = 'position: fixed; top: 10px; right: 10px; width: 200px; height: 150px; background: white; border: 1px solid #ccc; z-index: 9999;';
+                document.body.appendChild(testContainer);
+                
+                try {
+                    // Create a basic slider
+                    const testSlider = new window.VitalParameterSlider(testContainer, {
+                        parameter: 'HR',
+                        name: 'Test Heart Rate',
+                        unit: 'bpm',
+                        targetRange: { min: 70, max: 110 },
+                        yAxis: { min: 40, max: 140, step: 20 },
+                        monitoringLevel: 'tight',
+                        patientId: 'test',
+                        patientName: 'Test Patient'
+                    });
+                    
+                    console.log('✅ Basic slider created successfully');
+                    
+                    // Remove test after 5 seconds
+                    setTimeout(() => {
+                        document.body.removeChild(testContainer);
+                    }, 5000);
+                    
+                } catch (error) {
+                    console.error('❌ Basic slider test failed:', error);
+                    testContainer.innerHTML = `<p style="color: red; font-size: 12px; padding: 5px;">Slider Error: ${error.message}</p>`;
+                }
+            } else {
+                console.error('❌ VitalParameterSlider class not found');
+            }
+        }
+
+        // Function to change monitoring level for all sliders
+        function changeMonitoringLevel(level) {
+            console.log(`🔄 Changing monitoring level to: ${level}`);
+            
+            // Update button states
+            document.querySelectorAll('.level-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            document.querySelector(`[data-level="${level}"]`).classList.add('active');
+            
+            // Update sliders if they exist
+            if (hrSlider && typeof hrSlider.updateMonitoringLevel === 'function') {
+                hrSlider.updateMonitoringLevel(level);
+                console.log('✅ HR slider monitoring level updated');
+            }
+            
+            if (bpSlider && typeof bpSlider.updateMonitoringLevel === 'function') {
+                bpSlider.updateMonitoringLevel(level);
+                console.log('✅ BP slider monitoring level updated');
+            }
+            
+            console.log(`✅ Monitoring level changed to: ${level}`);
+        }
 
         function initializePage() {
             console.log('🔄 Initializing circulatoir settings page...');
@@ -511,6 +747,103 @@
                 
                 // Update the UI with loaded settings
                 applySettingsToUI();
+            }
+        }
+
+        function initializeSliders() {
+            console.log('🎛️ Initializing interactive sliders...');
+            
+            // Check if slider components are loaded
+            if (!window.VitalParameterSlider) {
+                console.error('❌ VitalParameterSlider class not found');
+                document.getElementById('hr-slider-container').innerHTML = '<p style="color: red;">Slider component not loaded - VitalParameterSlider missing</p>';
+                return;
+            }
+            
+            if (!window.PatientConfigurationHelper) {
+                console.error('❌ PatientConfigurationHelper class not found');
+                document.getElementById('bp-slider-container').innerHTML = '<p style="color: red;">Slider component not loaded - PatientConfigurationHelper missing</p>';
+                return;
+            }
+            
+            if (!currentPatientId) {
+                console.error('❌ No patient ID available for sliders');
+                document.getElementById('hr-slider-container').innerHTML = '<p style="color: orange;">No patient ID available</p>';
+                document.getElementById('bp-slider-container').innerHTML = '<p style="color: orange;">No patient ID available</p>';
+                return;
+            }
+            
+            console.log('✅ All prerequisites met, creating sliders for patient:', currentPatientId);
+            
+            try {
+                // Initialize HR Slider
+                const hrContainer = document.getElementById('hr-slider-container');
+                if (hrContainer) {
+                    console.log('🫀 Creating HR slider...');
+                    hrContainer.innerHTML = '<p style="color: blue;">Loading HR slider...</p>';
+                    
+                    hrSlider = window.PatientConfigurationHelper.createSliderFromSharedData(
+                        hrContainer, 
+                        'HR', 
+                        currentPatientId,
+                        {
+                            monitoringLevel: 'mid',
+                            onChange: (data) => {
+                                console.log('HR Slider changed:', data);
+                                if (data.type === 'save') {
+                                    // Sync with main form
+                                    document.getElementById('hr-min').value = data.min;
+                                    document.getElementById('hr-max').value = data.max;
+                                    updateHRDisplay();
+                                }
+                            }
+                        }
+                    );
+                    
+                    if (hrSlider) {
+                        console.log('✅ HR Slider initialized successfully');
+                    } else {
+                        console.error('❌ HR Slider initialization failed');
+                        hrContainer.innerHTML = '<p style="color: red;">HR Slider initialization failed</p>';
+                    }
+                }
+                
+                // Initialize BP Slider
+                const bpContainer = document.getElementById('bp-slider-container');
+                if (bpContainer) {
+                    console.log('🩸 Creating BP slider...');
+                    bpContainer.innerHTML = '<p style="color: blue;">Loading BP slider...</p>';
+                    
+                    bpSlider = window.PatientConfigurationHelper.createSliderFromSharedData(
+                        bpContainer, 
+                        'BP_Mean', 
+                        currentPatientId,
+                        {
+                            monitoringLevel: 'mid',
+                            onChange: (data) => {
+                                console.log('BP Slider changed:', data);
+                                if (data.type === 'save') {
+                                    // Sync with main form
+                                    document.getElementById('bp-min').value = data.min;
+                                    document.getElementById('bp-max').value = data.max;
+                                    updateBPDisplay();
+                                }
+                            }
+                        }
+                    );
+                    
+                    if (bpSlider) {
+                        console.log('✅ BP Slider initialized successfully');
+                    } else {
+                        console.error('❌ BP Slider initialization failed');
+                        bpContainer.innerHTML = '<p style="color: red;">BP Slider initialization failed</p>';
+                    }
+                }
+                
+            } catch (error) {
+                console.error('❌ Error initializing sliders:', error);
+                document.getElementById('hr-slider-container').innerHTML = `<p style="color: red;">Error: ${error.message}</p>`;
+                document.getElementById('bp-slider-container').innerHTML = `<p style="color: red;">Error: ${error.message}</p>`;
             }
         }
 
