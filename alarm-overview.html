@@ -246,6 +246,15 @@
                 }
             });
             
+            // Listen for target range changes
+            window.addEventListener('targetRangesChanged', function(event) {
+                const { patientId, targetRanges } = event.detail;
+                if (patientId === currentPatientId) {
+                    console.log('🎯 Target ranges changed in alarm overview:', targetRanges);
+                    updateParameterRanges(); // Refresh the displayed ranges
+                }
+            });
+            
             // Make all circles appear active since patient is already assigned
             setTimeout(() => {
                 updateAllOpacity(true);
@@ -513,53 +522,100 @@
         function updateParameterRanges() {
             console.log('🔍 DEBUG: Updating parameter ranges for selected tags:', selectedTags);
             
-            // Check if sepsis is selected
-            const hasSepsis = selectedTags.some(tag => tag.toLowerCase().includes('sepsis'));
-            console.log('🔍 DEBUG: Has sepsis tag:', hasSepsis);
+            // Get patient-specific target ranges first
+            let targetRanges = null;
+            if (currentPatientId && window.sharedDataManager) {
+                targetRanges = window.sharedDataManager.getPatientTargetRanges(currentPatientId);
+                console.log('🎯 Patient target ranges:', targetRanges);
+            }
             
-            // Get thresholds from shared data manager
-            const normalThresholds = window.sharedDataManager.getThresholds('normal');
-            const sepsisThresholds = window.sharedDataManager.getThresholds('conditions')?.sepsis;
-            
-            console.log('🔍 DEBUG: Normal thresholds:', normalThresholds);
-            console.log('🔍 DEBUG: Sepsis thresholds:', sepsisThresholds);
-            
-            // Determine which thresholds to use
-            const currentThresholds = hasSepsis && sepsisThresholds ? 
-                {
-                    ...normalThresholds,
-                    circulatoir: {
-                        ...normalThresholds.circulatoir,
-                        ...sepsisThresholds.circulatoir
-                    }
-                } : normalThresholds;
-            
-            console.log('🔍 DEBUG: Using thresholds:', currentThresholds);
-            
-            // Update circulatory parameters (HR) - find the heart rate display
-            const circulatoryCard = document.querySelector('.value-card');
-            const hrRange = circulatoryCard?.querySelector('.value-number');
-            
-            if (hrRange && currentThresholds.circulatoir && currentThresholds.circulatoir.HR) {
-                const hr = currentThresholds.circulatoir.HR;
-                hrRange.textContent = hr.min + ' - ' + hr.max + ' ' + hr.unit;
+            // If we have target ranges, use them; otherwise fall back to condition-based logic
+            if (targetRanges) {
+                // Update HR display with target ranges
+                const circulatoryCard = document.querySelector('.value-card');
+                const hrRange = circulatoryCard?.querySelector('.value-number');
                 
-                console.log('🔍 DEBUG: Updated HR range to:', hr.min + ' - ' + hr.max + ' ' + hr.unit);
-                
-                // Highlight if using sepsis thresholds
-                if (hasSepsis && sepsisThresholds) {
-                    hrRange.style.backgroundColor = '#fff3cd'; // Light yellow highlight
-                    hrRange.style.border = '2px solid #ffc107'; // Yellow border
+                if (hrRange && targetRanges.HR) {
+                    const hr = targetRanges.HR;
+                    hrRange.textContent = Math.round(hr.min) + ' - ' + Math.round(hr.max) + ' ' + (hr.unit || 'bpm');
+                    console.log('🎯 Updated HR range from target ranges:', Math.round(hr.min) + ' - ' + Math.round(hr.max) + ' ' + (hr.unit || 'bpm'));
+                    
+                    // Apply target range styling
+                    hrRange.style.backgroundColor = '#e8f5e8'; // Light green highlight
+                    hrRange.style.border = '2px solid #28a745'; // Green border
                     hrRange.style.borderRadius = '4px';
                     hrRange.style.padding = '2px 4px';
-                    console.log('🔍 DEBUG: Applied sepsis highlighting to HR range');
-                } else {
-                    // Reset to normal styling
-                    hrRange.style.backgroundColor = '';
-                    hrRange.style.border = '';
-                    hrRange.style.borderRadius = '';
-                    hrRange.style.padding = '';
-                    console.log('🔍 DEBUG: Reset HR range to normal styling');
+                    console.log('✅ Applied target range styling to HR display');
+                }
+                
+                // Update BP display if available
+                const bpCards = document.querySelectorAll('.value-card');
+                if (bpCards.length > 1 && targetRanges.BP) {
+                    const bpRange = bpCards[1]?.querySelector('.value-number');
+                    if (bpRange) {
+                        const bp = targetRanges.BP;
+                        bpRange.textContent = Math.round(bp.min) + ' - ' + Math.round(bp.max) + ' ' + (bp.unit || 'mmHg');
+                        console.log('🎯 Updated BP range from target ranges:', Math.round(bp.min) + ' - ' + Math.round(bp.max) + ' ' + (bp.unit || 'mmHg'));
+                        
+                        // Apply target range styling
+                        bpRange.style.backgroundColor = '#e8f5e8'; // Light green highlight
+                        bpRange.style.border = '2px solid #28a745'; // Green border
+                        bpRange.style.borderRadius = '4px';
+                        bpRange.style.padding = '2px 4px';
+                    }
+                }
+            } else {
+                // Fall back to original condition-based logic
+                console.log('🔍 DEBUG: No target ranges found, using condition-based thresholds');
+                
+                // Check if sepsis is selected
+                const hasSepsis = selectedTags.some(tag => tag.toLowerCase().includes('sepsis'));
+                console.log('🔍 DEBUG: Has sepsis tag:', hasSepsis);
+                
+                // Get thresholds from shared data manager
+                const normalThresholds = window.sharedDataManager.getThresholds('normal');
+                const sepsisThresholds = window.sharedDataManager.getThresholds('conditions')?.sepsis;
+                
+                console.log('🔍 DEBUG: Normal thresholds:', normalThresholds);
+                console.log('🔍 DEBUG: Sepsis thresholds:', sepsisThresholds);
+                
+                // Determine which thresholds to use
+                const currentThresholds = hasSepsis && sepsisThresholds ? 
+                    {
+                        ...normalThresholds,
+                        circulatoir: {
+                            ...normalThresholds.circulatoir,
+                            ...sepsisThresholds.circulatoir
+                        }
+                    } : normalThresholds;
+                
+                console.log('🔍 DEBUG: Using thresholds:', currentThresholds);
+                
+                // Update circulatory parameters (HR) - find the heart rate display
+                const circulatoryCard = document.querySelector('.value-card');
+                const hrRange = circulatoryCard?.querySelector('.value-number');
+                
+                if (hrRange && currentThresholds.circulatoir && currentThresholds.circulatoir.HR) {
+                    const hr = currentThresholds.circulatoir.HR;
+                    hrRange.textContent = Math.round(hr.min) + ' - ' + Math.round(hr.max) + ' ' + hr.unit;
+                    
+                    console.log('🔍 DEBUG: Updated HR range to:', Math.round(hr.min) + ' - ' + Math.round(hr.max) + ' ' + hr.unit);
+                    
+                    // Highlight if using sepsis thresholds
+                    if (hasSepsis && sepsisThresholds) {
+                        hrRange.style.backgroundColor = '#fff3cd'; // Light yellow highlight
+                        hrRange.style.border = '2px solid #ffc107'; // Yellow border
+                        hrRange.style.borderRadius = '4px';
+                        hrRange.style.padding = '2px 4px';
+                        console.log('🔍 DEBUG: Applied sepsis highlighting to HR range');
+                    } else {
+                        // Reset to normal styling
+                        hrRange.style.backgroundColor = '';
+                        hrRange.style.border = '';
+                        hrRange.style.borderRadius = '';
+                        hrRange.style.padding = '';
+                        console.log('🔍 DEBUG: Reset HR range to normal styling');
+                    }
                 }
             }
         }

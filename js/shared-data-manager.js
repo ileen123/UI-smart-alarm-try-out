@@ -789,6 +789,146 @@ class SharedDataManager {
             return null;
         }
     }
+
+    /**
+     * Save patient-specific vital parameter target ranges
+     */
+    savePatientTargetRanges(patientId, targetRanges) {
+        try {
+            console.log('💾 Saving target ranges for patient:', patientId, targetRanges);
+            
+            // Save to individual storage for backwards compatibility
+            const rangesKey = `${this.storageKeys.PATIENT_PREFIX}${patientId}_targetRanges`;
+            localStorage.setItem(rangesKey, JSON.stringify(targetRanges));
+            
+            // Also save to centralized app data
+            const appData = this.getAppData();
+            if (appData) {
+                if (!appData.patients[patientId]) {
+                    appData.patients[patientId] = {};
+                }
+                appData.patients[patientId].targetRanges = targetRanges;
+                appData.patients[patientId].lastUpdated = new Date().toISOString();
+                this.saveAppData(appData);
+            }
+            
+            // Emit event for cross-page synchronization
+            const event = new CustomEvent('targetRangesChanged', {
+                detail: { patientId, targetRanges }
+            });
+            window.dispatchEvent(event);
+            
+            console.log('✅ Target ranges saved for patient:', patientId, targetRanges);
+            return true;
+        } catch (error) {
+            console.error('❌ Error saving target ranges:', error);
+            return false;
+        }
+    }
+
+    /**
+     * Get patient-specific vital parameter target ranges
+     */
+    getPatientTargetRanges(patientId) {
+        try {
+            // Try centralized app data first
+            const appData = this.getAppData();
+            if (appData && appData.patients[patientId] && appData.patients[patientId].targetRanges) {
+                return appData.patients[patientId].targetRanges;
+            }
+            
+            // Fallback to individual storage
+            const rangesKey = `${this.storageKeys.PATIENT_PREFIX}${patientId}_targetRanges`;
+            const data = localStorage.getItem(rangesKey);
+            return data ? JSON.parse(data) : this.getDefaultTargetRanges();
+        } catch (error) {
+            console.error('❌ Error getting target ranges:', error);
+            return this.getDefaultTargetRanges();
+        }
+    }
+
+    /**
+     * Get default target ranges based on normal conditions
+     */
+    getDefaultTargetRanges() {
+        const normalThresholds = this.getThresholds('normal');
+        if (normalThresholds && normalThresholds.circulatoir) {
+            return {
+                HR: {
+                    min: normalThresholds.circulatoir.HR?.min || 60,
+                    max: normalThresholds.circulatoir.HR?.max || 100,
+                    unit: normalThresholds.circulatoir.HR?.unit || 'bpm'
+                },
+                BP: {
+                    min: normalThresholds.circulatoir.BP?.min || 65,
+                    max: normalThresholds.circulatoir.BP?.max || 85,
+                    unit: normalThresholds.circulatoir.BP?.unit || 'mmHg'
+                }
+            };
+        }
+        
+        // Fallback defaults
+        return {
+            HR: { min: 60, max: 100, unit: 'bpm' },
+            BP: { min: 65, max: 85, unit: 'mmHg' }
+        };
+    }
+
+    /**
+     * Update target ranges based on medical condition (e.g., sepsis)
+     */
+    updateTargetRangesForCondition(patientId, condition) {
+        try {
+            console.log('🎯 Updating target ranges for condition:', condition, 'patient:', patientId);
+            
+            let targetRanges = this.getDefaultTargetRanges();
+            
+            // Apply condition-specific adjustments
+            if (condition === 'sepsis') {
+                const sepsisThresholds = this.getThresholds('conditions')?.sepsis;
+                if (sepsisThresholds && sepsisThresholds.circulatoir) {
+                    // Update HR ranges for sepsis
+                    if (sepsisThresholds.circulatoir.HR) {
+                        targetRanges.HR = {
+                            min: sepsisThresholds.circulatoir.HR.min,
+                            max: sepsisThresholds.circulatoir.HR.max,
+                            unit: sepsisThresholds.circulatoir.HR.unit || 'bpm'
+                        };
+                    }
+                    
+                    // Update BP ranges for sepsis
+                    if (sepsisThresholds.circulatoir.BP) {
+                        targetRanges.BP = {
+                            min: sepsisThresholds.circulatoir.BP.min,
+                            max: sepsisThresholds.circulatoir.BP.max,
+                            unit: sepsisThresholds.circulatoir.BP.unit || 'mmHg'
+                        };
+                    }
+                }
+            }
+            
+            // Save the updated ranges
+            this.savePatientTargetRanges(patientId, targetRanges);
+            
+            console.log('✅ Target ranges updated for condition:', condition, targetRanges);
+            return targetRanges;
+        } catch (error) {
+            console.error('❌ Error updating target ranges for condition:', error);
+            return this.getDefaultTargetRanges();
+        }
+    }
+
+    /**
+     * Emit global target ranges update event
+     */
+    updateGlobalTargetRanges(patientId, targetRanges) {
+        this.savePatientTargetRanges(patientId, targetRanges);
+        
+        // Set a timestamp for manual changes (to prioritize over automatic updates)
+        sessionStorage.setItem('manualTargetRangesChange', Date.now().toString());
+        
+        console.log('🌐 Global target ranges updated for patient:', patientId);
+    }
 }
 
 // Create global instance

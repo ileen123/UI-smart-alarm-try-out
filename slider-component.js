@@ -409,9 +409,9 @@ class VitalParameterSlider {
         const handleType = this.currentHandle.dataset.handle;
         
         if (handleType === 'max') {
-            this.currentMax = Math.max(this.currentMin + 1, Math.round(newValue * 10) / 10);
+            this.currentMax = Math.max(this.currentMin + 1, Math.round(newValue));
         } else {
-            this.currentMin = Math.min(this.currentMax - 1, Math.round(newValue * 10) / 10);
+            this.currentMin = Math.min(this.currentMax - 1, Math.round(newValue));
         }
         
         this.updateSliderPosition();
@@ -528,10 +528,10 @@ class VitalParameterSlider {
         const minValueElement = this.container.querySelector('.sliding-value-outside.min-value');
         
         if (maxValueElement) {
-            maxValueElement.textContent = this.currentMax;
+            maxValueElement.textContent = Math.round(this.currentMax);
         }
         if (minValueElement) {
-            minValueElement.textContent = this.currentMin;
+            minValueElement.textContent = Math.round(this.currentMin);
         }
     }
 

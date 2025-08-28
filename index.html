@@ -474,6 +474,26 @@
                             
                             console.log('🔍 DEBUG: Using thresholds:', currentThresholds);
                             
+                            // Save target ranges for current patient if we have a patient ID
+                            if (currentPatientId && currentThresholds.circulatoir) {
+                                const targetRanges = {
+                                    HR: {
+                                        min: Math.round(currentThresholds.circulatoir.HR?.min || 60),
+                                        max: Math.round(currentThresholds.circulatoir.HR?.max || 100),
+                                        unit: currentThresholds.circulatoir.HR?.unit || 'bpm'
+                                    },
+                                    BP: {
+                                        min: Math.round(currentThresholds.circulatoir.BP?.min || 65),
+                                        max: Math.round(currentThresholds.circulatoir.BP?.max || 85),
+                                        unit: currentThresholds.circulatoir.BP?.unit || 'mmHg'
+                                    }
+                                };
+                                
+                                // Update target ranges in shared data manager
+                                window.sharedDataManager.updateGlobalTargetRanges(currentPatientId, targetRanges);
+                                console.log('🎯 Updated target ranges for patient:', currentPatientId, targetRanges);
+                            }
+                            
                             // Update circulatory parameters (HR)
                             const circulatoryCard = document.querySelector('.value-card');
                             const hrRange = circulatoryCard?.querySelector('.value-number');

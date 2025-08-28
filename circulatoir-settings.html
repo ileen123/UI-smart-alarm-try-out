@@ -819,14 +819,80 @@
             if (currentPatientId && currentBed) {
                 const patientInfo = window.sharedDataManager.getPatientInfo(currentPatientId);
                 const displayName = patientInfo?.name || `Patiënt ${currentPatientId}`;
-                headerElement.textContent = `${displayName} - Bed ${currentBed} - Circulatoir Instellingen`;
+                
+                // Get medical information including main problem and risk level
+                const medicalInfo = window.sharedDataManager.getPatientMedicalInfo(currentPatientId);
+                
+                let headerText = `${displayName} - Bed ${currentBed}`;
+                
+                // Add main problem if available
+                if (medicalInfo?.selectedProblem) {
+                    const problemMapping = {
+                        'sepsis': 'Sepsis',
+                        'pneumonia': 'Pneumonie',
+                        'cardiac': 'Hartproblemen',
+                        'surgery': 'Chirurgie',
+                        'other': 'Anders'
+                    };
+                    const problemDisplay = problemMapping[medicalInfo.selectedProblem] || medicalInfo.selectedProblem;
+                    headerText += ` | Hoofdprobleem: ${problemDisplay}`;
+                }
+                
+                // Add risk level if available
+                if (medicalInfo?.selectedRiskLevel) {
+                    const riskMapping = {
+                        'low': 'Laag',
+                        'med': 'Middel',
+                        'high': 'Hoog'
+                    };
+                    const riskDisplay = riskMapping[medicalInfo.selectedRiskLevel] || medicalInfo.selectedRiskLevel;
+                    headerText += ` | Risiconiveau: ${riskDisplay}`;
+                }
+                
+                headerElement.textContent = headerText;
             } else {
-                headerElement.textContent = 'Circulatoir Instellingen';
+                headerElement.textContent = '';
             }
         }
 
         function setupEventListeners() {
             console.log('🔧 Setting up event listeners...');
+            
+            // Listen for target range changes from other pages
+            window.addEventListener('targetRangesChanged', function(event) {
+                console.log('🎯 Target ranges changed event received:', event.detail);
+                
+                const { patientId, targetRanges } = event.detail;
+                
+                // Only update if it's for the current patient
+                if (patientId === currentPatientId && targetRanges) {
+                    console.log('🔄 Updating sliders with new target ranges:', targetRanges);
+                    
+                    // Update currentSettings
+                    currentSettings = {
+                        hr: {
+                            min: targetRanges.HR?.min || 70,
+                            max: targetRanges.HR?.max || 110
+                        },
+                        bp: {
+                            min: targetRanges.BP?.min || 65,
+                            max: targetRanges.BP?.max || 85
+                        }
+                    };
+                    
+                    // Update sliders if they exist
+                    if (hrSlider && typeof hrSlider.updateTargetRange === 'function') {
+                        hrSlider.updateTargetRange(currentSettings.hr.min, currentSettings.hr.max);
+                        console.log('✅ HR slider target range updated');
+                    }
+                    
+                    if (bpSlider && typeof bpSlider.updateTargetRange === 'function') {
+                        bpSlider.updateTargetRange(currentSettings.bp.min, currentSettings.bp.max);
+                        console.log('✅ BP slider target range updated');
+                    }
+                }
+            });
+            
             // Event listeners are now handled by the slider components
         }
 
@@ -834,16 +900,39 @@
             console.log('📊 Loading current circulatoir settings...');
             
             if (currentPatientId && window.sharedDataManager) {
-                // Try to load existing patient-specific settings
+                // Load patient-specific target ranges first
+                const targetRanges = window.sharedDataManager.getPatientTargetRanges(currentPatientId);
+                console.log('🎯 Loaded target ranges for patient:', currentPatientId, targetRanges);
+                
+                // Update currentSettings to use target ranges
+                if (targetRanges) {
+                    currentSettings = {
+                        hr: {
+                            min: targetRanges.HR?.min || 70,
+                            max: targetRanges.HR?.max || 110
+                        },
+                        bp: {
+                            min: targetRanges.BP?.min || 65,
+                            max: targetRanges.BP?.max || 85
+                        }
+                    };
+                }
+                
+                // Try to load existing patient-specific fine-tuned settings
                 const savedSettings = window.sharedDataManager.getPatientCirculatoirSettings(currentPatientId);
                 
                 if (savedSettings) {
-                    console.log('✅ Found saved settings:', savedSettings);
-                    currentSettings = savedSettings;
+                    console.log('✅ Found saved fine-tuned settings:', savedSettings);
+                    // Merge saved settings with target ranges (saved settings take priority for fine-tuning)
+                    currentSettings = {
+                        hr: savedSettings.hr || currentSettings.hr,
+                        bp: savedSettings.bp || currentSettings.bp
+                    };
                 } else {
-                    // Load from medical info and apply condition-based thresholds
+                    // If no fine-tuned settings, check if we need to load from medical info
                     const medicalInfo = window.sharedDataManager.getPatientMedicalInfo(currentPatientId);
-                    if (medicalInfo && medicalInfo.selectedTags) {
+                    if (medicalInfo && medicalInfo.selectedTags && !targetRanges) {
+                        // Only apply condition-based thresholds if no target ranges exist
                         const thresholds = window.sharedDataManager.getThresholdsByTags(medicalInfo.selectedTags);
                         if (thresholds && thresholds.circulatoir) {
                             currentSettings = {
@@ -855,8 +944,7 @@
                     }
                 }
                 
-                // Settings are now applied directly by the sliders when they initialize
-                console.log('✅ Current settings loaded:', currentSettings);
+                console.log('✅ Final current settings loaded:', currentSettings);
             }
         }
 
@@ -927,6 +1015,18 @@
                                     const newSettings = { hr: { min: data.min, max: data.max }, bp: currentSettings.bp };
                                     window.sharedDataManager.savePatientCirculatoirSettings(currentPatientId, newSettings);
                                     currentSettings = newSettings;
+                                    
+                                    // Also update target ranges to reflect the slider changes
+                                    const updatedTargetRanges = {
+                                        HR: { min: Math.round(data.min), max: Math.round(data.max), unit: 'bpm' },
+                                        BP: { 
+                                            min: Math.round(currentSettings.bp?.min || 65), 
+                                            max: Math.round(currentSettings.bp?.max || 85), 
+                                            unit: 'mmHg' 
+                                        }
+                                    };
+                                    window.sharedDataManager.updateGlobalTargetRanges(currentPatientId, updatedTargetRanges);
+                                    console.log('🎯 Updated target ranges after HR slider change:', updatedTargetRanges);
                                 }
                             }
                         });
@@ -967,6 +1067,18 @@
                                     const newSettings = { hr: currentSettings.hr, bp: { min: data.min, max: data.max } };
                                     window.sharedDataManager.savePatientCirculatoirSettings(currentPatientId, newSettings);
                                     currentSettings = newSettings;
+                                    
+                                    // Also update target ranges to reflect the slider changes
+                                    const updatedTargetRanges = {
+                                        HR: { 
+                                            min: Math.round(currentSettings.hr?.min || 70), 
+                                            max: Math.round(currentSettings.hr?.max || 110), 
+                                            unit: 'bpm' 
+                                        },
+                                        BP: { min: Math.round(data.min), max: Math.round(data.max), unit: 'mmHg' }
+                                    };
+                                    window.sharedDataManager.updateGlobalTargetRanges(currentPatientId, updatedTargetRanges);
+                                    console.log('🎯 Updated target ranges after BP slider change:', updatedTargetRanges);
                                 }
                             }
                         });
