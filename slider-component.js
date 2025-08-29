@@ -122,12 +122,8 @@ class VitalParameterSlider {
         
         console.log(`generateGraphLines called, loading ${this.config.monitoringLevel} SVG...`);
         
-        // Use embedded SVG for tight (fallback), or load external for mid/loose
-        if (this.config.monitoringLevel === 'tight') {
-            this.createEmbeddedSVG(svg, chartWidth, chartHeight);
-        } else {
-            this.loadExternalSVG(svg, chartWidth, chartHeight);
-        }
+        // Use embedded SVG for all monitoring levels to avoid CORS issues
+        this.createEmbeddedSVGForLevel(svg, chartWidth, chartHeight, this.config.monitoringLevel);
     }
 
     createEmbeddedSVG(svg, width, height) {
@@ -176,6 +172,93 @@ class VitalParameterSlider {
         svg.setAttribute('preserveAspectRatio', 'none');
         
         console.log('Embedded SVG created with upper and lower areas');
+        
+        // Position the SVGs immediately after creation
+        this.updateGraphPosition();
+    }
+
+    createEmbeddedSVGForLevel(svg, width, height, level) {
+        // Clear existing filled areas
+        const upperAreas = svg.querySelector('.upper-areas');
+        const lowerAreas = svg.querySelector('.lower-areas');
+        upperAreas.innerHTML = '';
+        lowerAreas.innerHTML = '';
+        
+        // Define correct SVG content for each monitoring level (copied from actual SVG files)
+        const svgDefinitions = {
+            tight: {
+                upper: [
+                    { type: 'rect', attrs: { width: '100%', height: '100%', fill: '#ECEC3E' } },
+                    { type: 'path', attrs: { d: 'M437 6.32426V131C355.986 117.7 142.332 93.6902 120.777 103.379C99.2214 113.068 78.3022 106.649 57.1498 70.4704L19 0L437 6.32426Z', fill: '#F0973E' } },
+                    { type: 'path', attrs: { d: 'M437 0.5V73C361.607 65.5886 162.776 52.209 142.716 57.6082C122.656 63.0074 103.188 59.4301 83.503 39.2698L48 0.5H437Z', fill: '#EB4921' } },
+                    { type: 'path', attrs: { d: 'M437 150.927V155H218.625H0.250488L0 0H4.5L12.7647 46.6505C15.5591 69.3794 31.7151 98.5862 45.2979 119.767C54.8349 126.31 63.7986 137.655 64.8242 147.802C65.8498 157.949 437 150.927 437 150.927Z', fill: '#00C877' } }
+                ],
+                lower: [
+                    { type: 'rect', attrs: { width: '100%', height: '100%', fill: '#ECEC3E' } },
+                    { type: 'path', attrs: { d: 'M437 148.676V24C355.986 37.3 142.332 61.3098 120.777 51.621C99.2214 41.932 78.3022 48.351 57.1498 84.5296L19 155L437 148.676Z', fill: '#F0973E' } },
+                    { type: 'path', attrs: { d: 'M437 154.5V82C361.607 89.4114 162.776 102.791 142.716 97.3918C122.656 91.9926 103.188 95.5699 83.503 115.73L48 154.5H437Z', fill: '#EB4921' } },
+                    { type: 'path', attrs: { d: 'M437 4.07251V0H218.625H0.250488L0 155H4.5L12.7647 108.349C15.5591 85.6206 31.7151 56.4138 45.2979 35.233C54.8349 28.69 63.7986 17.345 64.8242 7.19775C65.8498 -2.94946 437 4.07251 437 4.07251Z', fill: '#00C877' } }
+                ]
+            },
+            mid: {
+                upper: [
+                    { type: 'rect', attrs: { width: '437', height: '155', fill: '#ECEC3E' } },
+                    { type: 'path', attrs: { d: 'M437 0V90C355.986 79.5685 219.055 61.5423 197.5 69.1416C175.945 76.7409 141.929 70.0922 120.777 41.7167L91 0H437Z', fill: '#F0973E' } },
+                    { type: 'path', attrs: { d: 'M437 3.8147e-06V48C361.607 40.5104 241.06 27.3865 221 32.8426C200.94 38.2987 165.685 35.531 146 15.1581L124 3.8147e-06H437Z', fill: '#EB4921' } },
+                    { type: 'path', attrs: { d: 'M437 149.173V155H218.625H0.25043L0 0H27.5C71.6495 92.0372 77 115.5 122.5 134.5C168 153.5 332.925 145.395 437 149.173Z', fill: '#00C877' } }
+                ],
+                lower: [
+                    { type: 'rect', attrs: { width: '437', height: '155', fill: '#ECEC3E', transform: 'matrix(1 0 0 -1 0 155)' } },
+                    { type: 'path', attrs: { d: 'M437 155V65C355.986 75.4315 219.055 93.4577 197.5 85.8584C175.945 78.2591 141.929 84.9078 120.777 113.283L91 155H437Z', fill: '#F0973E' } },
+                    { type: 'path', attrs: { d: 'M437 155V107C361.607 114.49 241.06 127.613 221 122.157C200.94 116.701 165.685 119.469 146 139.842L124 155H437Z', fill: '#EB4921' } },
+                    { type: 'path', attrs: { d: 'M437 5.82707V0H218.625H0.25043L0 155H27.5C71.6495 62.9628 77 39.5 122.5 20.5C168 1.5 332.925 9.60458 437 5.82707Z', fill: '#00C877' } }
+                ]
+            },
+            loose: {
+                upper: [
+                    { type: 'rect', attrs: { width: '437', height: '155', fill: '#ECEC3E' } },
+                    { type: 'path', attrs: { d: 'M437 149.173V155H218.625H0.25043L0 0H84C166.5 114.5 273 149.173 296 149.173H437Z', fill: '#00C877' } },
+                    { type: 'path', attrs: { d: 'M437 -0.000205994V89C334.5 80.188 162.5 31.5001 110.5 -0.000175476L437 -0.000205994Z', fill: '#F0973E' } },
+                    { type: 'path', attrs: { d: 'M437 0V37.4603C318.098 40.3962 254.491 31.8303 146 0H437Z', fill: '#EB4921' } }
+                ],
+                lower: [
+                    { type: 'rect', attrs: { width: '437', height: '155', fill: '#ECEC3E', transform: 'matrix(1 0 0 -1 0 155)' } },
+                    { type: 'path', attrs: { d: 'M437 5.82707V0H218.625H0.25043L0 155H84C166.5 40.5 273 5.82707 296 5.82707H437Z', fill: '#00C877' } },
+                    { type: 'path', attrs: { d: 'M437 155V66C334.5 74.812 162.5 123.5 110.5 155L437 155Z', fill: '#F0973E' } },
+                    { type: 'path', attrs: { d: 'M437 155V117.54C318.098 114.604 254.491 123.17 146 155H437Z', fill: '#EB4921' } }
+                ]
+            }
+        };
+        
+        const levelData = svgDefinitions[level.toLowerCase()];
+        if (!levelData) {
+            console.warn(`Unknown monitoring level: ${level}, using tight as fallback`);
+            levelData = svgDefinitions.tight;
+        }
+        
+        // Create upper areas
+        levelData.upper.forEach(elementData => {
+            const element = document.createElementNS('http://www.w3.org/2000/svg', elementData.type);
+            Object.entries(elementData.attrs).forEach(([key, value]) => {
+                element.setAttribute(key, value);
+            });
+            upperAreas.appendChild(element);
+        });
+        
+        // Create lower areas
+        levelData.lower.forEach(elementData => {
+            const element = document.createElementNS('http://www.w3.org/2000/svg', elementData.type);
+            Object.entries(elementData.attrs).forEach(([key, value]) => {
+                element.setAttribute(key, value);
+            });
+            lowerAreas.appendChild(element);
+        });
+        
+        // Set the viewBox to match the original SVG
+        svg.setAttribute('viewBox', '0 0 437 270');
+        svg.setAttribute('preserveAspectRatio', 'none');
+        
+        console.log(`Embedded SVG created for ${level} level with correct original content`);
         
         // Position the SVGs immediately after creation
         this.updateGraphPosition();

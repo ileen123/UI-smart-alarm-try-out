@@ -698,28 +698,45 @@
                 console.warn(`❌ Button with data-level="${mappedLevel}" not found`);
             }
         }
-        
-        // Helper function to update sliders monitoring level
+        });
+
+        // Helper function to update sliders monitoring level (moved outside closure for global access)
         function updateSlidersMonitoringLevel(level) {
             console.log(`🎛️ Updating sliders monitoring level to: ${level}`);
+            console.log('🔍 DEBUG - hrSlider exists:', !!hrSlider);
+            console.log('🔍 DEBUG - bpSlider exists:', !!bpSlider);
+            
+            if (hrSlider) {
+                console.log('🔍 DEBUG - hrSlider type:', typeof hrSlider);
+                console.log('🔍 DEBUG - hrSlider.updateMonitoringLevel exists:', typeof hrSlider.updateMonitoringLevel);
+            }
             
             // Update HR slider if it exists
             if (hrSlider && typeof hrSlider.updateMonitoringLevel === 'function') {
+                console.log('🎛️ Calling hrSlider.updateMonitoringLevel with:', level);
                 hrSlider.updateMonitoringLevel(level);
                 console.log('✅ HR slider monitoring level updated to:', level);
             } else {
                 console.warn('❌ HR slider not found or updateMonitoringLevel method not available');
+                console.warn('❌ hrSlider:', hrSlider);
+                if (hrSlider) {
+                    console.warn('❌ Available methods:', Object.getOwnPropertyNames(hrSlider));
+                }
             }
             
             // Update BP slider if it exists
             if (bpSlider && typeof bpSlider.updateMonitoringLevel === 'function') {
+                console.log('🎛️ Calling bpSlider.updateMonitoringLevel with:', level);
                 bpSlider.updateMonitoringLevel(level);
                 console.log('✅ BP slider monitoring level updated to:', level);
             } else {
                 console.warn('❌ BP slider not found or updateMonitoringLevel method not available');
+                console.warn('❌ bpSlider:', bpSlider);
+                if (bpSlider) {
+                    console.warn('❌ Available methods:', Object.getOwnPropertyNames(bpSlider));
+                }
             }
         }
-        });
 
         // Function to change monitoring level for all sliders
         function changeMonitoringLevel(level) {
@@ -881,13 +898,23 @@
                     };
                     
                     // Update sliders if they exist
-                    if (hrSlider && typeof hrSlider.updateTargetRange === 'function') {
-                        hrSlider.updateTargetRange(currentSettings.hr.min, currentSettings.hr.max);
+                    if (hrSlider && typeof hrSlider.updateConfig === 'function') {
+                        hrSlider.updateConfig({
+                            targetRange: {
+                                min: currentSettings.hr.min,
+                                max: currentSettings.hr.max
+                            }
+                        });
                         console.log('✅ HR slider target range updated');
                     }
                     
-                    if (bpSlider && typeof bpSlider.updateTargetRange === 'function') {
-                        bpSlider.updateTargetRange(currentSettings.bp.min, currentSettings.bp.max);
+                    if (bpSlider && typeof bpSlider.updateConfig === 'function') {
+                        bpSlider.updateConfig({
+                            targetRange: {
+                                min: currentSettings.bp.min,
+                                max: currentSettings.bp.max
+                            }
+                        });
                         console.log('✅ BP slider target range updated');
                     }
                 }
@@ -910,16 +937,14 @@
                     };
                     
                     // Update HR slider if it exists
-                    if (hrSlider && typeof hrSlider.updateTargetRange === 'function') {
-                        hrSlider.updateTargetRange(HR_low, HR_high);
+                    if (hrSlider && typeof hrSlider.updateConfig === 'function') {
+                        hrSlider.updateConfig({
+                            targetRange: {
+                                min: HR_low,
+                                max: HR_high
+                            }
+                        });
                         console.log('✅ HR slider updated with sepsis ranges');
-                        
-                        // Apply visual indication for sepsis
-                        if (source === 'sepsis') {
-                            hrSlider.highlightAsSepsis();
-                        } else {
-                            hrSlider.removeHighlight();
-                        }
                     }
                 }
             });
