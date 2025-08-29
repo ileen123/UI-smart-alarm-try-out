@@ -698,6 +698,18 @@
             setTimeout(() => {
                 initializeHeartCircleComponent();
                 initializeSliders();
+                
+                // Check if sepsis is active and force slider update after everything is loaded
+                setTimeout(() => {
+                    if (currentPatientId && window.sharedDataManager) {
+                        const targetRanges = window.sharedDataManager.getPatientTargetRanges(currentPatientId);
+                        console.log('🔍 Checking target ranges on page load:', targetRanges);
+                        if (targetRanges && targetRanges.HR && targetRanges.HR.min === 90 && targetRanges.HR.max === 130) {
+                            console.log('🦠 SEPSIS DETECTED ON PAGE LOAD - forcing slider to 90-130');
+                            testSepsisRange();
+                        }
+                    }
+                }, 500);
             }, 1000);
         // Heart SVG content (copied from alarm overview)
         const svgContent = {
@@ -1049,6 +1061,47 @@
                 }
             });
             
+            // Function to force update HR slider with global HR_low and HR_high values
+            function updateHRSliderFromGlobalValues() {
+                if (typeof window.HR_low !== 'undefined' && typeof window.HR_high !== 'undefined') {
+                    console.log('🔄 Forcing HR slider update with global values:', window.HR_low, '-', window.HR_high);
+                    
+                    if (hrSlider) {
+                        // Directly update slider internal values
+                        hrSlider.currentMin = window.HR_low;
+                        hrSlider.currentMax = window.HR_high;
+                        hrSlider.config.targetRange.min = window.HR_low;
+                        hrSlider.config.targetRange.max = window.HR_high;
+                        
+                        // Update the visual elements directly
+                        const maxValueElement = hrSlider.container.querySelector('.sliding-value-outside.max-value');
+                        const minValueElement = hrSlider.container.querySelector('.sliding-value-outside.min-value');
+                        if (maxValueElement) maxValueElement.textContent = Math.round(window.HR_high);
+                        if (minValueElement) minValueElement.textContent = Math.round(window.HR_low);
+                        
+                        // Update slider positions
+                        hrSlider.updateSliderPosition();
+                        
+                        console.log('✅ HR slider FORCE updated from globals:', window.HR_low, '-', window.HR_high);
+                    } else {
+                        console.warn('⚠️ HR slider not available for global update');
+                    }
+                } else {
+                    console.warn('⚠️ Global HR_low or HR_high not available');
+                }
+            }
+            
+            // Test function to force sepsis range (90-130) - for debugging
+            function testSepsisRange() {
+                window.HR_low = 90;
+                window.HR_high = 130;
+                console.log('🧪 TEST: Set globals to sepsis range 90-130');
+                updateHRSliderFromGlobalValues();
+            }
+            
+            // Make test function available globally for debugging
+            window.testSepsisRange = testSepsisRange;
+            
             // Listen for HR range changes from sepsis selection/deselection
             window.addEventListener('hrRangesChanged', function(event) {
                 console.log('💓 HR ranges changed event received in circulatoir-settings:', event.detail);
@@ -1065,39 +1118,8 @@
                         max: HR_high
                     };
                     
-                    // Update HR slider if it exists
-                    console.log('🔍 Checking hrSlider:', hrSlider);
-                    console.log('🔍 hrSlider updateConfig method:', typeof hrSlider?.updateConfig);
-                    
-                    if (hrSlider && typeof hrSlider.updateConfig === 'function') {
-                        try {
-                            hrSlider.updateConfig({
-                                targetRange: {
-                                    min: HR_low,
-                                    max: HR_high
-                                }
-                            });
-                            console.log('✅ HR slider updated with new ranges:', HR_low, '-', HR_high);
-                        } catch (error) {
-                            console.error('❌ Error updating HR slider:', error);
-                        }
-                    } else {
-                        console.warn('⚠️ HR slider not available or updateConfig method missing');
-                        
-                        // If slider is not ready yet, try to update it when it becomes available
-                        setTimeout(() => {
-                            if (hrSlider && typeof hrSlider.updateConfig === 'function') {
-                                console.log('🔄 Retrying HR slider update after delay...');
-                                hrSlider.updateConfig({
-                                    targetRange: {
-                                        min: HR_low,
-                                        max: HR_high
-                                    }
-                                });
-                                console.log('✅ HR slider updated with new ranges (retry):', HR_low, '-', HR_high);
-                            }
-                        }, 1000);
-                    }
+                    // Force update HR slider using global values
+                    updateHRSliderFromGlobalValues();
                 }
             });
             
@@ -1124,6 +1146,8 @@
                         if (tagCondition === 'sepsis' && currentPatientId && window.sharedDataManager) {
                             window.sharedDataManager.handleSepsisTagChange(currentPatientId, true);
                             console.log('🦠 Sepsis selected in circulatory settings');
+                            // Also force update slider immediately
+                            setTimeout(() => testSepsisRange(), 100);
                         }
                     }
                 });
@@ -1302,6 +1326,18 @@
                         
                         if (hrSlider) {
                             console.log('✅ HR Slider initialized successfully');
+                            // Sync with global HR values after initialization
+                            setTimeout(() => {
+                                updateHRSliderFromGlobalValues();
+                                // Also check if sepsis is currently active and force update
+                                if (currentPatientId && window.sharedDataManager) {
+                                    const targetRanges = window.sharedDataManager.getPatientTargetRanges(currentPatientId);
+                                    if (targetRanges && targetRanges.HR && targetRanges.HR.min === 90 && targetRanges.HR.max === 130) {
+                                        console.log('🦠 Sepsis detected on initialization - forcing slider update');
+                                        testSepsisRange();
+                                    }
+                                }
+                            }, 100);
                         } else {
                             console.error('❌ HR Slider initialization returned null');
                             hrContainer.innerHTML = '<p style="color: red;">HR Slider initialization returned null</p>';
