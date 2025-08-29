@@ -264,6 +264,26 @@
                     // Also update parameter ranges to ensure consistency
                     updateParameterRanges();
                     console.log('✅ Called updateParameterRanges() due to HR ranges change');
+                    
+                    // Update sepsis tag button state based on the event source
+                    const sepsisButton = document.querySelector('.tag-btn[data-condition="sepsis"]');
+                    if (sepsisButton) {
+                        if (event.detail.source === 'sepsis') {
+                            // Sepsis was selected elsewhere, select our button
+                            if (!sepsisButton.classList.contains('selected')) {
+                                sepsisButton.classList.add('selected');
+                                selectedTags.push('sepsis');
+                                console.log('✅ Synced sepsis button to selected state from external change');
+                            }
+                        } else if (event.detail.source === 'restore') {
+                            // Sepsis was deselected elsewhere, deselect our button
+                            if (sepsisButton.classList.contains('selected')) {
+                                sepsisButton.classList.remove('selected');
+                                selectedTags = selectedTags.filter(t => t !== 'sepsis');
+                                console.log('✅ Synced sepsis button to deselected state from external change');
+                            }
+                        }
+                    }
                 }
             });
             
@@ -448,16 +468,13 @@
                     selectRiskLevel(selectedRiskLevel);
                 }
                 
-                // Load tags
+                // Load tags - but verify sepsis state against SharedDataManager
                 if (savedMedicalInfo.selectedTags && Array.isArray(savedMedicalInfo.selectedTags)) {
-                    selectedTags = savedMedicalInfo.selectedTags;
-                    console.log('✅ DEBUG: Loading tags:', selectedTags);
-                    savedMedicalInfo.selectedTags.forEach(tag => {
+                    selectedTags = savedMedicalInfo.selectedTags.filter(tag => tag !== 'sepsis'); // Remove sepsis, we'll check it separately
+                    console.log('✅ DEBUG: Loading non-sepsis tags:', selectedTags);
+                    selectedTags.forEach(tag => {
                         selectTag(tag);
                     });
-                    
-                    // Update parameter ranges after loading tags
-                    updateParameterRanges();
                 }
                 
                 console.log('✅ DEBUG: Loaded existing settings:', savedMedicalInfo);
@@ -474,6 +491,9 @@
                 console.log('🔍 DEBUG: All patients data:', window.sharedDataManager.getAllPatients());
                 window.sharedDataManager.debugLocalStorage();
             }
+            
+            // Initialize sepsis tag state based on current SharedDataManager state (source of truth)
+            initializeSepsisTagState();
         }
 
         // Load and apply saved heart monitoring level from circulatoir settings
@@ -531,6 +551,37 @@
             if (riskButton) {
                 riskButton.classList.add('selected');
                 updateAlarmIndicator(riskLevel);
+            }
+        }
+
+        function initializeSepsisTagState() {
+            console.log('🦠 Initializing sepsis tag state on alarm overview...');
+            
+            if (currentPatientId && window.sharedDataManager) {
+                // Check if sepsis ranges are currently active by checking the target ranges
+                const targetRanges = window.sharedDataManager.getPatientTargetRanges(currentPatientId);
+                
+                if (targetRanges && targetRanges.HR) {
+                    const isSepsisActive = (targetRanges.HR.min === 90 && targetRanges.HR.max === 130);
+                    
+                    const sepsisButton = document.querySelector('.tag-btn[data-condition="sepsis"]');
+                    if (sepsisButton) {
+                        if (isSepsisActive) {
+                            sepsisButton.classList.add('selected');
+                            if (!selectedTags.includes('sepsis')) {
+                                selectedTags.push('sepsis');
+                            }
+                            console.log('✅ Initialized sepsis button as selected (90-130 range detected)');
+                        } else {
+                            sepsisButton.classList.remove('selected');
+                            selectedTags = selectedTags.filter(t => t !== 'sepsis');
+                            console.log('✅ Initialized sepsis button as deselected');
+                        }
+                    }
+                }
+                
+                // Update parameter ranges after initializing sepsis state
+                updateParameterRanges();
             }
         }
 
