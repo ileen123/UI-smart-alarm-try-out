@@ -261,6 +261,9 @@
                 if (event.detail.patientId === currentPatientId) {
                     // Update the HR display immediately
                     updateHRDisplay(event.detail.HR_low, event.detail.HR_high, event.detail.source === 'sepsis');
+                    // Also update parameter ranges to ensure consistency
+                    updateParameterRanges();
+                    console.log('✅ Called updateParameterRanges() due to HR ranges change');
                 }
             });
             

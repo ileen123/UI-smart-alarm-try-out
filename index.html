@@ -167,6 +167,7 @@
                 let selectedProblem = '';
                 let selectedRiskLevel = '';
                 let selectedTags = [];
+                let currentPatientId = null; // Add current patient ID variable
                 
                 // SVG content embedded to avoid CORS issues
                         const svgContent = {
@@ -212,6 +213,10 @@
                         function loadPatientFromBedOverview() {
                             const initData = window.sharedDataManager.initializeIndexPage();
                             const currentPatient = initData.sessionData.currentPatient;
+                            
+                            // Set the global currentPatientId variable
+                            currentPatientId = currentPatient;
+                            console.log('✅ Set currentPatientId to:', currentPatientId);
                             
                             if (currentPatient) {
                                 // Get patient info using shared data manager
@@ -368,6 +373,49 @@
                                     updateParameterRanges();
                                 });
                             });
+                            
+                            // Listen for HR range changes from sepsis selection/deselection
+                            window.addEventListener('hrRangesChanged', function(event) {
+                                console.log('💓 HR ranges changed event received in setup page:', event.detail);
+                                if (event.detail.patientId === currentPatientId) {
+                                    // Directly update the HR display with the new values
+                                    const { HR_low, HR_high, source } = event.detail;
+                                    updateHRDisplayDirectly(HR_low, HR_high, source === 'sepsis');
+                                    console.log('✅ Directly updated HR display with values:', HR_low, '-', HR_high);
+                                }
+                            });
+                        }
+                        
+                        // Function to directly update HR display on setup page
+                        function updateHRDisplayDirectly(hrLow, hrHigh, isSepsis) {
+                            console.log(`🔄 Directly updating HR display: ${hrLow}-${hrHigh} (sepsis: ${isSepsis})`);
+                            
+                            const circulatoryCard = document.querySelector('.value-card');
+                            const hrRange = circulatoryCard?.querySelector('.value-number');
+                            
+                            if (hrRange) {
+                                hrRange.textContent = `${hrLow} - ${hrHigh}`;
+                                
+                                // Apply sepsis styling if needed
+                                if (isSepsis) {
+                                    hrRange.style.backgroundColor = '#fff3cd'; // Light yellow highlight
+                                    hrRange.style.border = '2px solid #ffc107'; // Yellow border
+                                    hrRange.style.borderRadius = '4px';
+                                    hrRange.style.padding = '2px 4px';
+                                    console.log('✅ Applied sepsis styling to HR display');
+                                } else {
+                                    // Remove sepsis styling
+                                    hrRange.style.backgroundColor = '';
+                                    hrRange.style.border = '';
+                                    hrRange.style.borderRadius = '';
+                                    hrRange.style.padding = '';
+                                    console.log('✅ Removed sepsis styling from HR display');
+                                }
+                                
+                                console.log(`✅ HR display updated directly: ${hrLow} - ${hrHigh}`);
+                            } else {
+                                console.warn('❌ Could not find HR display element on setup page');
+                            }
                         }
                         
                         // Always start with fresh session data (no restoration of previous selections)

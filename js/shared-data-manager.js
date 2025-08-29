@@ -336,18 +336,46 @@ class SharedDataManager {
      */
     removePatient(patientId) {
         try {
+            console.log('🗑️ Removing all data for patient:', patientId);
+            
             // Remove individual patient data (legacy compatibility)
-            const patientKey = this.storageKeys.PATIENT_PREFIX + patientId + '_medicalInfo';
-            localStorage.removeItem(patientKey);
+            const patientMedicalKey = this.storageKeys.PATIENT_PREFIX + patientId + '_medicalInfo';
+            const patientTargetRangesKey = this.storageKeys.PATIENT_PREFIX + patientId + '_targetRanges';
+            const patientCirculatoirKey = this.storageKeys.PATIENT_PREFIX + patientId + '_circulatoirSettings';
+            const patientHRBackupKey = this.storageKeys.PATIENT_PREFIX + patientId + '_hrBackup';
+            
+            localStorage.removeItem(patientMedicalKey);
+            localStorage.removeItem(patientTargetRangesKey);
+            localStorage.removeItem(patientCirculatoirKey);
+            localStorage.removeItem(patientHRBackupKey);
+            
+            console.log('✅ Removed legacy patient keys:', {
+                medical: patientMedicalKey,
+                targetRanges: patientTargetRangesKey,
+                circulatoir: patientCirculatoirKey,
+                hrBackup: patientHRBackupKey
+            });
 
             // Remove from centralized app data
             const appData = this.getAppData();
             if (appData && appData.patients[patientId]) {
                 delete appData.patients[patientId];
                 this.saveAppData(appData);
+                console.log('✅ Removed patient from centralized app data');
+            }
+            
+            // Clear any heart monitoring level data for this patient
+            const heartLevelKey = `heartMonitoringLevel_${patientId}`;
+            localStorage.removeItem(heartLevelKey);
+            
+            // Clear any session-specific data for this patient
+            const sessionData = this.getSessionData();
+            if (sessionData && sessionData.currentPatient === patientId) {
+                this.clearSessionData();
+                console.log('✅ Cleared session data for discharged patient');
             }
 
-            console.log('✅ Patient data removed for:', patientId);
+            console.log('✅ All patient data removed for:', patientId);
             return true;
         } catch (error) {
             console.error('❌ Error removing patient data:', error);
