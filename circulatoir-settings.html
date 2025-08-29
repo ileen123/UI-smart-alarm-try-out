@@ -691,8 +691,8 @@
         document.addEventListener('DOMContentLoaded', function() {
             initializePage();
             setupEventListeners();
-            loadCurrentSettings();
-            initializeSepsisTagState();
+            initializeSepsisTagState(); // Initialize sepsis state FIRST
+            loadCurrentSettings(); // Then load settings (which will respect sepsis state)
 
             // Initialize heart circle component (same as alarm overview)
             setTimeout(() => {
@@ -1066,14 +1066,37 @@
                     };
                     
                     // Update HR slider if it exists
+                    console.log('🔍 Checking hrSlider:', hrSlider);
+                    console.log('🔍 hrSlider updateConfig method:', typeof hrSlider?.updateConfig);
+                    
                     if (hrSlider && typeof hrSlider.updateConfig === 'function') {
-                        hrSlider.updateConfig({
-                            targetRange: {
-                                min: HR_low,
-                                max: HR_high
+                        try {
+                            hrSlider.updateConfig({
+                                targetRange: {
+                                    min: HR_low,
+                                    max: HR_high
+                                }
+                            });
+                            console.log('✅ HR slider updated with new ranges:', HR_low, '-', HR_high);
+                        } catch (error) {
+                            console.error('❌ Error updating HR slider:', error);
+                        }
+                    } else {
+                        console.warn('⚠️ HR slider not available or updateConfig method missing');
+                        
+                        // If slider is not ready yet, try to update it when it becomes available
+                        setTimeout(() => {
+                            if (hrSlider && typeof hrSlider.updateConfig === 'function') {
+                                console.log('🔄 Retrying HR slider update after delay...');
+                                hrSlider.updateConfig({
+                                    targetRange: {
+                                        min: HR_low,
+                                        max: HR_high
+                                    }
+                                });
+                                console.log('✅ HR slider updated with new ranges (retry):', HR_low, '-', HR_high);
                             }
-                        });
-                        console.log('✅ HR slider updated with sepsis ranges');
+                        }, 1000);
                     }
                 }
             });
@@ -1157,11 +1180,23 @@
                 
                 if (savedSettings) {
                     console.log('✅ Found saved fine-tuned settings:', savedSettings);
-                    // Merge saved settings with target ranges (saved settings take priority for fine-tuning)
-                    currentSettings = {
-                        hr: savedSettings.hr || currentSettings.hr,
-                        bp: savedSettings.bp || currentSettings.bp
-                    };
+                    
+                    // Check if current target ranges are sepsis ranges (90-130)
+                    const isSepsisActive = targetRanges && targetRanges.HR && 
+                                          targetRanges.HR.min === 90 && targetRanges.HR.max === 130;
+                    
+                    if (isSepsisActive) {
+                        // Sepsis is active - target ranges take priority over saved settings
+                        console.log('🦠 Sepsis is active - using target ranges instead of saved settings');
+                        // Keep currentSettings as is (target ranges)
+                    } else {
+                        // Normal case - merge saved settings with target ranges (saved settings take priority for fine-tuning)
+                        currentSettings = {
+                            hr: savedSettings.hr || currentSettings.hr,
+                            bp: savedSettings.bp || currentSettings.bp
+                        };
+                        console.log('✅ Using saved fine-tuned settings:', currentSettings);
+                    }
                 } else {
                     // If no fine-tuned settings, check if we need to load from medical info
                     const medicalInfo = window.sharedDataManager.getPatientMedicalInfo(currentPatientId);
@@ -1245,11 +1280,11 @@
                             onChange: (data) => {
                                 console.log('HR Slider changed:', data);
                                 if (window.sharedDataManager && data.type === 'save') {
+                                    // Allow saving regardless of sepsis state
                                     // Save to SharedDataManager
                                     const newSettings = { hr: { min: data.min, max: data.max }, bp: currentSettings.bp };
                                     window.sharedDataManager.savePatientCirculatoirSettings(currentPatientId, newSettings);
                                     currentSettings = newSettings;
-                                    
                                     // Also update target ranges to reflect the slider changes
                                     const updatedTargetRanges = {
                                         HR: { min: Math.round(data.min), max: Math.round(data.max), unit: 'bpm' },
@@ -1297,11 +1332,11 @@
                             onChange: (data) => {
                                 console.log('BP Slider changed:', data);
                                 if (window.sharedDataManager && data.type === 'save') {
+                                    // Allow saving regardless of sepsis state
                                     // Save to SharedDataManager
                                     const newSettings = { hr: currentSettings.hr, bp: { min: data.min, max: data.max } };
                                     window.sharedDataManager.savePatientCirculatoirSettings(currentPatientId, newSettings);
                                     currentSettings = newSettings;
-                                    
                                     // Also update target ranges to reflect the slider changes
                                     const updatedTargetRanges = {
                                         HR: { 

@@ -773,7 +773,6 @@ class VitalParameterSlider {
         this.scale = this.calculateScale();
         this.updateSliderPosition();
         this.generateAxes();
-        
         // If monitoring level changed, regenerate the SVG graphics
         if (newConfig.monitoringLevel) {
             this.generateGraphLines();
