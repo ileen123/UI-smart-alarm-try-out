@@ -53,18 +53,27 @@
             <h2 class="section-title">Monitoring Level Circulatoir</h2>
             <p class="monitoring-description">Kies de monitoring intensiteit voor de visuele weergave:</p>
             
-            <!-- Container for buttons and heart circle -->
+            <!-- Container for buttons, heart circle, and additional info -->
             <div class="monitoring-controls-layout">
                 <div class="monitoring-buttons" style="flex: none;">
+                    <h3 class="info-title">Selecteer monitoring niveau:</h3>
                     <div class="button-group">
                         <button class="btn risk-low" data-level="loose" onclick="changeMonitoringLevel('loose')">Los</button>
                         <button class="btn risk-med selected" data-level="mid" onclick="changeMonitoringLevel('mid')">Mid</button>
                         <button class="btn risk-high" data-level="tight" onclick="changeMonitoringLevel('tight')">Strak</button>
                     </div>
                 </div>
-                <div class="heart-circle-wrapper">
-                    <div class="heart-circle-section">
-                        <div id="circulatoir-heart-circle-container"></div>
+                <div class="heart-circle-section">
+                    <h3 class="info-title">Huidige staat circulatoir:</h3>
+                    <div id="circulatoir-heart-circle-container"></div>
+                </div>
+                
+                <!-- Additional Circulatory Information Container -->
+                <div class="additional-circulatory-info">
+                    <h3 class="info-title">Selecteer eventueel additionele informatie:</h3>
+                    <div class="circulatory-tags-section">
+                        <button class="btn tag-btn circulatory-tag" data-condition="sepsis">Sepsis ⚙️</button>
+                        <button class="circulatory-more-btn">⋯</button>
                     </div>
                 </div>
             </div>
@@ -110,37 +119,44 @@
             text-align: left; /* Changed from default to explicitly left */
         }
         
-        /* Layout for monitoring controls and heart circle */
+        /* Layout for monitoring controls and heart circle - horizontal sections */
         .monitoring-controls-layout {
             display: flex;
-            align-items: center;
-            gap: 40px;
+            gap: 30px;
             margin-top: 20px;
+            margin-bottom: 40px;
+            align-items: flex-start;
             width: 100%;
             position: relative;
         }
         
         .monitoring-buttons {
-            flex: 0 0 auto;
+            flex: 1;
+            background: white;
+            padding: 0px 20px 25px 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            min-height: 200px;
+            max-height: 200px;
+            display: flex;
+            flex-direction: column;
         }
         
-        .heart-circle-wrapper {
-            flex: 0 0 auto;
-            padding: 20px;
-            margin-left: 20px;
-            min-width: 120px;
-            min-height: 120px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
+    /* .heart-circle-wrapper removed */
         
         .heart-circle-section {
+            flex: 1;
+            background: white;
+            padding: 0px 20px 25px 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            min-height: 180px;
+            max-height: 200px;
             display: flex;
             flex-direction: column;
             align-items: center;
-            gap: 10px;
-            flex: 0 0 auto;
+            justify-content: flex-start;
+            overflow: hidden;
             position: relative;
         }
         
@@ -152,14 +168,102 @@
         }
         
         #circulatoir-heart-circle-container {
-            width: 80px;
-            height: 80px;
+            width: 220px;
+            height: 220px;
+            max-width: 100%;
+            max-height: 260px;
             position: relative;
             z-index: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0;
+            padding-top: 12px;
         }
         .heart-organ-circle {
             opacity: 1 !important;
             position: relative !important;
+        }
+        
+        /* Additional Circulatory Information Container - matches alarm overview form-section */
+        .additional-circulatory-info {
+            flex: 1;
+            background: white;
+            padding: 0px 20px 25px 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            min-height: 200px;
+            max-height: 200px;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        /* General info-title styling for all containers */
+        .info-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #007bff;
+            margin: 0;
+            margin-bottom: 15px;
+            text-align: left;
+            position: relative;
+            z-index: 2;
+        }
+        
+        .additional-circulatory-info .info-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #007bff;
+            margin: 0;
+            margin-bottom: 15px;
+            text-align: left;
+        }
+        
+        .circulatory-tags-section {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            width: 100%;
+        }
+        
+        .circulatory-tag {
+            padding: 6px 12px;
+            border-radius: 20px;
+            background-color: #bbdefb;
+            border: 2px solid #90caf9;
+            color: #1976d2;
+            font-size: 12px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            white-space: nowrap;
+            width: auto;
+        }
+        
+        .circulatory-tag:hover {
+            background: #90caf9;
+            border-color: #64b5f6;
+        }
+        
+        .circulatory-tag.selected {
+            background-color: #007bff;
+            color: white;
+            border-color: #007bff;
+            font-weight: 600;
+        }
+        
+        .circulatory-more-btn {
+            background-color: #ff6b35;
+            color: white;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            border: none;
+            font-size: 16px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
         
         /* Slider containers and titles */
@@ -588,6 +692,7 @@
             initializePage();
             setupEventListeners();
             loadCurrentSettings();
+            initializeSepsisTagState();
 
             // Initialize heart circle component (same as alarm overview)
             setTimeout(() => {
@@ -871,6 +976,30 @@
                 headerElement.textContent = '';
             }
         }
+        
+        function initializeSepsisTagState() {
+            console.log('🦠 Initializing sepsis tag state...');
+            
+            if (currentPatientId && window.sharedDataManager) {
+                // Check if sepsis ranges are currently active by checking the target ranges
+                const targetRanges = window.sharedDataManager.getPatientTargetRanges(currentPatientId);
+                
+                if (targetRanges && targetRanges.HR) {
+                    const isSepsisActive = (targetRanges.HR.min === 90 && targetRanges.HR.max === 130);
+                    
+                    const sepsisButton = document.querySelector('.circulatory-tag[data-condition="sepsis"]');
+                    if (sepsisButton) {
+                        if (isSepsisActive) {
+                            sepsisButton.classList.add('selected');
+                            console.log('✅ Initialized sepsis button as selected (90-130 range detected)');
+                        } else {
+                            sepsisButton.classList.remove('selected');
+                            console.log('✅ Initialized sepsis button as deselected');
+                        }
+                    }
+                }
+            }
+        }
 
         function setupEventListeners() {
             console.log('🔧 Setting up event listeners...');
@@ -945,6 +1074,55 @@
                             }
                         });
                         console.log('✅ HR slider updated with sepsis ranges');
+                    }
+                }
+            });
+            
+            // Set up circulatory tag button listeners
+            const circulatoryTagButtons = document.querySelectorAll('.circulatory-tag');
+            circulatoryTagButtons.forEach(button => {
+                button.addEventListener('click', function() {
+                    const tagCondition = this.dataset.condition;
+                    
+                    if (this.classList.contains('selected')) {
+                        // Deselect tag
+                        this.classList.remove('selected');
+                        
+                        // Handle sepsis deselection
+                        if (tagCondition === 'sepsis' && currentPatientId && window.sharedDataManager) {
+                            window.sharedDataManager.handleSepsisTagChange(currentPatientId, false);
+                            console.log('🦠 Sepsis deselected in circulatory settings');
+                        }
+                    } else {
+                        // Select tag
+                        this.classList.add('selected');
+                        
+                        // Handle sepsis selection
+                        if (tagCondition === 'sepsis' && currentPatientId && window.sharedDataManager) {
+                            window.sharedDataManager.handleSepsisTagChange(currentPatientId, true);
+                            console.log('🦠 Sepsis selected in circulatory settings');
+                        }
+                    }
+                });
+            });
+            
+            // Listen for sepsis state changes from other pages to update our button
+            window.addEventListener('hrRangesChanged', function(event) {
+                console.log('💓 Updating circulatory tag state from external change:', event.detail);
+                
+                const { patientId, source } = event.detail;
+                
+                // Only update if it's for the current patient
+                if (patientId === currentPatientId) {
+                    const sepsisButton = document.querySelector('.circulatory-tag[data-condition="sepsis"]');
+                    if (sepsisButton) {
+                        if (source === 'sepsis') {
+                            sepsisButton.classList.add('selected');
+                            console.log('✅ Marked sepsis button as selected due to external selection');
+                        } else if (source === 'restore') {
+                            sepsisButton.classList.remove('selected');
+                            console.log('✅ Marked sepsis button as deselected due to external deselection');
+                        }
                     }
                 }
             });
