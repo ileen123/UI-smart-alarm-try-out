@@ -1033,8 +1033,8 @@
                             max: targetRanges.HR?.max || 110
                         },
                         bp: {
-                            min: targetRanges.BP?.min || 65,
-                            max: targetRanges.BP?.max || 85
+                            min: targetRanges.BP_Mean?.min || 65,
+                            max: targetRanges.BP_Mean?.max || 85
                         }
                     };
                     
@@ -1106,7 +1106,7 @@
             window.addEventListener('hrRangesChanged', function(event) {
                 console.log('💓 HR ranges changed event received in circulatoir-settings:', event.detail);
                 
-                const { patientId, HR_low, HR_high, source } = event.detail;
+                const { patientId, HR_low, HR_high, BP_low, BP_high, source } = event.detail;
                 
                 // Only update if it's for the current patient
                 if (patientId === currentPatientId) {
@@ -1117,6 +1117,26 @@
                         min: HR_low,
                         max: HR_high
                     };
+                    
+                    // Update BP settings if BP ranges are provided
+                    if (typeof BP_low !== 'undefined' && typeof BP_high !== 'undefined') {
+                        console.log('🩸 Updating BP slider with new ranges:', BP_low, '-', BP_high, 'source:', source);
+                        currentSettings.bp = {
+                            min: BP_low,
+                            max: BP_high
+                        };
+                        
+                        // Update BP slider if it exists
+                        if (bpSlider && typeof bpSlider.updateConfig === 'function') {
+                            bpSlider.updateConfig({
+                                targetRange: {
+                                    min: BP_low,
+                                    max: BP_high
+                                }
+                            });
+                            console.log('✅ BP slider updated with new ranges');
+                        }
+                    }
                     
                     // Force update HR slider using global values
                     updateHRSliderFromGlobalValues();
@@ -1193,8 +1213,8 @@
                             max: targetRanges.HR?.max || 110
                         },
                         bp: {
-                            min: targetRanges.BP?.min || 65,
-                            max: targetRanges.BP?.max || 85
+                            min: targetRanges.BP_Mean?.min || 65,
+                            max: targetRanges.BP_Mean?.max || 85
                         }
                     };
                 }
@@ -1312,7 +1332,7 @@
                                     // Also update target ranges to reflect the slider changes
                                     const updatedTargetRanges = {
                                         HR: { min: Math.round(data.min), max: Math.round(data.max), unit: 'bpm' },
-                                        BP: { 
+                                        BP_Mean: { 
                                             min: Math.round(currentSettings.bp?.min || 65), 
                                             max: Math.round(currentSettings.bp?.max || 85), 
                                             unit: 'mmHg' 
@@ -1380,7 +1400,7 @@
                                             max: Math.round(currentSettings.hr?.max || 110), 
                                             unit: 'bpm' 
                                         },
-                                        BP: { min: Math.round(data.min), max: Math.round(data.max), unit: 'mmHg' }
+                                        BP_Mean: { min: Math.round(data.min), max: Math.round(data.max), unit: 'mmHg' }
                                     };
                                     window.sharedDataManager.updateGlobalTargetRanges(currentPatientId, updatedTargetRanges);
                                     console.log('🎯 Updated target ranges after BP slider change:', updatedTargetRanges);

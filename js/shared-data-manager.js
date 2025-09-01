@@ -599,7 +599,7 @@ class SharedDataManager {
                     sepsis: {
                         circulatoir: { 
                             HR: { min: 90, max: 130, unit: "bpm" }, 
-                            BP_Mean: { min: 60, max: 80, unit: "mmHg" } 
+                            BP_Mean: { min: 45, max: 65, unit: "mmHg" } 
                         }
                     }
                 }
@@ -888,10 +888,10 @@ class SharedDataManager {
                     max: normalThresholds.circulatoir.HR?.max || 100,
                     unit: normalThresholds.circulatoir.HR?.unit || 'bpm'
                 },
-                BP: {
-                    min: normalThresholds.circulatoir.BP?.min || 65,
-                    max: normalThresholds.circulatoir.BP?.max || 85,
-                    unit: normalThresholds.circulatoir.BP?.unit || 'mmHg'
+                BP_Mean: {
+                    min: normalThresholds.circulatoir.BP_Mean?.min || 65,
+                    max: normalThresholds.circulatoir.BP_Mean?.max || 85,
+                    unit: normalThresholds.circulatoir.BP_Mean?.unit || 'mmHg'
                 }
             };
         }
@@ -899,7 +899,7 @@ class SharedDataManager {
         // Fallback defaults
         return {
             HR: { min: 60, max: 100, unit: 'bpm' },
-            BP: { min: 65, max: 85, unit: 'mmHg' }
+            BP_Mean: { min: 65, max: 85, unit: 'mmHg' }
         };
     }
 
@@ -926,11 +926,11 @@ class SharedDataManager {
                     }
                     
                     // Update BP ranges for sepsis
-                    if (sepsisThresholds.circulatoir.BP) {
-                        targetRanges.BP = {
-                            min: sepsisThresholds.circulatoir.BP.min,
-                            max: sepsisThresholds.circulatoir.BP.max,
-                            unit: sepsisThresholds.circulatoir.BP.unit || 'mmHg'
+                    if (sepsisThresholds.circulatoir.BP_Mean) {
+                        targetRanges.BP_Mean = {
+                            min: sepsisThresholds.circulatoir.BP_Mean.min,
+                            max: sepsisThresholds.circulatoir.BP_Mean.max,
+                            unit: sepsisThresholds.circulatoir.BP_Mean.unit || 'mmHg'
                         };
                     }
                 }
@@ -1014,13 +1014,23 @@ class SharedDataManager {
         window.HR_low = 90;
         window.HR_high = 130;
         
-        // Save to target ranges for consistency
+        // Save to target ranges for consistency and apply sepsis BP ranges
         const targetRanges = this.getPatientTargetRanges(patientId) || this.getDefaultTargetRanges();
+        
+        // Apply sepsis HR ranges
         targetRanges.HR = {
             min: 90,
             max: 130,
             unit: 'bpm'
         };
+        
+        // Apply sepsis BP ranges (45-65)
+        targetRanges.BP_Mean = {
+            min: 45,
+            max: 65,
+            unit: 'mmHg'
+        };
+        
         this.savePatientTargetRanges(patientId, targetRanges);
         
         // Emit event to update all pages
@@ -1029,12 +1039,15 @@ class SharedDataManager {
                 patientId, 
                 HR_low: window.HR_low, 
                 HR_high: window.HR_high,
+                BP_low: 45,
+                BP_high: 65,
                 source: 'sepsis' 
             }
         });
         window.dispatchEvent(event);
         
         console.log('🦠 Applied sepsis HR ranges:', window.HR_low, '-', window.HR_high);
+        console.log('🦠 Applied sepsis BP ranges: 45 - 65 mmHg');
     }
 
     /**
@@ -1054,9 +1067,18 @@ class SharedDataManager {
                 max: backup.HR_high,
                 unit: 'bpm'
             };
+            
+            // Restore default BP ranges too
+            targetRanges.BP_Mean = {
+                min: 65,
+                max: 85,
+                unit: 'mmHg'
+            };
+            
             this.savePatientTargetRanges(patientId, targetRanges);
             
             console.log('🔙 Restored previous HR ranges:', window.HR_low, '-', window.HR_high);
+            console.log('🔙 Restored default BP ranges: 65 - 85 mmHg');
         } else {
             // Fallback to default normal ranges
             const normalThresholds = this.getThresholds('normal');
@@ -1071,9 +1093,18 @@ class SharedDataManager {
                     max: window.HR_high,
                     unit: 'bpm'
                 };
+                
+                // Restore default BP ranges
+                targetRanges.BP_Mean = {
+                    min: 65,
+                    max: 85,
+                    unit: 'mmHg'
+                };
+                
                 this.savePatientTargetRanges(patientId, targetRanges);
                 
                 console.log('🔙 Restored default HR ranges:', window.HR_low, '-', window.HR_high);
+                console.log('🔙 Restored default BP ranges: 65 - 85 mmHg');
             }
         }
         
@@ -1083,6 +1114,8 @@ class SharedDataManager {
                 patientId, 
                 HR_low: window.HR_low, 
                 HR_high: window.HR_high,
+                BP_low: 65,
+                BP_high: 85,
                 source: 'restore' 
             }
         });

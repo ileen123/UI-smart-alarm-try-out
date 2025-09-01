@@ -133,7 +133,7 @@
                 <div class="value-label inactive-text">HR</div>
                 <div class="value-number inactive-text">70 - 110</div>
                 <div class="value-label inactive-text">BP Mean</div>
-                <div class="value-number inactive-text">65 - 85</div>
+                <div class="value-number inactive-text">65 - 85 mmHg</div>
             </div>
             
             <!-- Respiratory parameters -->
@@ -404,9 +404,15 @@
                                 console.log('💓 HR ranges changed event received in setup page:', event.detail);
                                 if (event.detail.patientId === currentPatientId) {
                                     // Directly update the HR display with the new values
-                                    const { HR_low, HR_high, source } = event.detail;
+                                    const { HR_low, HR_high, BP_low, BP_high, source } = event.detail;
                                     updateHRDisplayDirectly(HR_low, HR_high, source === 'sepsis');
-                                    console.log('✅ Directly updated HR display with values:', HR_low, '-', HR_high);
+                                    
+                                    // Also update BP display if BP values are provided
+                                    if (typeof BP_low !== 'undefined' && typeof BP_high !== 'undefined') {
+                                        updateBPDisplayDirectly(BP_low, BP_high, source === 'sepsis');
+                                    }
+                                    
+                                    console.log('✅ Directly updated HR and BP displays with values:', HR_low, '-', HR_high, 'BP:', BP_low, '-', BP_high);
                                 }
                             });
                         }
@@ -419,7 +425,7 @@
                             const hrRange = circulatoryCard?.querySelector('.value-number');
                             
                             if (hrRange) {
-                                hrRange.textContent = `${hrLow} - ${hrHigh}`;
+                                hrRange.textContent = `${hrLow} - ${hrHigh} bpm`;
                                 
                                 // Apply sepsis styling if needed
                                 if (isSepsis) {
@@ -440,6 +446,38 @@
                                 console.log(`✅ HR display updated directly: ${hrLow} - ${hrHigh}`);
                             } else {
                                 console.warn('❌ Could not find HR display element on setup page');
+                            }
+                        }
+                        
+                        // Function to directly update BP display on setup page
+                        function updateBPDisplayDirectly(bpLow, bpHigh, isSepsis) {
+                            console.log(`🩸 Directly updating BP display: ${bpLow}-${bpHigh} mmHg (sepsis: ${isSepsis})`);
+                            
+                            const circulatoryCard = document.querySelector('.value-card');
+                            const bpRange = circulatoryCard?.querySelectorAll('.value-number')[1]; // Second value-number is BP
+                            
+                            if (bpRange) {
+                                bpRange.textContent = `${bpLow} - ${bpHigh} mmHg`;
+                                
+                                // Apply sepsis styling if needed
+                                if (isSepsis) {
+                                    bpRange.style.backgroundColor = '#fff3cd'; // Light yellow highlight
+                                    bpRange.style.border = '2px solid #ffc107'; // Yellow border
+                                    bpRange.style.borderRadius = '4px';
+                                    bpRange.style.padding = '2px 4px';
+                                    console.log('✅ Applied sepsis styling to BP display');
+                                } else {
+                                    // Remove sepsis styling
+                                    bpRange.style.backgroundColor = '';
+                                    bpRange.style.border = '';
+                                    bpRange.style.borderRadius = '';
+                                    bpRange.style.padding = '';
+                                    console.log('✅ Removed sepsis styling from BP display');
+                                }
+                                
+                                console.log(`✅ BP display updated directly: ${bpLow} - ${bpHigh} mmHg`);
+                            } else {
+                                console.warn('❌ Could not find BP display element on setup page');
                             }
                         }
                         
@@ -605,10 +643,10 @@
                                         max: Math.round(currentThresholds.circulatoir.HR?.max || 100),
                                         unit: currentThresholds.circulatoir.HR?.unit || 'bpm'
                                     },
-                                    BP: {
-                                        min: Math.round(currentThresholds.circulatoir.BP?.min || 65),
-                                        max: Math.round(currentThresholds.circulatoir.BP?.max || 85),
-                                        unit: currentThresholds.circulatoir.BP?.unit || 'mmHg'
+                                    BP_Mean: {
+                                        min: Math.round(currentThresholds.circulatoir.BP_Mean?.min || 65),
+                                        max: Math.round(currentThresholds.circulatoir.BP_Mean?.max || 85),
+                                        unit: currentThresholds.circulatoir.BP_Mean?.unit || 'mmHg'
                                     }
                                 };
                                 
@@ -617,9 +655,10 @@
                                 console.log('🎯 Updated target ranges for patient:', currentPatientId, targetRanges);
                             }
                             
-                            // Update circulatory parameters (HR)
+                            // Update circulatory parameters (HR and BP)
                             const circulatoryCard = document.querySelector('.value-card');
                             const hrRange = circulatoryCard?.querySelector('.value-number');
+                            const bpRange = circulatoryCard?.querySelectorAll('.value-number')[1]; // Second value-number is BP
                             
                             if (hrRange && currentThresholds.circulatoir && currentThresholds.circulatoir.HR) {
                                 const hr = currentThresholds.circulatoir.HR;
@@ -641,6 +680,30 @@
                                     hrRange.style.borderRadius = '';
                                     hrRange.style.padding = '';
                                     console.log('🔍 DEBUG: Reset HR range to normal styling');
+                                }
+                            }
+                            
+                            // Update BP range
+                            if (bpRange && currentThresholds.circulatoir && currentThresholds.circulatoir.BP_Mean) {
+                                const bp = currentThresholds.circulatoir.BP_Mean;
+                                bpRange.textContent = bp.min + ' - ' + bp.max + ' ' + bp.unit;
+                                
+                                console.log('🔍 DEBUG: Updated BP range to:', bp.min + ' - ' + bp.max + ' ' + bp.unit);
+                                
+                                // Highlight if using sepsis thresholds
+                                if (hasSepsis && sepsisThresholds) {
+                                    bpRange.style.backgroundColor = '#fff3cd'; // Light yellow highlight
+                                    bpRange.style.border = '2px solid #ffc107'; // Yellow border
+                                    bpRange.style.borderRadius = '4px';
+                                    bpRange.style.padding = '2px 4px';
+                                    console.log('🔍 DEBUG: Applied sepsis highlighting to BP range');
+                                } else {
+                                    // Reset to normal styling
+                                    bpRange.style.backgroundColor = '';
+                                    bpRange.style.border = '';
+                                    bpRange.style.borderRadius = '';
+                                    bpRange.style.padding = '';
+                                    console.log('🔍 DEBUG: Reset BP range to normal styling');
                                 }
                             }
                         }

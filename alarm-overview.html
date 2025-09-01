@@ -114,25 +114,25 @@
             <!-- Circulatory parameters -->
             <div class="value-card">
                 <div class="value-label inactive-text">HR</div>
-                <div class="value-number inactive-text">70 - 110</div>
+                <div class="value-number inactive-text">70 - 110 bpm</div>
                 <div class="value-label inactive-text">BP Mean</div>
-                <div class="value-number inactive-text">65 - 85</div>
+                <div class="value-number inactive-text">65 - 85 mmHg</div>
                 <button class="adjust-btn" onclick="adjustOrganSettings('circulatoir')">Aanpassen</button>
             </div>
             
             <!-- Respiratory parameters -->
             <div class="value-card">
                 <div class="value-label inactive-text">Saturatie</div>
-                <div class="value-number inactive-text">90 - 100</div>
+                <div class="value-number inactive-text">90 - 100 %</div>
                 <div class="value-label inactive-text">AF</div>
-                <div class="value-number inactive-text">10 - 25</div>
+                <div class="value-number inactive-text">10 - 25 /min</div>
                 <button class="adjust-btn" onclick="adjustOrganSettings('respiratoir')">Aanpassen</button>
             </div>
             
             <!-- Temperature parameters -->
             <div class="value-card">
                 <div class="value-label inactive-text">Temp.</div>
-                <div class="value-number inactive-text">36.5 - 39</div>
+                <div class="value-number inactive-text">36.5 - 39 °C</div>
                 <button class="adjust-btn" onclick="adjustOrganSettings('overig')">Aanpassen</button>
             </div>
         </div>
@@ -261,6 +261,12 @@
                 if (event.detail.patientId === currentPatientId) {
                     // Update the HR display immediately
                     updateHRDisplay(event.detail.HR_low, event.detail.HR_high, event.detail.source === 'sepsis');
+                    
+                    // Update BP display if BP values are provided
+                    if (typeof event.detail.BP_low !== 'undefined' && typeof event.detail.BP_high !== 'undefined') {
+                        updateBPDisplay(event.detail.BP_low, event.detail.BP_high, event.detail.source === 'sepsis');
+                    }
+                    
                     // Also update parameter ranges to ensure consistency
                     updateParameterRanges();
                     console.log('✅ Called updateParameterRanges() due to HR ranges change');
@@ -623,10 +629,11 @@
                 
                 // Update BP display if available
                 const bpCards = document.querySelectorAll('.value-card');
-                if (bpCards.length > 1 && targetRanges.BP) {
-                    const bpRange = bpCards[1]?.querySelector('.value-number');
+                if (bpCards.length > 0 && targetRanges.BP_Mean) {
+                    // Get the BP range from the circulatory card (1st card, 2nd value-number)
+                    const bpRange = bpCards[0]?.querySelectorAll('.value-number')[1];
                     if (bpRange) {
-                        const bp = targetRanges.BP;
+                        const bp = targetRanges.BP_Mean;
                         bpRange.textContent = Math.round(bp.min) + ' - ' + Math.round(bp.max) + ' ' + (bp.unit || 'mmHg');
                         console.log('🎯 Updated BP range from target ranges:', Math.round(bp.min) + ' - ' + Math.round(bp.max) + ' ' + (bp.unit || 'mmHg'));
                         
@@ -718,6 +725,37 @@
                     hrRange.style.padding = '2px 4px';
                     console.log('🔙 Applied restored styling to HR display');
                 }
+            }
+        }
+        
+        function updateBPDisplay(bpLow, bpHigh, isSepsis) {
+            console.log('🩸 Updating BP display:', bpLow, '-', bpHigh, 'mmHg, sepsis:', isSepsis);
+            
+            // Find the BP display element (second value-number in circulatory card)
+            const circulatoryCard = document.querySelector('.value-card');
+            const bpRange = circulatoryCard?.querySelectorAll('.value-number')[1];
+            
+            if (bpRange) {
+                // Update the display text with unit
+                bpRange.textContent = bpLow + ' - ' + bpHigh + ' mmHg';
+                
+                // Apply styling based on source
+                if (isSepsis) {
+                    bpRange.style.backgroundColor = '#fff3cd'; // Light yellow highlight for sepsis
+                    bpRange.style.border = '2px solid #ffc107'; // Yellow border
+                    bpRange.style.borderRadius = '4px';
+                    bpRange.style.padding = '2px 4px';
+                    console.log('🦠 Applied sepsis styling to BP display');
+                } else {
+                    bpRange.style.backgroundColor = '#e8f5e8'; // Light green for restored
+                    bpRange.style.border = '2px solid #28a745'; // Green border
+                    bpRange.style.borderRadius = '4px';
+                    bpRange.style.padding = '2px 4px';
+                    console.log('🔙 Applied restored styling to BP display');
+                }
+                
+                // Remove inactive-text class if present
+                bpRange.classList.remove('inactive-text');
             }
         }
 
