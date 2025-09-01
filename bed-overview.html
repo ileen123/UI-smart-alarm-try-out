@@ -20,15 +20,15 @@
         body {
             font-family: 'Open Sans', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             font-weight: 400;
-            background-color: #f5f5f5;
+            background-color: #ffffff;
             padding: 20px;
         }
 
         .header {
-            background-color: #e8e8e8;
+            background-color: #ffffff;
             padding: 10px 20px;
             border-radius: 8px;
-            margin-bottom: 30px;
+            margin-bottom: 0px;
             display: flex;
             align-items: center;
             justify-content: space-between;
@@ -52,17 +52,26 @@
         }
 
         .header-btn {
-            padding: 8px 16px;
+            padding: 9px 15px;
             background: #bdc3c7;
             color: white;
             border: none;
             border-radius: 20px;
             cursor: pointer;
             font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .header-btn::after {
+            content: '▼';
+            font-size: 10px;
+            color: white;
         }
 
         .instruction-text {
-            text-align: center;
+            text-align: left;
             color: #7f8c8d;
             font-style: italic;
             margin-bottom: 40px;
@@ -79,7 +88,7 @@
             grid-template-columns: repeat(3, 1fr);
             gap: 30px;
             align-items: start;
-            max-width: 1200px;
+            max-width: 1400px;
             margin: 0 auto;
         }
 
@@ -108,7 +117,7 @@
             background: #bdc3c7;
             border-radius: 15px;
             padding: 20px;
-            min-height: 160px;
+            min-height: 240px;
             display: flex;
             flex-direction: column;
             justify-content: space-between;
@@ -377,8 +386,8 @@
     <div class="header">
         <h1>Patiënten Overzicht</h1>
         <div class="header-buttons">
-            <button class="header-btn">Nachtdienst</button>
-            <button class="header-btn">Unit IB</button>
+            <button class="header-btn">Plattegrond</button>
+            <button class="header-btn">Unit 1</button>
         </div>
     </div>
 
