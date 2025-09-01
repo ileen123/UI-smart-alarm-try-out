@@ -25,7 +25,7 @@
 body {
     font-family: 'Open Sans', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; /* Open Sans as primary font */
     font-weight: 400; /* Regular weight for body text */
-    background-color: #f5f5f5; /* Light gray background for clinical feel */
+    background-color: #ffffff; /* Light gray background for clinical feel */
     padding: 20px; /* Consistent spacing around page content */
 }
 
@@ -187,6 +187,22 @@ body {
     flex: 1; /* Take remaining space in form section */
 }
 
+/* Alarm indicator SVG styling */
+.alarm-indicator-svg {
+    margin-top: 0px; /* Space above the indicator */
+    margin-bottom: 0; /* No space below to match button group */
+    display: flex;
+    justify-content: left; /* Center the SVG */
+    width: 100%; /* Full width to match the form section */
+}
+
+.alarm-indicator-svg svg,
+.alarm-indicator-svg img {
+    max-width: 120%; /* Responsive scaling */
+    height: 60px; /* Fixed smaller height to fit in container */
+    display: block; /* Remove extra spacing */
+}
+
 /* =============================================================================
    5. BUTTON STYLES - Interactive Elements
 ============================================================================= */
@@ -227,18 +243,18 @@ body {
 
 /* Risk level button color coding */
 .btn.risk-low { 
-    border-color: #ff6b35; /* Orange border for low risk */
-    color: #d47755; /* Orange text */
+    border-color: #FC6039; /* Orange border for low risk */
+    color: #FC6039; /* Orange text */
 }
 
 .btn.risk-med { 
-    border-color: #007bff; /* Blue border for medium risk */
-    color: #007bff; /* Blue text */
+    border-color: #FC6039; /* Blue border for medium risk */
+    color: #FC6039; /* Blue text */
 }
 
 .btn.risk-high { 
-    border-color: #dc3545; /* Red border for high risk */
-    color: #dc3545; /* Red text */
+    border-color: #FC6039; /* Red border for high risk */
+    color: #FC6039; /* Red text */
 }
 
 /* Selected state for specific risk buttons - overrides unselected colors */
@@ -256,8 +272,8 @@ body {
 .problem-dropdown {
     width: 100%; /* Full width of container */
     padding: 12px 16px; /* Internal spacing */
-    border: 2px solid #ccc; /* Gray border */
-    border-radius: 8px; /* Rounded corners */
+    border: 2px solid #FC6039; /* Gray border */
+    border-radius: 15px; /* Rounded corners */
     background: white; /* White background */
     font-size: 14px; /* Standard font size */
     cursor: pointer; /* Hand cursor */
@@ -586,8 +602,8 @@ body {
 .problem-dropdown {
     width: 100%;
     padding: 12px;
-    border: 2px solid #ddd;
-    border-radius: 8px;
+    border: 2px solid #FC6039;
+    border-radius: 15px;
     font-size: 14px;
     background: white;
     cursor: pointer;

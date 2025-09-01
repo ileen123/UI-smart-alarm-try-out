@@ -57,10 +57,9 @@
                 <button class="btn risk-med" data-risk="med">Mid</button>
                 <button class="btn risk-high" data-risk="high">Hoog</button>
             </div>
-            <!-- Dynamic alarm indicator that changes based on risk level -->
-            <div class="alarm-indicator">
-                <div>🔔 🔔 🔔</div>
-                <div>sneller een alarm</div>
+            <!-- Static alarm indicator SVG -->
+            <div class="alarm-indicator-svg">
+                <img src="svg's/alarm_indicator.svg" alt="Alarm Indicator" />
             </div>
         </div>
         
@@ -556,7 +555,6 @@
             
             if (riskButton) {
                 riskButton.classList.add('selected');
-                updateAlarmIndicator(riskLevel);
             }
         }
 
@@ -863,24 +861,6 @@
             console.log('Risk level selected:', riskLevel);
             selectedRiskLevel = riskLevel;
             updateOrganCircles();
-            updateAlarmIndicator(riskLevel);
-        }
-
-        // Function to update alarm indicator based on risk level
-        function updateAlarmIndicator(riskLevel) {
-            const alarmIndicator = document.querySelector('.alarm-indicator');
-            if (alarmIndicator) {
-                const bellsDiv = alarmIndicator.querySelector('div:first-child');
-                if (riskLevel === 'low') {
-                    bellsDiv.textContent = '🔔';
-                } else if (riskLevel === 'med') {
-                    bellsDiv.textContent = '🔔 🔔';
-                } else if (riskLevel === 'high') {
-                    bellsDiv.textContent = '🔔 🔔 🔔';
-                } else {
-                    bellsDiv.textContent = '🔔 🔔 🔔';
-                }
-            }
         }
 
         // Main function to update organ circles based on current problem and risk
