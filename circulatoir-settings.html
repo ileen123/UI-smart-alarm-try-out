@@ -30,33 +30,25 @@
 <body>
     <!-- Patient information header section -->
     <div class="header">
-        <span class="user-icon">👤</span>
+        <img src="svg's/patient_icon.svg" alt="Patient" class="user-icon" />
         <span id="patient-header-info">Loading patient info...</span>
     </div>
     
-    <!-- Navigation section with back button -->
-    <div class="navigation-section">
-        <button class="nav-button back-button" onclick="goBackToAlarmOverview()">
-            ← Terug naar Alarm Overzicht
-        </button>
-    </div>
+    
     
     <!-- Main page title -->
-    <h1 class="main-title">Circulatoir Instellingen</h1>
-    <p class="subtitle">Pas de hart- en bloeddruk parameters aan voor deze patiënt</p>
+    <h1 class="main-title">Circulatoire Monitoring</h1>
     
     <!-- Main content container -->
     <div class="circulatoir-settings-container">
         
         <!-- Monitoring Level Controls -->
-        <div class="monitoring-level-controls">
-            <h2 class="section-title">Monitoring Level Circulatoir</h2>
-            <p class="monitoring-description">Kies de monitoring intensiteit voor de visuele weergave:</p>
+       
             
             <!-- Container for buttons, heart circle, and additional info -->
             <div class="monitoring-controls-layout">
                 <div class="monitoring-buttons" style="flex: none;">
-                    <h3 class="info-title">Selecteer monitoring niveau:</h3>
+                    <h3 class="info-title">Monitoring Level</h3>
                     <div class="button-group">
                         <button class="btn risk-low" data-level="loose" onclick="changeMonitoringLevel('loose')">Los</button>
                         <button class="btn risk-med selected" data-level="mid" onclick="changeMonitoringLevel('mid')">Mid</button>
@@ -64,25 +56,26 @@
                     </div>
                 </div>
                 <div class="heart-circle-section">
-                    <h3 class="info-title">Huidige staat circulatoir:</h3>
+                    <h3 class="info-title"> </h3>
                     <div id="circulatoir-heart-circle-container"></div>
                 </div>
                 
                 <!-- Additional Circulatory Information Container -->
                 <div class="additional-circulatory-info">
-                    <h3 class="info-title">Selecteer eventueel additionele informatie:</h3>
+                    <h3 class="info-title">Circulatoire additionele informatie:</h3>
                     <div class="circulatory-tags-section">
                         <button class="btn tag-btn circulatory-tag" data-condition="sepsis">Sepsis ⚙️</button>
                         <button class="circulatory-more-btn">⋯</button>
                     </div>
                 </div>
             </div>
-        </div>
+        
+        
+        <!-- Section title moved outside the container -->
+        <h2 class="section-title">Circulatoire Streefgebieden Aanpassen</h2>
         
         <!-- Interactive Slider Demo Section -->
         <div class="slider-demo-section">
-            <h2 class="section-title">Circulatoire Parameters Aanpassen</h2>
-            
             
             <!-- Direct slider containers without extra wrappers -->
             <div class="sliders-layout">
@@ -92,12 +85,25 @@
         </div>
     </div>
 
+    <!-- Navigation section with back button -->
+    <div class="navigation-section">
+        <button class="nav-button back-button" onclick="goBackToAlarmOverview()">
+            ← Terug naar Alarm Overzicht
+        </button>
+    </div>
+
     <style>
+        /* Page-specific gradient background - only for circulatory settings page */
+        body {
+            background: linear-gradient(to bottom, #ffffff 0%, #ffffff 31%, #E6E4E0 100%);
+            min-height: 100vh; /* Ensure full viewport height for gradient */
+        }
+        
         /* Monitoring Level Controls - matching risk level button styling */
         .monitoring-level-controls {
             margin: 30px 0;
             text-align: left; /* Changed from center to left */
-            background: white;
+            background: rgba(255, 255, 255, 0);
             padding: 25px;
             border-radius: 10px;
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
@@ -132,10 +138,10 @@
         
         .monitoring-buttons {
             flex: 1;
-            background: white;
-            padding: 0px 20px 25px 20px;
+            background: transparent; /* Changed from white to transparent */
+            padding: 20px 20px 25px 20px;
             border-radius: 10px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            /* box-shadow: 0 2px 4px rgba(0,0,0,0.1); */ /* Shadow removed */
             min-height: 200px;
             max-height: 200px;
             display: flex;
@@ -146,15 +152,15 @@
         
         .heart-circle-section {
             flex: 1;
-            background: white;
+            background: transparent; /* Changed from white to transparent */
             padding: 0px 20px 25px 20px;
             border-radius: 10px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            /* box-shadow: 0 2px 4px rgba(0,0,0,0.1); */ /* Shadow removed */
             min-height: 180px;
             max-height: 200px;
             display: flex;
             flex-direction: column;
-            align-items: center;
+            align-items: left;
             justify-content: flex-start;
             overflow: hidden;
             position: relative;
@@ -188,10 +194,9 @@
         /* Additional Circulatory Information Container - matches alarm overview form-section */
         .additional-circulatory-info {
             flex: 1;
-            background: white;
-            padding: 0px 20px 25px 20px;
-            border-radius: 10px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            background: #C2E4FF;
+            padding: 20px 20px 25px 20px;
+            border-radius: 30px 0px 30px 0px;
             min-height: 200px;
             max-height: 200px;
             display: flex;
@@ -202,7 +207,7 @@
         .info-title {
             font-size: 18px;
             font-weight: 600;
-            color: #007bff;
+            color: #1961AB;
             margin: 0;
             margin-bottom: 15px;
             text-align: left;
@@ -213,7 +218,7 @@
         .additional-circulatory-info .info-title {
             font-size: 18px;
             font-weight: 600;
-            color: #007bff;
+            color: #1961AB;
             margin: 0;
             margin-bottom: 15px;
             text-align: left;
@@ -230,8 +235,8 @@
             padding: 6px 12px;
             border-radius: 20px;
             background-color: #bbdefb;
-            border: 2px solid #90caf9;
-            color: #1976d2;
+            border: 2px solid #1961AB;
+            color: #1961AB;
             font-size: 12px;
             font-weight: 500;
             cursor: pointer;
@@ -246,9 +251,9 @@
         }
         
         .circulatory-tag.selected {
-            background-color: #007bff;
+            background-color: #1961AB;
             color: white;
-            border-color: #007bff;
+            border-color: #1961AB;
             font-weight: 600;
         }
         
@@ -272,15 +277,15 @@
             max-width: 1600px; /* Much wider container */
             margin-left: auto;
             margin-right: auto;
-            padding: 0 20px;
+            padding: 0; /* Remove padding to align with body padding */
         }
         
         .slider-demo-section .section-title {
-            color: #2c3e50;
+            color: #1961AB;
             font-size: 24px;
             font-weight: 600;
             margin-bottom: 10px;
-            text-align: center;
+            text-align: left;
         }
         
         .demo-description {
@@ -306,17 +311,18 @@
         }
         .navigation-section {
             margin: 20px 0;
-            padding: 0 20px;
+            padding: 0; /* Remove padding to align with body padding */
         }
         
         .nav-button {
-            background-color: #f8f9fa;
-            border: 2px solid #dee2e6;
-            border-radius: 8px;
-            padding: 12px 20px;
+            background-color: transparent;
+            border: 2px solid #ff6b35;
+            border-radius: 20px;
+            padding: 10px 20px;
             font-size: 16px;
             font-weight: 600;
-            color: #495057;
+            font-family: 'Open Sans', sans-serif;
+            color: #ff6b35;
             cursor: pointer;
             transition: all 0.3s ease;
             text-decoration: none;
@@ -324,8 +330,9 @@
         }
         
         .nav-button:hover {
-            background-color: #e9ecef;
-            border-color: #adb5bd;
+            background-color: #ff6b35;
+            border-color: #ff6b35;
+            color: white;
             transform: translateY(-2px);
         }
         
@@ -340,7 +347,7 @@
         .circulatoir-settings-container {
             max-width: 1600px; /* Much wider to accommodate side-by-side sliders */
             margin: 0 auto;
-            padding: 20px;
+            padding: 0; /* Remove padding to align with body padding */
         }
         
         .parameter-section {
@@ -422,7 +429,7 @@
         
         .input-with-unit input:focus {
             outline: none;
-            border-color: #007bff;
+            border-color: #1961AB;
             box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
         }
         
@@ -451,8 +458,8 @@
         }
         
         .preset-btn:hover {
-            background-color: #007bff;
-            border-color: #007bff;
+            background-color: #1961AB;
+            border-color: #1961AB;
             color: white;
         }
         
@@ -529,17 +536,16 @@
         
         .preview-value {
             font-weight: 600;
-            color: #007bff;
+            color: #1961AB;
             font-size: 16px;
         }
         
         /* Slider Demo Section Styles */
         .slider-demo-section {
-            background: #f8f9fa;
-            border-radius: 12px;
+            background: #ffffff;
+            border-radius: 0px 30px 0px 30px;
             padding: 30px;
             margin-top: 30px;
-            border: 2px solid #dee2e6;
         }
         
         .slider-demo-section h3 {
@@ -631,8 +637,8 @@
         }
         
         .level-btn.active {
-            background: #007bff;
-            border-color: #007bff;
+            background: #1961AB;
+            border-color: #1961AB;
             color: white;
         }
         

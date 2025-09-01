@@ -26,7 +26,7 @@ body {
     font-family: 'Open Sans', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; /* Open Sans as primary font */
     font-weight: 400; /* Regular weight for body text */
     background-color: #ffffff; /* Light gray background for clinical feel */
-    padding: 20px; /* Consistent spacing around page content */
+    padding: 20px 200px 20px 200px; /* top right bottom left - reduced top padding */
 }
 
 /* =============================================================================
@@ -44,12 +44,14 @@ body {
     gap: 20px; /* Space between user icon and text */
     font-size: 14px; /* Smaller font for patient details */
     font-weight: 400; /* Regular weight */
-    color: #666; /* Medium gray text color */
+    color: #000000; /* Medium gray text color */
 }
 
 /* User icon styling within header */
 .user-icon {
-    font-size: 16px; /* Slightly larger icon */
+    width: 20px; /* Set width for SVG */
+    height: 20px; /* Set height for SVG */
+    flex-shrink: 0; /* Prevent icon from shrinking */
 }
 
 /* =============================================================================
@@ -63,8 +65,21 @@ body {
     font-style: regular; /* Italic style for elegance */
     margin-bottom: 30px; /* Space below title */
     color: #333; /* Dark gray for readability */
-    border-bottom: 3px solid #ff6b35; /* Orange accent line below title */
-    padding-bottom: 10px; /* Space between text and border */
+    padding-bottom: 10px; /* Space between text and accent line */
+    position: relative; /* Needed for pseudo-element positioning */
+    display: inline-block; /* Makes element only as wide as its content */
+}
+
+/* Orange accent line that matches title width */
+.main-title::after {
+    content: ''; /* Empty content for pseudo-element */
+    position: absolute; /* Position relative to the title */
+    bottom: 0; /* Align to bottom of title */
+    left: 0; /* Start from left edge */
+    width: 100%; /* Match the width of the title text */
+    height: 3px; /* Same thickness as before */
+    background-color: #ff6b35; /* Orange accent color */
+    border-radius: 1.5px; /* Rounded ends - half the height for perfect rounding */
 }
 
 /* Progress bar container - shows which step user is on */
@@ -88,7 +103,7 @@ body {
     width: 30px; /* Fixed width for consistent circles */
     height: 30px; /* Fixed height for consistent circles */
     border-radius: 50%; /* Makes it perfectly circular */
-    background-color: #007bff; /* Blue background for active steps */
+    background-color: #1961AB; /* Blue background for active steps */
     color: white; /* White text on blue background */
     display: flex; /* Center the number inside circle */
     align-items: center; /* Vertically center number */
@@ -104,7 +119,7 @@ body {
 
 /* Completed step styling */
 .step-number.completed {
-    background-color: #007bff; /* Blue background for completed steps */
+    background-color: #1961AB; /* Blue background for completed steps */
     color: white; /* White text */
 }
 
@@ -167,7 +182,7 @@ body {
 .section-title {
     font-size: 18px; /* Medium-large font size */
     font-weight: 600; /* Semibold weight */
-    color: #007bff; /* Blue color to match theme */
+    color: #1961AB; /* Blue color to match theme */
     margin-bottom: 15px; /* Space below title */
 }
 
@@ -236,9 +251,9 @@ body {
 
 /* Selected tag button state - blue for tag buttons when selected */
 .btn.tag-btn.selected {
-    background-color: #007bff; /* Blue background for selected tag buttons */
+    background-color: #1961AB; /* Blue background for selected tag buttons */
     color: white; /* White text on blue background */
-    border-color: #007bff; /* Blue border to match background */
+    border-color: #1961AB; /* Blue border to match background */
 }
 
 /* Risk level button color coding */
@@ -282,13 +297,13 @@ body {
 
 .problem-dropdown:focus {
     outline: none; /* Remove default outline */
-    border-color: #007bff; /* Blue border when focused */
+    border-color: #1961AB; /* Blue border when focused */
 }
 
 /* Selected state for dropdown - when option is chosen */
 .problem-dropdown.selected {
     background-color: #e3f2fd; /* Light blue background */
-    border-color: #007bff; /* Blue border */
+    border-color: #1961AB; /* Blue border */
     border-width: 3px; /* Thicker border for emphasis */
     font-weight: 600; /* Slightly bolder text */
     color: #0056b3; /* Darker blue text color */
@@ -421,13 +436,13 @@ body {
 /* Active monitoring state - partial circle fill */
 .circle-active {
     /* Creates a conic gradient showing 75% progress (270 degrees) */
-    background: conic-gradient(#007bff 0deg 270deg, #e0e0e0 270deg);
+    background: conic-gradient(#1961AB 0deg 270deg, #e0e0e0 270deg);
 }
 
 /* Critical monitoring state - more progress shown */
 .circle-critical {
     /* Creates a conic gradient showing ~83% progress (300 degrees) */
-    background: conic-gradient(#007bff 0deg 300deg, #e0e0e0 300deg);
+    background: conic-gradient(#1961AB 0deg 300deg, #e0e0e0 300deg);
 }
 
 /* Inactive monitoring state - no progress */
@@ -566,8 +581,8 @@ body {
 
 /* Primary action button (Confirm) styling */
 .nav-btn.primary {
-    background-color: #007bff; /* Blue background */
-    border-color: #007bff; /* Blue border */
+    background-color: #1961AB; /* Blue background */
+    border-color: #1961AB; /* Blue border */
     color: white; /* White text */
 }
 
@@ -593,7 +608,7 @@ body {
 }
 
 .problem-section h2 {
-    color: #007bff;
+    color: #1961AB;
     font-size: 16px;
     margin-bottom: 15px;
     font-weight: 600;
@@ -611,7 +626,7 @@ body {
 
 .problem-dropdown:focus {
     outline: none;
-    border-color: #007bff;
+    border-color: #1961AB;
 }
 
 /* Risk section (middle column) */
@@ -625,7 +640,7 @@ body {
 }
 
 .risk-section h2 {
-    color: #007bff;
+    color: #1961AB;
     font-size: 16px;
     margin-bottom: 15px;
     font-weight: 600;
@@ -654,8 +669,8 @@ body {
 }
 
 .risk-btn.risk-mid {
-    border-color: #007bff;
-    color: #007bff;
+    border-color: #1961AB;
+    color: #1961AB;
 }
 
 .risk-btn.risk-high {
@@ -669,7 +684,7 @@ body {
 }
 
 .risk-btn.selected.risk-mid {
-    background: #007bff;
+    background: #1961AB;
     color: white;
 }
 
@@ -697,7 +712,7 @@ body {
 }
 
 .tags-section h2 {
-    color: #007bff;
+    color: #1961AB;
     font-size: 16px;
     margin-bottom: 15px;
     font-weight: 600;
@@ -746,7 +761,7 @@ body {
 }
 
 .organ-monitoring-section h2 {
-    color: #007bff;
+    color: #1961AB;
     font-size: 18px;
     margin-bottom: 30px;
     font-weight: 600;
@@ -774,7 +789,7 @@ body {
     width: 120px;
     height: 120px;
     border-radius: 50%;
-    background: conic-gradient(#007bff 0deg 270deg, #e3f2fd 270deg 360deg);
+    background: conic-gradient(#1961AB 0deg 270deg, #e3f2fd 270deg 360deg);
     display: flex;
     align-items: center;
     justify-content: center;
