@@ -12,22 +12,21 @@
     background: white;
     border-radius: 8px;
     padding: 30px 30px 30px 80px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
     min-width: 500px;
     position: relative;
     font-family: 'Open Sans', sans-serif;
 }
 
 .slider-title {
-    color: #2c3e50;
+    color: #000000;
     font-size: 20px;
     font-weight: 600;
-    text-align: center;
-    margin-bottom: 15px;
-    padding: 10px;
-    background: #f8f9fa;
+    text-align: left;
+    margin-bottom: 0px;
+    padding: 0px;
+    background: #ffffff;
     border-radius: 8px;
-    border: 2px solid #dee2e6;
+    
 }
 
 .chart-container {
@@ -45,6 +44,7 @@
     right: 40px;
     bottom: 30px;
     overflow: hidden;
+    border-radius: 20px 0px 20px 0px;
     background: transparent;
 }
 
@@ -88,6 +88,7 @@
     left: 0;
     right: 40px;
     bottom: 30px;
+    border-radius: 20px 0px 20px 0px;
     background: linear-gradient(to bottom, 
         #d4c5a9 0%, 
         #f4e4a6 20%, 
@@ -254,7 +255,6 @@
     background: white;
     border-radius: 8px;
     padding: 20px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
     margin: 15px;
 }
 
@@ -275,7 +275,7 @@
     color: white;
     padding: 12px 20px;
     border-radius: 8px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    /* box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15); */ /* Shadow removed */
     z-index: 10000;
     font-family: 'Open Sans', sans-serif;
     font-size: 14px;

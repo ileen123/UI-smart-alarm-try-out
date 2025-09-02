@@ -43,32 +43,32 @@
     <div class="circulatoir-settings-container">
         
         <!-- Monitoring Level Controls -->
-       
-            
-            <!-- Container for buttons, heart circle, and additional info -->
-            <div class="monitoring-controls-layout">
-                <div class="monitoring-buttons" style="flex: none;">
-                    <h3 class="info-title">Monitoring Level</h3>
-                    <div class="button-group">
-                        <button class="btn risk-low" data-level="loose" onclick="changeMonitoringLevel('loose')">Los</button>
-                        <button class="btn risk-med selected" data-level="mid" onclick="changeMonitoringLevel('mid')">Mid</button>
-                        <button class="btn risk-high" data-level="tight" onclick="changeMonitoringLevel('tight')">Strak</button>
-                    </div>
-                </div>
-                <div class="heart-circle-section">
-                    <h3 class="info-title"> </h3>
-                    <div id="circulatoir-heart-circle-container"></div>
-                </div>
-                
-                <!-- Additional Circulatory Information Container -->
-                <div class="additional-circulatory-info">
-                    <h3 class="info-title">Circulatoire additionele informatie:</h3>
-                    <div class="circulatory-tags-section">
-                        <button class="btn tag-btn circulatory-tag" data-condition="sepsis">Sepsis ⚙️</button>
-                        <button class="circulatory-more-btn">⋯</button>
-                    </div>
+        <div class="monitoring-controls-layout">
+            <!-- Monitoring buttons - now direct children -->
+            <div class="monitoring-buttons-direct">
+                <h3 class="info-title">Monitoring Level</h3>
+                <div class="button-group">
+                    <button class="btn risk-low" data-level="loose" onclick="changeMonitoringLevel('loose')">Los</button>
+                    <button class="btn risk-med selected" data-level="mid" onclick="changeMonitoringLevel('mid')">Mid</button>
+                    <button class="btn risk-high" data-level="tight" onclick="changeMonitoringLevel('tight')">Strak</button>
                 </div>
             </div>
+            
+            <!-- Heart circle - now direct child -->
+            <div class="heart-circle-direct">
+                <h3 class="info-title"> </h3>
+                <div id="circulatoir-heart-circle-container"></div>
+            </div>
+            
+            <!-- Additional Circulatory Information Container -->
+            <div class="additional-circulatory-info">
+                <h3 class="info-title">Circulatoire additionele informatie:</h3>
+                <div class="circulatory-tags-section">
+                    <button class="btn tag-btn circulatory-tag" data-condition="sepsis">Sepsis ⚙️</button>
+                    <button class="circulatory-more-btn">⋯</button>
+                </div>
+            </div>
+        </div>
         
         
         <!-- Section title moved outside the container -->
@@ -80,7 +80,27 @@
             <!-- Direct slider containers without extra wrappers -->
             <div class="sliders-layout">
                 <div id="hr-slider-container" class="individual-slider"></div>
-                <div id="bp-slider-container" class="individual-slider"></div>
+                <div class="bp-slider-with-legend">
+                    <div id="bp-slider-container" class="individual-slider"></div>
+                    <div class="alarm-legend">
+                        <div class="legend-item">
+                            <div class="legend-color green"></div>
+                            <span>Geen alarm</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-color yellow"></div>
+                            <span>Geel alarm</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-color orange"></div>
+                            <span>Oranje alarm</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-color red"></div>
+                            <span>Rood alarm</span>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -106,7 +126,7 @@
             background: rgba(255, 255, 255, 0);
             padding: 25px;
             border-radius: 10px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            /* box-shadow: 0 2px 4px rgba(0,0,0,0.1); */ /* Shadow removed */
             border: 1px solid #e9ecef;
         }
         
@@ -128,7 +148,7 @@
         /* Layout for monitoring controls and heart circle - horizontal sections */
         .monitoring-controls-layout {
             display: flex;
-            gap: 30px;
+            gap: 15px; /* Reduced from 30px to 15px for smaller gap */
             margin-top: 20px;
             margin-bottom: 40px;
             align-items: flex-start;
@@ -136,26 +156,21 @@
             position: relative;
         }
         
-        .monitoring-buttons {
+        .monitoring-buttons-direct {
             flex: 1;
-            background: transparent; /* Changed from white to transparent */
+            /* Container properties removed - now direct on page */
             padding: 20px 20px 25px 20px;
-            border-radius: 10px;
-            /* box-shadow: 0 2px 4px rgba(0,0,0,0.1); */ /* Shadow removed */
             min-height: 200px;
             max-height: 200px;
             display: flex;
             flex-direction: column;
         }
         
-    /* .heart-circle-wrapper removed */
-        
-        .heart-circle-section {
+        .heart-circle-direct {
             flex: 1;
-            background: transparent; /* Changed from white to transparent */
+            /* Container properties removed - now direct on page */
             padding: 0px 20px 25px 20px;
-            border-radius: 10px;
-            /* box-shadow: 0 2px 4px rgba(0,0,0,0.1); */ /* Shadow removed */
+            margin-left: -350px; /* Increased from -30px to move heart circles further left */
             min-height: 180px;
             max-height: 200px;
             display: flex;
@@ -182,7 +197,7 @@
             z-index: 1;
             display: flex;
             align-items: center;
-            justify-content: center;
+            justify-content: flex-start; /* Changed from center to flex-start to move left */
             margin: 0;
             padding-top: 12px;
         }
@@ -309,6 +324,72 @@
             min-width: 500px; /* Ensure enough space for each slider */
             max-width: 600px; /* Prevent sliders from getting too wide */
         }
+
+        /* BP Slider with Legend Layout */
+        .bp-slider-with-legend {
+            display: flex;
+            gap: 30px;
+            align-items: center; /* This centers the legend vertically */
+        }
+
+        /* Alarm Legend Styles */
+        .alarm-legend {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            min-width: 200px;
+            /* margin-top removed - flexbox centering handles positioning */
+        }
+
+        .alarm-legend h4 {
+            font-family: 'Open Sans', sans-serif;
+            color: black;
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 10px;
+            font-family: 'Open Sans', sans-serif;
+        }
+
+        .legend-item:last-child {
+            margin-bottom: 0;
+        }
+
+        .legend-color {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+
+        .legend-color.green {
+            background-color: #00C877;
+        }
+
+        .legend-color.yellow {
+            background-color: #ECEC3E;
+        }
+
+        .legend-color.orange {
+            background-color: #F0973E;
+        }
+
+        .legend-color.red {
+            background-color: #EB4921;
+        }
+
+        .legend-item span {
+            color: black;
+            font-size: 14px;
+            font-weight: 400;
+        }
         .navigation-section {
             margin: 20px 0;
             padding: 0; /* Remove padding to align with body padding */
@@ -355,7 +436,7 @@
             border-radius: 12px;
             padding: 30px;
             margin-bottom: 30px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            /* box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); */ /* Shadow removed */
             border: 1px solid #e9ecef;
         }
         
@@ -364,7 +445,7 @@
             align-items: center;
             gap: 15px;
             margin-bottom: 25px;
-            color: #2c3e50;
+            color: #cd3ae1;
             font-size: 24px;
             font-weight: 600;
         }
@@ -430,7 +511,7 @@
         .input-with-unit input:focus {
             outline: none;
             border-color: #1961AB;
-            box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
+            /* box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1); */ /* Shadow removed */
         }
         
         .unit {
@@ -573,7 +654,7 @@
             background: white;
             border-radius: 8px;
             padding: 20px;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            /* box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1); */ /* Shadow removed */
             border: 1px solid #e9ecef;
         }
         

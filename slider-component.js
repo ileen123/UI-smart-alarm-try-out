@@ -466,8 +466,8 @@ class VitalParameterSlider {
         this.currentHandle = handle;
         handle.style.cursor = 'grabbing';
         
-        // Add visual feedback
-        this.container.querySelector('.vital-slider').style.boxShadow = '0 15px 40px rgba(52, 152, 219, 0.3)';
+        // Add visual feedback - shadow removed
+        // this.container.querySelector('.vital-slider').style.boxShadow = '0 15px 40px rgba(52, 152, 219, 0.3)';
     }
 
     onDrag(event) {
@@ -510,8 +510,8 @@ class VitalParameterSlider {
         }
         this.currentHandle = null;
         
-        // Remove visual feedback
-        this.container.querySelector('.vital-slider').style.boxShadow = '0 10px 30px rgba(0, 0, 0, 0.1)';
+        // Remove visual feedback - shadow removed
+        // this.container.querySelector('.vital-slider').style.boxShadow = '0 10px 30px rgba(0, 0, 0, 0.1)';
     }
 
     /**
