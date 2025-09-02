@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     
     <!-- Page title that appears in browser tab -->
-    <title>Circulatoir Instellingen</title>
+    <title>Respiratoire Instellingen</title>
     
     <!-- Google Fonts - Open Sans with multiple weights -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -37,13 +37,13 @@
         <span class="breadcrumb-separator">></span>
         <a href="#" class="breadcrumb-link" onclick="goBackToAlarmOverview()">Alarm Instellingen - S. Groen</a>
         <span class="breadcrumb-separator">></span>
-        <span class="breadcrumb-current">Circulatoire Monitoring</span>
+        <span class="breadcrumb-current">Respiratoire Monitoring</span>
     </nav>
 
     <!-- Title and Patient Info Layout -->
     <div class="title-patient-layout">
         <!-- Main page title -->
-        <h1 class="main-title">Circulatoire Monitoring</h1>
+        <h1 class="main-title">Respiratoire Monitoring</h1>
         
         <!-- Patient information header section -->
         <div class="header">
@@ -70,15 +70,15 @@
             <!-- Heart circle - now direct child -->
             <div class="heart-circle-direct">
                 <h3 class="info-title"> </h3>
-                <div id="circulatoir-heart-circle-container"></div>
+                <div id="respiratory-heart-circle-container"></div>
             </div>
             
             <!-- Additional Circulatory Information Container -->
             <div class="additional-circulatory-info">
-                <h3 class="info-title">Circulatoire additionele informatie:</h3>
+                <h3 class="info-title">Respiratoire additionele informatie:</h3>
                 <div class="circulatory-tags-section">
-                    <button class="btn tag-btn circulatory-tag" data-condition="sepsis">
-                        Sepsis <img src="svg's/sepsis.svg" alt="Sepsis" class="sepsis-icon">
+                    <button class="btn tag-btn circulatory-tag" data-condition="pneumonie">
+                        Pneumonie <img src="svg's/pneumonie.svg" alt="Pneumonie" class="condition-icon">
                     </button>
                     <button class="circulatory-more-btn">⋯</button>
                 </div>
@@ -87,16 +87,16 @@
         
         
         <!-- Section title moved outside the container -->
-        <h2 class="section-title">Circulatoire Streefgebieden Aanpassen</h2>
+        <h2 class="section-title">Respiratoire Streefgebieden Aanpassen</h2>
         
         <!-- Interactive Slider Demo Section -->
         <div class="slider-demo-section">
             
             <!-- Direct slider containers without extra wrappers -->
             <div class="sliders-layout">
-                <div id="hr-slider-container" class="individual-slider"></div>
-                <div class="bp-slider-with-legend">
-                    <div id="bp-slider-container" class="individual-slider"></div>
+                <div id="saturatie-slider-container" class="individual-slider"></div>
+                <div class="af-slider-with-legend">
+                    <div id="af-slider-container" class="individual-slider"></div>
                     <div class="alarm-legend">
                         <div class="legend-item">
                             <div class="legend-color green"></div>
@@ -129,13 +129,11 @@
 
     <!-- Bottom right navigation button -->
     <div class="bottom-right-nav">
-        <button class="nav-button forward-button" onclick="goToRespiratoir()">
-            Naar Respiratoir →
-        </button>
+        <button class="nav-button" onclick="goToCirculatorySettings()">Naar Circulatoir →</button>
     </div>
 
     <style>
-        /* Page-specific gradient background - only for circulatory settings page */
+        /* Page-specific gradient background - only for respiratory settings page */
         body {
             background: linear-gradient(to bottom, #ffffff 0%, #ffffff 10%, #E6E4E0 100%);
             min-height: 100vh; /* Ensure full viewport height for gradient */
@@ -282,7 +280,7 @@
             text-align: center;
         }
         
-        #circulatoir-heart-circle-container {
+        #respiratory-heart-circle-container {
             width: 220px;
             height: 220px;
             max-width: 100%;
@@ -301,8 +299,8 @@
             position: relative !important;
         }
         
-        /* Specific override for circulatory page heart circle positioning */
-        #circulatoir-heart-circle-container .heart-organ-circle {
+        /* Specific override for respiratory page heart circle positioning */
+        #respiratory-heart-circle-container .heart-organ-circle {
             justify-content: flex-start !important;
             margin: 0 !important;
         }
@@ -452,8 +450,8 @@
             max-width: 450px; /* Reduced from 600px */
         }
 
-        /* BP Slider with Legend Layout */
-        .bp-slider-with-legend {
+        /* AF Slider with Legend Layout */
+        .af-slider-with-legend {
             display: flex;
             gap: 100px;
             align-items: center; /* This centers the legend vertically */
@@ -911,19 +909,19 @@
         let currentPatientId = null;
         let currentBed = null;
         let currentSettings = {
-            hr: { min: 70, max: 110 },
-            bp: { min: 65, max: 85 }
+            saturatie: { min: 95, max: 100 },
+            af: { min: 12, max: 20 }
         };
         
         // Store slider references for monitoring level changes
-        let hrSlider = null;
-        let bpSlider = null;
+        let saturatieSlider = null;
+        let afSlider = null;
 
         // Initialize page when DOM is loaded
         document.addEventListener('DOMContentLoaded', function() {
             initializePage();
             setupEventListeners();
-            initializeSepsisTagState(); // Initialize sepsis state FIRST
+            initializePneumonieTagState(); // Initialize pneumonie state FIRST
             loadCurrentSettings(); // Then load settings (which will respect sepsis state)
 
             // Initialize heart circle component (same as alarm overview)
@@ -943,10 +941,13 @@
                     }
                 }, 500);
             }, 1000);
-        // Heart SVG content (copied from alarm overview)
+        // Heart and Lung SVG content
         const svgContent = {
             heart: `<svg class="organ-icon" viewBox="0 0 22 26" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <path d="M13.22 10.3743C12.0679 12.132 10.9163 15.0615 10.9163 19.1628M13.22 10.3743C12.0681 12.132 11.4922 14.4756 6.30842 14.4756M13.22 10.3743C14.6766 8.39884 16.9516 6.83964 19.3552 6.3986C20.0557 6.27006 20.6011 5.62288 20.4841 4.90863L20.2921 3.73684C20.1996 3.17181 19.7182 2.75127 19.159 2.81881C16.3987 3.15222 12.9705 4.8327 10.9162 7.44486C10.9162 6.27307 10.9162 2.75769 10.3402 1M5.73245 6.85896C5.15648 5.10127 4.00454 3.92948 2.27663 3.92948M1.70071 15.6441C2.85258 20.9171 7.26892 25 10.3401 25C13.4113 25 17.6365 20.9175 18.9799 15.6441C20.3232 10.3707 16.1 6.85563 13.2201 10.371C13.2201 8.61732 11.4922 6.85906 8.03639 6.85906C4.58057 6.85906 0.548838 10.371 1.70071 15.6441Z" stroke="black" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>`,
+            lung: `<svg class="organ-icon" viewBox="0 0 30 26" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M11.5007 5.62881C11.5007 4.02205 10.3628 2.41595 5.90178 6.31748C-0.397037 11.8263 1.7026 24.2213 2.40247 24.91C3.10233 25.5986 10.8008 22.1555 11.5007 20.7783C12.2006 19.4011 10.8008 17.3352 12.2006 14.5808M18.4993 5.62879C18.4993 4.02203 19.6372 2.41593 24.0982 6.31746C30.397 11.8263 28.2974 24.2213 27.5975 24.9099C26.8977 25.5985 19.1992 22.1555 18.4993 20.7783C17.7994 19.401 19.1992 17.3352 17.7994 14.5807M21.9987 16.6468C21.9987 13.3949 19.8717 11.7738 18.2519 10.7191C14.9109 8.54378 15 4.4935 15 0.999945C15 4.4935 15.0891 8.54378 11.7481 10.7191C10.1283 11.7738 8.00142 13.3949 8.00142 16.6468" stroke="black" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
             </svg>`
         };
 
@@ -969,7 +970,7 @@
             }
         }
 
-        // Initialize the heart circle component in circulatoir settings
+        // Initialize the heart circle component in respiratory settings
         function initializeHeartCircleComponent() {
             // Use same size as alarm overview
             const circleSize = 130;
@@ -981,11 +982,11 @@
                 console.log(`Loading heart monitoring level for patient ${currentPatientId}:`, initialLevel);
             }
             
-            window.circulatoirHeartCircle = new HeartCircleComponent('circulatoir-heart-circle-container', { 
+            window.respiratoryHeartCircle = new HeartCircleComponent('respiratory-heart-circle-container', { 
                 size: circleSize, 
                 initialState: initialLevel 
             });
-            setTimeout(() => injectSVG('circulatoir-heart-circle-container', 'heart'), 100);
+            setTimeout(() => injectSVG('respiratory-heart-circle-container', 'lung'), 100);
             
             // Map heart circle levels to button levels for initial setup
             const levelMapping = {
@@ -1051,38 +1052,38 @@
 
         // Helper function to update sliders monitoring level (moved outside closure for global access)
         function updateSlidersMonitoringLevel(level) {
-            console.log(`🎛️ Updating sliders monitoring level to: ${level}`);
-            console.log('🔍 DEBUG - hrSlider exists:', !!hrSlider);
-            console.log('🔍 DEBUG - bpSlider exists:', !!bpSlider);
+            console.log(`🎛️ Updating respiratory sliders monitoring level to: ${level}`);
+            console.log('🔍 DEBUG - saturatieSlider exists:', !!saturatieSlider);
+            console.log('🔍 DEBUG - afSlider exists:', !!afSlider);
             
-            if (hrSlider) {
-                console.log('🔍 DEBUG - hrSlider type:', typeof hrSlider);
-                console.log('🔍 DEBUG - hrSlider.updateMonitoringLevel exists:', typeof hrSlider.updateMonitoringLevel);
+            if (saturatieSlider) {
+                console.log('🔍 DEBUG - saturatieSlider type:', typeof saturatieSlider);
+                console.log('🔍 DEBUG - saturatieSlider.updateMonitoringLevel exists:', typeof saturatieSlider.updateMonitoringLevel);
             }
             
-            // Update HR slider if it exists
-            if (hrSlider && typeof hrSlider.updateMonitoringLevel === 'function') {
-                console.log('🎛️ Calling hrSlider.updateMonitoringLevel with:', level);
-                hrSlider.updateMonitoringLevel(level);
-                console.log('✅ HR slider monitoring level updated to:', level);
+            // Update Saturatie slider if it exists
+            if (saturatieSlider && typeof saturatieSlider.updateMonitoringLevel === 'function') {
+                console.log('🎛️ Calling saturatieSlider.updateMonitoringLevel with:', level);
+                saturatieSlider.updateMonitoringLevel(level);
+                console.log('✅ Saturatie slider monitoring level updated to:', level);
             } else {
-                console.warn('❌ HR slider not found or updateMonitoringLevel method not available');
-                console.warn('❌ hrSlider:', hrSlider);
-                if (hrSlider) {
-                    console.warn('❌ Available methods:', Object.getOwnPropertyNames(hrSlider));
+                console.warn('❌ Saturatie slider not found or updateMonitoringLevel method not available');
+                console.warn('❌ saturatieSlider:', saturatieSlider);
+                if (saturatieSlider) {
+                    console.warn('❌ Available methods:', Object.getOwnPropertyNames(saturatieSlider));
                 }
             }
             
-            // Update BP slider if it exists
-            if (bpSlider && typeof bpSlider.updateMonitoringLevel === 'function') {
-                console.log('🎛️ Calling bpSlider.updateMonitoringLevel with:', level);
-                bpSlider.updateMonitoringLevel(level);
-                console.log('✅ BP slider monitoring level updated to:', level);
+            // Update AF slider if it exists
+            if (afSlider && typeof afSlider.updateMonitoringLevel === 'function') {
+                console.log('🎛️ Calling afSlider.updateMonitoringLevel with:', level);
+                afSlider.updateMonitoringLevel(level);
+                console.log('✅ AF slider monitoring level updated to:', level);
             } else {
-                console.warn('❌ BP slider not found or updateMonitoringLevel method not available');
-                console.warn('❌ bpSlider:', bpSlider);
-                if (bpSlider) {
-                    console.warn('❌ Available methods:', Object.getOwnPropertyNames(bpSlider));
+                console.warn('❌ AF slider not found or updateMonitoringLevel method not available');
+                console.warn('❌ afSlider:', afSlider);
+                if (afSlider) {
+                    console.warn('❌ Available methods:', Object.getOwnPropertyNames(afSlider));
                 }
             }
         }
@@ -1114,11 +1115,11 @@
             }
             
             // Update heart circle if it exists
-            if (window.circulatoirHeartCircle) {
-                console.log(`🫀 Updating heart circle to: ${heartLevel}`);
-                window.circulatoirHeartCircle.setRiskLevel(heartLevel);
+            if (window.respiratoryHeartCircle) {
+                console.log(`� Updating respiratory heart circle to: ${heartLevel}`);
+                window.respiratoryHeartCircle.setRiskLevel(heartLevel);
             } else {
-                console.warn('❌ circulatoirHeartCircle not found');
+                console.warn('❌ respiratoryHeartCircle not found');
             }
             
             // Save to SharedDataManager for global sync
@@ -1137,7 +1138,7 @@
         }
 
         function initializePage() {
-            console.log('🔄 Initializing circulatoir settings page...');
+            console.log('🔄 Initializing respiratory settings page...');
             
             // Try to get patient and session data from multiple sources
             if (window.sharedDataManager) {
@@ -1194,7 +1195,7 @@
                 // Add main problem if available
                 if (medicalInfo?.selectedProblem) {
                     const problemMapping = {
-                        'sepsis': 'Sepsis',
+                        'pneumonie': 'Pneumonie',
                         'pneumonia': 'Pneumonie',
                         'cardiac': 'Hartproblemen',
                         'surgery': 'Chirurgie',
@@ -1221,21 +1222,21 @@
             }
         }
         
-        function initializeSepsisTagState() {
-            console.log('🦠 Initializing sepsis tag state...');
+        function initializePneumonieTagState() {
+            console.log('� Initializing pneumonie tag state...');
             
             if (currentPatientId && window.sharedDataManager) {
-                // Check if sepsis is currently selected using the new condition state method
-                const sepsisState = window.sharedDataManager.getPatientConditionState('sepsis');
-                const sepsisButton = document.querySelector('.circulatory-tag[data-condition="sepsis"]');
+                // Check if pneumonie is active by checking the global shared state
+                const isPneumonieActive = window.sharedDataManager.getPatientConditionState(currentPatientId, 'pneumonie') || false;
                 
-                if (sepsisButton) {
-                    if (sepsisState && sepsisState.isActive) {
-                        sepsisButton.classList.add('selected');
-                        console.log('✅ Initialized sepsis button as selected');
+                const pneumonieButton = document.querySelector('.circulatory-tag[data-condition="pneumonie"]');
+                if (pneumonieButton) {
+                    if (isPneumonieActive) {
+                        pneumonieButton.classList.add('selected');
+                        console.log('✅ Initialized pneumonie button as selected');
                     } else {
-                        sepsisButton.classList.remove('selected');
-                        console.log('✅ Initialized sepsis button as deselected');
+                        pneumonieButton.classList.remove('selected');
+                        console.log('✅ Initialized pneumonie button as deselected');
                     }
                 }
             }
@@ -1382,75 +1383,40 @@
                         // Deselect tag
                         this.classList.remove('selected');
                         
-                        // Handle sepsis deselection using new condition state system
-                        if (tagCondition === 'sepsis' && currentPatientId && window.sharedDataManager) {
-                            window.sharedDataManager.setPatientConditionState('sepsis', {
-                                isActive: false,
-                                patientId: currentPatientId,
-                                timestamp: Date.now(),
-                                source: 'circulatory-settings'
-                            });
-                            console.log('🦠 Sepsis deselected in circulatory settings');
+                        // Handle pneumonie deselection
+                        if (tagCondition === 'pneumonie' && currentPatientId && window.sharedDataManager) {
+                            window.sharedDataManager.setPatientConditionState(currentPatientId, 'pneumonie', false);
+                            console.log('� Pneumonie deselected in respiratory settings');
                         }
                     } else {
                         // Select tag
                         this.classList.add('selected');
                         
-                        // Handle sepsis selection using new condition state system
-                        if (tagCondition === 'sepsis' && currentPatientId && window.sharedDataManager) {
-                            window.sharedDataManager.setPatientConditionState('sepsis', {
-                                isActive: true,
-                                patientId: currentPatientId,
-                                timestamp: Date.now(),
-                                source: 'circulatory-settings'
-                            });
-                            console.log('🦠 Sepsis selected in circulatory settings');
+                        // Handle pneumonie selection
+                        if (tagCondition === 'pneumonie' && currentPatientId && window.sharedDataManager) {
+                            window.sharedDataManager.setPatientConditionState(currentPatientId, 'pneumonie', true);
+                            console.log('� Pneumonie selected in respiratory settings');
                         }
                     }
                 });
             });
             
-            // Listen for sepsis state changes from other pages to update our button
-            window.addEventListener('hrRangesChanged', function(event) {
-                console.log('💓 Updating circulatory tag state from external change:', event.detail);
+            // Listen for pneumonie state changes from other pages to update our button
+            window.addEventListener('pneumonieStateChanged', function(event) {
+                console.log('🫁 Updating respiratory tag state from external change:', event.detail);
                 
-                const { patientId, source } = event.detail;
+                const { patientId, pneumonieState } = event.detail;
                 
                 // Only update if it's for the current patient
                 if (patientId === currentPatientId) {
-                    const sepsisButton = document.querySelector('.circulatory-tag[data-condition="sepsis"]');
-                    if (sepsisButton) {
-                        if (source === 'sepsis') {
-                            sepsisButton.classList.add('selected');
-                            console.log('✅ Marked sepsis button as selected due to external selection');
-                        } else if (source === 'restore') {
-                            sepsisButton.classList.remove('selected');
-                            console.log('✅ Marked sepsis button as deselected due to external deselection');
-                        }
-                    }
-                }
-            });
-
-            // Listen for condition state changes from other pages
-            window.addEventListener('patientConditionStateChanged', function(event) {
-                console.log('🦠 Condition state changed event received:', event.detail);
-                
-                const { condition, state } = event.detail;
-                
-                // Only update if it's for sepsis and the current patient
-                if (condition === 'sepsis' && state.patientId === currentPatientId) {
-                    const sepsisButton = document.querySelector('.circulatory-tag[data-condition="sepsis"]');
-                    if (sepsisButton) {
-                        if (state.isActive) {
-                            if (!sepsisButton.classList.contains('selected')) {
-                                sepsisButton.classList.add('selected');
-                                console.log('✅ Marked sepsis button as selected due to external condition change');
-                            }
+                    const pneumonieButton = document.querySelector('.circulatory-tag[data-condition="pneumonie"]');
+                    if (pneumonieButton) {
+                        if (pneumonieState) {
+                            pneumonieButton.classList.add('selected');
+                            console.log('✅ Marked pneumonie button as selected due to external selection');
                         } else {
-                            if (sepsisButton.classList.contains('selected')) {
-                                sepsisButton.classList.remove('selected');
-                                console.log('✅ Marked sepsis button as deselected due to external condition change');
-                            }
+                            pneumonieButton.classList.remove('selected');
+                            console.log('✅ Marked pneumonie button as deselected due to external deselection');
                         }
                     }
                 }
@@ -1525,13 +1491,13 @@
         }
 
         function initializeSliders() {
-            console.log('🎛️ Initializing interactive sliders...');
+            console.log('🎛️ Initializing respiratory sliders...');
             
             // Debug: Check if containers exist
-            const hrContainer = document.getElementById('hr-slider-container');
-            const bpContainer = document.getElementById('bp-slider-container');
-            console.log('HR Container found:', !!hrContainer);
-            console.log('BP Container found:', !!bpContainer);
+            const saturatieContainer = document.getElementById('saturatie-slider-container');
+            const afContainer = document.getElementById('af-slider-container');
+            console.log('Saturatie Container found:', !!saturatieContainer);
+            console.log('AF Container found:', !!afContainer);
             
             // Check if slider components are loaded
             console.log('VitalParameterSlider available:', !!window.VitalParameterSlider);
@@ -1540,153 +1506,133 @@
             
             if (!window.VitalParameterSlider) {
                 console.error('❌ VitalParameterSlider class not found');
-                if (hrContainer) hrContainer.innerHTML = '<p style="color: red;">Slider component not loaded - VitalParameterSlider missing</p>';
+                if (saturatieContainer) saturatieContainer.innerHTML = '<p style="color: red;">Slider component not loaded - VitalParameterSlider missing</p>';
                 return;
             }
             
             if (!window.PatientConfigurationHelper) {
                 console.error('❌ PatientConfigurationHelper class not found');
-                if (bpContainer) bpContainer.innerHTML = '<p style="color: red;">Slider component not loaded - PatientConfigurationHelper missing</p>';
+                if (afContainer) afContainer.innerHTML = '<p style="color: red;">Slider component not loaded - PatientConfigurationHelper missing</p>';
                 return;
             }
             
             if (!currentPatientId) {
                 console.error('❌ No patient ID available for sliders');
-                if (hrContainer) hrContainer.innerHTML = '<p style="color: orange;">No patient ID available</p>';
-                if (bpContainer) bpContainer.innerHTML = '<p style="color: orange;">No patient ID available</p>';
+                if (saturatieContainer) saturatieContainer.innerHTML = '<p style="color: orange;">No patient ID available</p>';
+                if (afContainer) afContainer.innerHTML = '<p style="color: orange;">No patient ID available</p>';
                 return;
             }
             
-            console.log('✅ All prerequisites met, creating sliders for patient:', currentPatientId);
+            console.log('✅ All prerequisites met, creating respiratory sliders for patient:', currentPatientId);
             
             try {
                 // Debug: Check what data we have
                 console.log('Current patient ID:', currentPatientId);
                 const patientInfo = window.sharedDataManager ? window.sharedDataManager.getPatientInfo(currentPatientId) : null;
-                const patientSettings = window.sharedDataManager ? window.sharedDataManager.getPatientCirculatoirSettings(currentPatientId) : null;
+                const patientSettings = window.sharedDataManager ? window.sharedDataManager.getPatientRespiratorySettings(currentPatientId) : null;
                 console.log('Patient info:', patientInfo);
-                console.log('Patient settings:', patientSettings);
+                console.log('Patient respiratory settings:', patientSettings);
                 
-                // Initialize HR Slider with direct approach
-                const hrContainer = document.getElementById('hr-slider-container');
-                if (hrContainer) {
-                    console.log('🫀 Creating HR slider...');
-                    hrContainer.innerHTML = '<p style="color: blue;">Loading HR slider...</p>';
+                // Initialize Saturatie Slider
+                const saturatieContainer = document.getElementById('saturatie-slider-container');
+                if (saturatieContainer) {
+                    console.log('� Creating Saturatie slider...');
+                    saturatieContainer.innerHTML = '<p style="color: blue;">Loading Saturatie slider...</p>';
                     
                     try {
-                        // Try direct instantiation first
-                        hrSlider = new window.VitalParameterSlider(hrContainer, {
-                            parameter: 'HR',
-                            name: 'HR',
-                            unit: 'bpm',
-                            targetRange: currentSettings.hr || { min: 70, max: 110 },
-                            yAxis: { min: 40, max: 140, step: 20 },
+                        saturatieSlider = new window.VitalParameterSlider(saturatieContainer, {
+                            parameter: 'Saturatie',
+                            name: 'Saturatie',
+                            unit: '%',
+                            targetRange: currentSettings.saturatie || { min: 95, max: 100 },
+                            yAxis: { min: 80, max: 100, step: 5 },
                             monitoringLevel: 'mid',
                             patientId: currentPatientId,
                             patientName: patientInfo?.name || `Patiënt ${currentPatientId}`,
                             onChange: (data) => {
-                                console.log('HR Slider changed:', data);
+                                console.log('Saturatie Slider changed:', data);
                                 if (window.sharedDataManager && data.type === 'save') {
-                                    // Allow saving regardless of sepsis state
-                                    // Save to SharedDataManager
-                                    const newSettings = { hr: { min: data.min, max: data.max }, bp: currentSettings.bp };
-                                    window.sharedDataManager.savePatientCirculatoirSettings(currentPatientId, newSettings);
+                                    const newSettings = { saturatie: { min: data.min, max: data.max }, af: currentSettings.af };
+                                    window.sharedDataManager.savePatientRespiratorySettings(currentPatientId, newSettings);
                                     currentSettings = newSettings;
-                                    // Also update target ranges to reflect the slider changes
                                     const updatedTargetRanges = {
-                                        HR: { min: Math.round(data.min), max: Math.round(data.max), unit: 'bpm' },
-                                        BP_Mean: { 
-                                            min: Math.round(currentSettings.bp?.min || 65), 
-                                            max: Math.round(currentSettings.bp?.max || 85), 
-                                            unit: 'mmHg' 
+                                        Saturatie: { min: Math.round(data.min), max: Math.round(data.max), unit: '%' },
+                                        AF: { 
+                                            min: Math.round(currentSettings.af?.min || 12), 
+                                            max: Math.round(currentSettings.af?.max || 20), 
+                                            unit: '/min' 
                                         }
                                     };
                                     window.sharedDataManager.updateGlobalTargetRanges(currentPatientId, updatedTargetRanges);
-                                    console.log('🎯 Updated target ranges after HR slider change:', updatedTargetRanges);
+                                    console.log('🎯 Updated target ranges after Saturatie slider change:', updatedTargetRanges);
                                 }
                             }
                         });
                         
-                        if (hrSlider) {
-                            console.log('✅ HR Slider initialized successfully');
-                            // Sync with global HR values after initialization
-                            setTimeout(() => {
-                                updateHRSliderFromGlobalValues();
-                                // Also check if sepsis is currently active and force update
-                                if (currentPatientId && window.sharedDataManager) {
-                                    const targetRanges = window.sharedDataManager.getPatientTargetRanges(currentPatientId);
-                                    if (targetRanges && targetRanges.HR && targetRanges.HR.min === 90 && targetRanges.HR.max === 130) {
-                                        console.log('🦠 Sepsis detected on initialization - forcing slider update');
-                                        testSepsisRange();
-                                    }
-                                }
-                            }, 100);
+                        if (saturatieSlider) {
+                            console.log('✅ Saturatie Slider initialized successfully');
                         } else {
-                            console.error('❌ HR Slider initialization returned null');
-                            hrContainer.innerHTML = '<p style="color: red;">HR Slider initialization returned null</p>';
+                            console.error('❌ Saturatie Slider initialization returned null');
+                            saturatieContainer.innerHTML = '<p style="color: red;">Saturatie Slider initialization returned null</p>';
                         }
                     } catch (error) {
-                        console.error('❌ HR Slider creation error:', error);
-                        hrContainer.innerHTML = `<p style="color: red;">HR Slider error: ${error.message}</p>`;
+                        console.error('❌ Saturatie Slider creation error:', error);
+                        saturatieContainer.innerHTML = `<p style="color: red;">Saturatie Slider error: ${error.message}</p>`;
                     }
                 }
                 
-                // Initialize BP Slider with direct approach
-                const bpContainer = document.getElementById('bp-slider-container');
-                if (bpContainer) {
-                    console.log('🩸 Creating BP slider...');
-                    bpContainer.innerHTML = '<p style="color: blue;">Loading BP slider...</p>';
+                // Initialize AF Slider
+                const afContainer = document.getElementById('af-slider-container');
+                if (afContainer) {
+                    console.log('🌬️ Creating AF slider...');
+                    afContainer.innerHTML = '<p style="color: blue;">Loading AF slider...</p>';
                     
                     try {
-                        // Try direct instantiation
-                        bpSlider = new window.VitalParameterSlider(bpContainer, {
-                            parameter: 'BP_Mean',
-                            name: 'BP Mean',
-                            unit: 'mmHg',
-                            targetRange: currentSettings.bp || { min: 65, max: 85 },
-                            yAxis: { min: 30, max: 100, step: 10 },
+                        afSlider = new window.VitalParameterSlider(afContainer, {
+                            parameter: 'AF',
+                            name: 'Ademfrequentie',
+                            unit: '/min',
+                            targetRange: currentSettings.af || { min: 12, max: 20 },
+                            yAxis: { min: 5, max: 35, step: 5 },
                             monitoringLevel: 'mid',
                             patientId: currentPatientId,
                             patientName: patientInfo?.name || `Patiënt ${currentPatientId}`,
                             onChange: (data) => {
-                                console.log('BP Slider changed:', data);
+                                console.log('AF Slider changed:', data);
                                 if (window.sharedDataManager && data.type === 'save') {
-                                    // Allow saving regardless of sepsis state
-                                    // Save to SharedDataManager
-                                    const newSettings = { hr: currentSettings.hr, bp: { min: data.min, max: data.max } };
-                                    window.sharedDataManager.savePatientCirculatoirSettings(currentPatientId, newSettings);
+                                    const newSettings = { saturatie: currentSettings.saturatie, af: { min: data.min, max: data.max } };
+                                    window.sharedDataManager.savePatientRespiratorySettings(currentPatientId, newSettings);
                                     currentSettings = newSettings;
-                                    // Also update target ranges to reflect the slider changes
                                     const updatedTargetRanges = {
-                                        HR: { 
-                                            min: Math.round(currentSettings.hr?.min || 70), 
-                                            max: Math.round(currentSettings.hr?.max || 110), 
-                                            unit: 'bpm' 
+                                        Saturatie: { 
+                                            min: Math.round(currentSettings.saturatie?.min || 95), 
+                                            max: Math.round(currentSettings.saturatie?.max || 100), 
+                                            unit: '%' 
                                         },
-                                        BP_Mean: { min: Math.round(data.min), max: Math.round(data.max), unit: 'mmHg' }
+                                        AF: { min: Math.round(data.min), max: Math.round(data.max), unit: '/min' }
                                     };
                                     window.sharedDataManager.updateGlobalTargetRanges(currentPatientId, updatedTargetRanges);
-                                    console.log('🎯 Updated target ranges after BP slider change:', updatedTargetRanges);
+                                    console.log('🎯 Updated target ranges after AF slider change:', updatedTargetRanges);
                                 }
                             }
                         });
                         
-                        if (bpSlider) {
-                            console.log('✅ BP Slider initialized successfully');
+                        if (afSlider) {
+                            console.log('✅ AF Slider initialized successfully');
                         } else {
-                            console.error('❌ BP Slider initialization returned null');
-                            bpContainer.innerHTML = '<p style="color: red;">BP Slider initialization returned null</p>';
+                            console.error('❌ AF Slider initialization returned null');
+                            afContainer.innerHTML = '<p style="color: red;">AF Slider initialization returned null</p>';
                         }
                     } catch (error) {
-                        console.error('❌ BP Slider creation error:', error);
-                        bpContainer.innerHTML = `<p style="color: red;">BP Slider error: ${error.message}</p>`;
+                        console.error('❌ AF Slider creation error:', error);
+                        afContainer.innerHTML = `<p style="color: red;">AF Slider error: ${error.message}</p>`;
                     }
                 }
                 
             } catch (error) {
-                console.error('❌ Error initializing sliders:', error);
-                document.getElementById('hr-slider-container').innerHTML = `<p style="color: red;">Error: ${error.message}</p>`;
-                document.getElementById('bp-slider-container').innerHTML = `<p style="color: red;">Error: ${error.message}</p>`;
+                console.error('❌ Error initializing respiratory sliders:', error);
+                document.getElementById('saturatie-slider-container').innerHTML = `<p style="color: red;">Error: ${error.message}</p>`;
+                document.getElementById('af-slider-container').innerHTML = `<p style="color: red;">Error: ${error.message}</p>`;
             }
         }
 
@@ -1716,24 +1662,24 @@
             }
         }
 
-        function goToRespiratoir() {
-            console.log('➡️ Navigating to respiratoir settings');
+        function goToCirculatorySettings() {
+            console.log('➡️ Navigating to circulatory settings');
             
-            // Ensure session data is preserved when going to respiratoir
+            // Ensure session data is preserved when going to circulatory
             if (currentPatientId && currentBed && window.sharedDataManager) {
                 // Update session data to maintain patient context
                 window.sharedDataManager.saveSessionData({
                     selectedBed: currentBed,
                     patientId: currentPatientId,
-                    previousPage: 'circulatoir-settings'
+                    previousPage: 'respiratory-settings'
                 });
                 
                 console.log('✅ Session data preserved for patient:', currentPatientId, 'bed:', currentBed);
                 
-                // Navigate to respiratory settings with proper URL parameters
-                const respiratoryUrl = `respiratory-settings.html?bed=${currentBed}&patient=${currentPatientId}`;
-                console.log('🔗 Navigating to:', respiratoryUrl);
-                window.location.href = respiratoryUrl;
+                // Navigate to circulatory settings with proper URL parameters
+                const circulatoryUrl = `circulatoir-settings.html?bed=${currentBed}&patient=${currentPatientId}`;
+                console.log('🔗 Navigating to:', circulatoryUrl);
+                window.location.href = circulatoryUrl;
             } else {
                 console.warn('⚠️ Missing patient or bed data, redirecting to bed overview');
                 window.location.href = 'bed-overview.html';

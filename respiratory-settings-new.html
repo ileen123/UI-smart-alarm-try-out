@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <!-- Meta tags for character encoding and responsive design -->
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    
+    <!-- Page title that appears in browser tab -->
+    <title>Respiratoire Instellingen</title>
+    
+    <!-- Google Fonts - Open Sans with multiple weights -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Open+Sans:ital,wght@0,300;0,400;0,600;0,700;1,400;1,600&display=swap" rel="stylesheet">
+    
+    <!-- Link to external CSS file for styling -->
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="slider-component.css">
+    
+    <!-- Data Manager for cross-page data synchronization -->
+    <script src="js/data-manager.js"></script>
+    <script src="js/shared-data-manager.js"></script>
+    
+    <!-- Slider Component -->
+    <script src="slider-component.js"></script>
+    
+    <!-- Heart Circle Component -->
+    <script src="heart-circle-component.js"></script>
+</head>
+<body>
+    <!-- Breadcrumb Navigation -->
+    <nav class="breadcrumb-nav">
+        <a href="#" class="breadcrumb-link" onclick="goToBedOverview()">
+            <img src="svg's/home.svg" alt="Home" class="breadcrumb-icon">
+            Patiënten Overzicht
+        </a>
+        <span class="breadcrumb-separator">></span>
+        <a href="#" class="breadcrumb-link" onclick="goBackToAlarmOverview()">Alarm Instellingen - S. Groen</a>
+        <span class="breadcrumb-separator">></span>
+        <span class="breadcrumb-current">Respiratoire Monitoring</span>
+    </nav>
+
+    <!-- Title and Patient Info Layout -->
+    <div class="title-patient-layout">
+        <!-- Main page title -->
+        <h1 class="main-title">Respiratoire Monitoring</h1>
+        
+        <!-- Patient information header section -->
+        <div class="header">
+            <img src="svg's/patient_icon.svg" alt="Patient" class="user-icon" />
+            <span id="patient-header-info">Loading patient info...</span>
+        </div>
+    </div>
+    
+    <!-- Main content container -->
+    <div class="circulatoir-settings-container">
+        
+        <!-- Monitoring Level Controls -->
+        <div class="monitoring-controls-layout">
+            <!-- Monitoring buttons - now direct children -->
+            <div class="monitoring-buttons-direct">
+                <h3 class="info-title">Monitoring Level</h3>
+                <div class="button-group">
+                    <button class="btn risk-low" data-level="loose" onclick="changeMonitoringLevel('loose')">Los</button>
+                    <button class="btn risk-med selected" data-level="mid" onclick="changeMonitoringLevel('mid')">Mid</button>
+                    <button class="btn risk-high" data-level="tight" onclick="changeMonitoringLevel('tight')">Strak</button>
+                </div>
+            </div>
+            
+            <!-- Heart circle - now direct child -->
+            <div class="heart-circle-direct">
+                <h3 class="info-title"> </h3>
+                <div id="respiratory-heart-circle-container"></div>
+            </div>
+            
+            <!-- Additional Circulatory Information Container -->
+            <div class="additional-circulatory-info">
+                <h3 class="info-title">Respiratoire additionele informatie:</h3>
+                <div class="circulatory-tags-section">
+                    <button class="btn tag-btn circulatory-tag" data-condition="sepsis">
+                        Sepsis <img src="svg's/sepsis.svg" alt="Sepsis" class="sepsis-icon">
+                    </button>
+                    <button class="circulatory-more-btn">⋯</button>
+                </div>
+            </div>
+        </div>
+        
+        
+        <!-- Section title moved outside the container -->
+        <h2 class="section-title">Respiratoire Streefgebieden Aanpassen</h2>
+        
+        <!-- Interactive Slider Demo Section -->
+        <div class="slider-demo-section">
+            
+            <!-- Direct slider containers without extra wrappers -->
+            <div class="sliders-layout">
+                <div id="saturatie-slider-container" class="individual-slider"></div>
+                <div class="bp-slider-with-legend">
+                    <div id="af-slider-container" class="individual-slider"></div>
+                    <div class="alarm-legend">
+                        <h4>Alarm Legend</h4>
+                        <div class="legend-item">
+                            <div class="legend-color green"></div>
+                            <span>Acceptabel</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-color yellow"></div>
+                            <span>Lichte overschrijding</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-color orange"></div>
+                            <span>Medium overschrijding</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-color red"></div>
+                            <span>Significante overschrijding</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Navigation buttons positioned at bottom left and right -->
+    <div class="bottom-left-nav">
+        <button class="nav-button" onclick="goBackToAlarmOverview()">← Terug naar Alarm Overzicht</button>
+    </div>
+    <div class="bottom-right-nav">
+        <button class="nav-button" onclick="goToCirculatorySettings()">Naar Circulatoir →</button>
+    </div>
+</body>
+</html>

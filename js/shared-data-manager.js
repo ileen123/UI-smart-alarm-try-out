@@ -820,6 +820,54 @@ class SharedDataManager {
     }
 
     /**
+     * Save patient-specific respiratory settings
+     */
+    savePatientRespiratorySettings(patientId, respiratorySettings) {
+        try {
+            const settingsKey = `${this.storageKeys.PATIENT_PREFIX}${patientId}_respiratorySettings`;
+            localStorage.setItem(settingsKey, JSON.stringify(respiratorySettings));
+            
+            // Also save to centralized app data
+            const appData = this.getAppData();
+            if (appData) {
+                if (!appData.patients[patientId]) {
+                    appData.patients[patientId] = {};
+                }
+                appData.patients[patientId].respiratorySettings = respiratorySettings;
+                appData.patients[patientId].lastUpdated = new Date().toISOString();
+                this.saveAppData(appData);
+            }
+            
+            console.log('✅ Respiratory settings saved for patient:', patientId, respiratorySettings);
+            return true;
+        } catch (error) {
+            console.error('❌ Error saving respiratory settings:', error);
+            return false;
+        }
+    }
+
+    /**
+     * Get patient-specific respiratory settings
+     */
+    getPatientRespiratorySettings(patientId) {
+        try {
+            // Try centralized app data first
+            const appData = this.getAppData();
+            if (appData && appData.patients[patientId] && appData.patients[patientId].respiratorySettings) {
+                return appData.patients[patientId].respiratorySettings;
+            }
+            
+            // Fallback to individual storage
+            const settingsKey = `${this.storageKeys.PATIENT_PREFIX}${patientId}_respiratorySettings`;
+            const data = localStorage.getItem(settingsKey);
+            return data ? JSON.parse(data) : null;
+        } catch (error) {
+            console.error('❌ Error getting respiratory settings:', error);
+            return null;
+        }
+    }
+
+    /**
      * Save patient-specific vital parameter target ranges
      */
     savePatientTargetRanges(patientId, targetRanges) {
@@ -1130,6 +1178,73 @@ class SharedDataManager {
             this.applySepsisHRRanges(patientId);
         } else {
             this.restorePreviousHRRanges(patientId);
+        }
+    }
+
+    /**
+     * Set patient condition state (e.g., pneumonie, sepsis)
+     * @param {string} patientId - Patient identifier
+     * @param {string} condition - Condition name (pneumonie, sepsis, etc.)
+     * @param {boolean} state - True if condition is active, false otherwise
+     */
+    setPatientConditionState(patientId, condition, state) {
+        try {
+            console.log(`🏥 Setting ${condition} state for patient ${patientId}: ${state}`);
+            
+            const conditionsKey = `${this.storageKeys.PATIENT_PREFIX}${patientId}_conditions`;
+            let conditions = JSON.parse(localStorage.getItem(conditionsKey)) || {};
+            
+            conditions[condition] = state;
+            localStorage.setItem(conditionsKey, JSON.stringify(conditions));
+            
+            // Dispatch event for cross-page synchronization
+            const eventName = `${condition}StateChanged`;
+            window.dispatchEvent(new CustomEvent(eventName, {
+                detail: {
+                    patientId: patientId,
+                    [`${condition}State`]: state,
+                    condition: condition,
+                    timestamp: new Date().toISOString()
+                }
+            }));
+            
+            console.log(`✅ ${condition} state saved and event dispatched`);
+            return true;
+        } catch (error) {
+            console.error(`❌ Error setting ${condition} state:`, error);
+            return false;
+        }
+    }
+
+    /**
+     * Get patient condition state
+     * @param {string} patientId - Patient identifier
+     * @param {string} condition - Condition name (pneumonie, sepsis, etc.)
+     * @returns {boolean} - True if condition is active, false otherwise
+     */
+    getPatientConditionState(patientId, condition) {
+        try {
+            const conditionsKey = `${this.storageKeys.PATIENT_PREFIX}${patientId}_conditions`;
+            const conditions = JSON.parse(localStorage.getItem(conditionsKey)) || {};
+            return conditions[condition] || false;
+        } catch (error) {
+            console.error(`❌ Error getting ${condition} state:`, error);
+            return false;
+        }
+    }
+
+    /**
+     * Get all condition states for a patient
+     * @param {string} patientId - Patient identifier
+     * @returns {Object} - Object with condition names as keys and boolean states as values
+     */
+    getPatientConditions(patientId) {
+        try {
+            const conditionsKey = `${this.storageKeys.PATIENT_PREFIX}${patientId}_conditions`;
+            return JSON.parse(localStorage.getItem(conditionsKey)) || {};
+        } catch (error) {
+            console.error(`❌ Error getting patient conditions:`, error);
+            return {};
         }
     }
 }

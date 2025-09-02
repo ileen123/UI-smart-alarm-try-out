@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     
     <!-- Page title that appears in browser tab -->
-    <title>Circulatoir Instellingen</title>
+    <title>Respiratoire Instellingen</title>
     
     <!-- Google Fonts - Open Sans with multiple weights -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -37,13 +37,13 @@
         <span class="breadcrumb-separator">></span>
         <a href="#" class="breadcrumb-link" onclick="goBackToAlarmOverview()">Alarm Instellingen - S. Groen</a>
         <span class="breadcrumb-separator">></span>
-        <span class="breadcrumb-current">Circulatoire Monitoring</span>
+        <span class="breadcrumb-current">Respiratoire Monitoring</span>
     </nav>
 
     <!-- Title and Patient Info Layout -->
     <div class="title-patient-layout">
         <!-- Main page title -->
-        <h1 class="main-title">Circulatoire Monitoring</h1>
+        <h1 class="main-title">Respiratoire Monitoring</h1>
         
         <!-- Patient information header section -->
         <div class="header">
@@ -70,12 +70,12 @@
             <!-- Heart circle - now direct child -->
             <div class="heart-circle-direct">
                 <h3 class="info-title"> </h3>
-                <div id="circulatoir-heart-circle-container"></div>
+                <div id="respiratory-heart-circle-container"></div>
             </div>
             
             <!-- Additional Circulatory Information Container -->
             <div class="additional-circulatory-info">
-                <h3 class="info-title">Circulatoire additionele informatie:</h3>
+                <h3 class="info-title">Respiratoire additionele informatie:</h3>
                 <div class="circulatory-tags-section">
                     <button class="btn tag-btn circulatory-tag" data-condition="sepsis">
                         Sepsis <img src="svg's/sepsis.svg" alt="Sepsis" class="sepsis-icon">
@@ -87,16 +87,16 @@
         
         
         <!-- Section title moved outside the container -->
-        <h2 class="section-title">Circulatoire Streefgebieden Aanpassen</h2>
+        <h2 class="section-title">Respiratoire Streefgebieden Aanpassen</h2>
         
         <!-- Interactive Slider Demo Section -->
         <div class="slider-demo-section">
             
             <!-- Direct slider containers without extra wrappers -->
             <div class="sliders-layout">
-                <div id="hr-slider-container" class="individual-slider"></div>
+                <div id="saturatie-slider-container" class="individual-slider"></div>
                 <div class="bp-slider-with-legend">
-                    <div id="bp-slider-container" class="individual-slider"></div>
+                    <div id="af-slider-container" class="individual-slider"></div>
                     <div class="alarm-legend">
                         <div class="legend-item">
                             <div class="legend-color green"></div>
@@ -129,9 +129,7 @@
 
     <!-- Bottom right navigation button -->
     <div class="bottom-right-nav">
-        <button class="nav-button forward-button" onclick="goToRespiratoir()">
-            Naar Respiratoir →
-        </button>
+        <button class="nav-button" onclick="goToCirculatorySettings()">Naar Circulatoir →</button>
     </div>
 
     <style>
@@ -282,7 +280,7 @@
             text-align: center;
         }
         
-        #circulatoir-heart-circle-container {
+        #respiratory-heart-circle-container {
             width: 220px;
             height: 220px;
             max-width: 100%;
@@ -301,8 +299,8 @@
             position: relative !important;
         }
         
-        /* Specific override for circulatory page heart circle positioning */
-        #circulatoir-heart-circle-container .heart-organ-circle {
+        /* Specific override for respiratory page heart circle positioning */
+        #respiratory-heart-circle-container .heart-organ-circle {
             justify-content: flex-start !important;
             margin: 0 !important;
         }
@@ -911,13 +909,13 @@
         let currentPatientId = null;
         let currentBed = null;
         let currentSettings = {
-            hr: { min: 70, max: 110 },
-            bp: { min: 65, max: 85 }
+            saturatie: { min: 95, max: 100 },
+            af: { min: 12, max: 20 }
         };
         
         // Store slider references for monitoring level changes
-        let hrSlider = null;
-        let bpSlider = null;
+        let saturatieSlider = null;
+        let afSlider = null;
 
         // Initialize page when DOM is loaded
         document.addEventListener('DOMContentLoaded', function() {
@@ -981,11 +979,11 @@
                 console.log(`Loading heart monitoring level for patient ${currentPatientId}:`, initialLevel);
             }
             
-            window.circulatoirHeartCircle = new HeartCircleComponent('circulatoir-heart-circle-container', { 
+            window.respiratoryHeartCircle = new HeartCircleComponent('respiratory-heart-circle-container', { 
                 size: circleSize, 
                 initialState: initialLevel 
             });
-            setTimeout(() => injectSVG('circulatoir-heart-circle-container', 'heart'), 100);
+            setTimeout(() => injectSVG('respiratory-heart-circle-container', 'heart'), 100);
             
             // Map heart circle levels to button levels for initial setup
             const levelMapping = {
@@ -1225,17 +1223,21 @@
             console.log('🦠 Initializing sepsis tag state...');
             
             if (currentPatientId && window.sharedDataManager) {
-                // Check if sepsis is currently selected using the new condition state method
-                const sepsisState = window.sharedDataManager.getPatientConditionState('sepsis');
-                const sepsisButton = document.querySelector('.circulatory-tag[data-condition="sepsis"]');
+                // Check if sepsis ranges are currently active by checking the target ranges
+                const targetRanges = window.sharedDataManager.getPatientTargetRanges(currentPatientId);
                 
-                if (sepsisButton) {
-                    if (sepsisState && sepsisState.isActive) {
-                        sepsisButton.classList.add('selected');
-                        console.log('✅ Initialized sepsis button as selected');
-                    } else {
-                        sepsisButton.classList.remove('selected');
-                        console.log('✅ Initialized sepsis button as deselected');
+                if (targetRanges && targetRanges.HR) {
+                    const isSepsisActive = (targetRanges.HR.min === 90 && targetRanges.HR.max === 130);
+                    
+                    const sepsisButton = document.querySelector('.circulatory-tag[data-condition="sepsis"]');
+                    if (sepsisButton) {
+                        if (isSepsisActive) {
+                            sepsisButton.classList.add('selected');
+                            console.log('✅ Initialized sepsis button as selected (90-130 range detected)');
+                        } else {
+                            sepsisButton.classList.remove('selected');
+                            console.log('✅ Initialized sepsis button as deselected');
+                        }
                     }
                 }
             }
@@ -1382,28 +1384,18 @@
                         // Deselect tag
                         this.classList.remove('selected');
                         
-                        // Handle sepsis deselection using new condition state system
+                        // Handle sepsis deselection
                         if (tagCondition === 'sepsis' && currentPatientId && window.sharedDataManager) {
-                            window.sharedDataManager.setPatientConditionState('sepsis', {
-                                isActive: false,
-                                patientId: currentPatientId,
-                                timestamp: Date.now(),
-                                source: 'circulatory-settings'
-                            });
+                            window.sharedDataManager.handleSepsisTagChange(currentPatientId, false);
                             console.log('🦠 Sepsis deselected in circulatory settings');
                         }
                     } else {
                         // Select tag
                         this.classList.add('selected');
                         
-                        // Handle sepsis selection using new condition state system
+                        // Handle sepsis selection
                         if (tagCondition === 'sepsis' && currentPatientId && window.sharedDataManager) {
-                            window.sharedDataManager.setPatientConditionState('sepsis', {
-                                isActive: true,
-                                patientId: currentPatientId,
-                                timestamp: Date.now(),
-                                source: 'circulatory-settings'
-                            });
+                            window.sharedDataManager.handleSepsisTagChange(currentPatientId, true);
                             console.log('🦠 Sepsis selected in circulatory settings');
                         }
                     }
@@ -1426,31 +1418,6 @@
                         } else if (source === 'restore') {
                             sepsisButton.classList.remove('selected');
                             console.log('✅ Marked sepsis button as deselected due to external deselection');
-                        }
-                    }
-                }
-            });
-
-            // Listen for condition state changes from other pages
-            window.addEventListener('patientConditionStateChanged', function(event) {
-                console.log('🦠 Condition state changed event received:', event.detail);
-                
-                const { condition, state } = event.detail;
-                
-                // Only update if it's for sepsis and the current patient
-                if (condition === 'sepsis' && state.patientId === currentPatientId) {
-                    const sepsisButton = document.querySelector('.circulatory-tag[data-condition="sepsis"]');
-                    if (sepsisButton) {
-                        if (state.isActive) {
-                            if (!sepsisButton.classList.contains('selected')) {
-                                sepsisButton.classList.add('selected');
-                                console.log('✅ Marked sepsis button as selected due to external condition change');
-                            }
-                        } else {
-                            if (sepsisButton.classList.contains('selected')) {
-                                sepsisButton.classList.remove('selected');
-                                console.log('✅ Marked sepsis button as deselected due to external condition change');
-                            }
                         }
                     }
                 }

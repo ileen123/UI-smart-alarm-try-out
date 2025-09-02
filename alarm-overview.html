@@ -775,6 +775,19 @@
                     alert('Patiëntgegevens niet beschikbaar. Ga terug naar bedoverzicht.');
                     window.location.href = 'circulatoir-settings.html';
                 }
+            } else if (organType === 'respiratoir') {
+                // Navigate to the respiratory settings page with current patient and bed data
+                console.log('🫁 Opening respiratory settings page for patient:', currentPatientId, 'bed:', currentBedNumber);
+                
+                if (currentPatientId && currentBedNumber) {
+                    const respiratoryUrl = `respiratory-settings.html?patient=${currentPatientId}&bed=${currentBedNumber}`;
+                    console.log('🔗 Navigating to:', respiratoryUrl);
+                    window.location.href = respiratoryUrl;
+                } else {
+                    console.warn('⚠️ Missing patient or bed data');
+                    alert('Patiëntgegevens niet beschikbaar. Ga terug naar bedoverzicht.');
+                    window.location.href = 'respiratory-settings.html';
+                }
             } else {
                 // For other organ types, show placeholder message
                 alert('Aanpassingen voor ' + organType + ' systeem - functionaliteit komt binnenkort!');
