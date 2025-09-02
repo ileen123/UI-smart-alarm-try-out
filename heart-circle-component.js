@@ -102,8 +102,8 @@ class HeartCircleComponent {
                     position: relative;
                     display: flex;
                     align-items: center;
-                    justify-content: flex-start;
-                    margin: 0;
+                    justify-content: center;
+                    margin: 0 auto;
                     opacity: 0.3;
                     transition: opacity 0.5s ease-in-out;
                 }

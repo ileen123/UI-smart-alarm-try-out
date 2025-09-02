@@ -85,19 +85,19 @@
                     <div class="alarm-legend">
                         <div class="legend-item">
                             <div class="legend-color green"></div>
-                            <span>Geen alarm</span>
+                            <span>Acceptabel</span>
                         </div>
                         <div class="legend-item">
                             <div class="legend-color yellow"></div>
-                            <span>Geel alarm</span>
+                            <span>Licht gevaar</span>
                         </div>
                         <div class="legend-item">
                             <div class="legend-color orange"></div>
-                            <span>Oranje alarm</span>
+                            <span>Medium gevaar</span>
                         </div>
                         <div class="legend-item">
                             <div class="legend-color red"></div>
-                            <span>Rood alarm</span>
+                            <span>Significant gevaar</span>
                         </div>
                     </div>
                 </div>
@@ -106,9 +106,16 @@
     </div>
 
     <!-- Navigation section with back button -->
-    <div class="navigation-section">
+    <div class="bottom-left-nav">
         <button class="nav-button back-button" onclick="goBackToAlarmOverview()">
             ← Terug naar Alarm Overzicht
+        </button>
+    </div>
+
+    <!-- Bottom right navigation button -->
+    <div class="bottom-right-nav">
+        <button class="nav-button forward-button" onclick="goToRespiratoir()">
+            Naar Respiratoir →
         </button>
     </div>
 
@@ -117,14 +124,21 @@
         body {
             background: linear-gradient(to bottom, #ffffff 0%, #ffffff 31%, #E6E4E0 100%);
             min-height: 100vh; /* Ensure full viewport height for gradient */
+            padding: 3px 200px 5px 200px; /* Further reduced padding for no scrolling */
+            margin: 0;
+        }
+        
+        /* Position header lower to match alarm overview page */
+        .header {
+            margin-top: 15px; /* Reduced from 20px */
         }
         
         /* Monitoring Level Controls - matching risk level button styling */
         .monitoring-level-controls {
-            margin: 30px 0;
+            margin: 10px 0; /* Further reduced from 15px */
             text-align: left; /* Changed from center to left */
             background: rgba(255, 255, 255, 0);
-            padding: 25px;
+            padding: 15px; /* Further reduced from 20px */
             border-radius: 10px;
             /* box-shadow: 0 2px 4px rgba(0,0,0,0.1); */ /* Shadow removed */
             border: 1px solid #e9ecef;
@@ -141,16 +155,16 @@
         .monitoring-description {
             color: #6c757d;
             font-size: 16px;
-            margin-bottom: 20px;
+            margin-bottom: 10px; /* Further reduced from 15px */
             text-align: left; /* Changed from default to explicitly left */
         }
         
         /* Layout for monitoring controls and heart circle - horizontal sections */
         .monitoring-controls-layout {
             display: flex;
-            gap: 15px; /* Reduced from 30px to 15px for smaller gap */
-            margin-top: 20px;
-            margin-bottom: 40px;
+            gap: 15px; /* Keep reduced gap */
+            margin-top: 3px; /* Further reduced from 5px */
+            margin-bottom: 10px; /* Further reduced from 15px */
             align-items: flex-start;
             width: 100%;
             position: relative;
@@ -159,9 +173,9 @@
         .monitoring-buttons-direct {
             flex: 1;
             /* Container properties removed - now direct on page */
-            padding: 20px 20px 25px 20px;
-            min-height: 200px;
-            max-height: 200px;
+            padding: 12px 15px 15px 15px; /* Further reduced padding */
+            min-height: 120px; /* Reduced to match additional info container */
+            max-height: 120px; /* Reduced to match additional info container */
             display: flex;
             flex-direction: column;
         }
@@ -169,15 +183,15 @@
         .heart-circle-direct {
             flex: 1;
             /* Container properties removed - now direct on page */
-            padding: 0px 20px 25px 20px;
-            margin-left: -350px; /* Increased from -30px to move heart circles further left */
-            min-height: 180px;
-            max-height: 200px;
+            padding: 0px 15px 15px 15px; /* Further reduced padding */
+            margin-left: -50px; /* Less extreme positioning for compact layout */
+            min-height: 200px; /* Reduced from 240px to make it more compact */
+            max-height: 200px; /* Reduced from 240px to make it more compact */
             display: flex;
             flex-direction: column;
             align-items: left;
             justify-content: flex-start;
-            overflow: hidden;
+            overflow: visible; /* Changed from hidden to visible to show full circle */
             position: relative;
         }
         
@@ -200,22 +214,36 @@
             justify-content: flex-start; /* Changed from center to flex-start to move left */
             margin: 0;
             padding-top: 12px;
+            overflow: visible; /* Ensure circle content is not clipped */
         }
         .heart-organ-circle {
             opacity: 1 !important;
             position: relative !important;
         }
         
+        /* Specific override for circulatory page heart circle positioning */
+        #circulatoir-heart-circle-container .heart-organ-circle {
+            justify-content: flex-start !important;
+            margin: 0 !important;
+        }
+        
         /* Additional Circulatory Information Container - matches alarm overview form-section */
         .additional-circulatory-info {
             flex: 1;
-            background: #C2E4FF;
-            padding: 20px 20px 25px 20px;
-            border-radius: 30px 0px 30px 0px;
-            min-height: 200px;
-            max-height: 200px;
             display: flex;
             flex-direction: column;
+        }
+        
+        .circulatory-tags-section {
+            background: #C2E4FF;
+            padding: 15px 20px 20px 20px;
+            border-radius: 30px 0px 30px 0px;
+            min-height: 100px; /* Reduced since title is outside */
+            max-height: 100px;
+            display: flex;
+            gap: 8px; /* Reduced from 15px to bring buttons closer */
+            flex-wrap: wrap;
+            align-items: flex-start;
         }
         
         /* General info-title styling for all containers */
@@ -235,29 +263,29 @@
             font-weight: 600;
             color: #1961AB;
             margin: 0;
-            margin-bottom: 15px;
+            margin-bottom: 8px; /* Reduced margin to bring container closer */
             text-align: left;
+            position: relative;
+            background: transparent; /* Ensure no background */
+            z-index: 10; /* Position above the blue container */
         }
         
-        .circulatory-tags-section {
-            display: flex;
-            gap: 15px;
-            flex-wrap: wrap;
-            width: 100%;
-        }
+        /* Using standard tag styling from styles.css - no custom circulatory styling needed */
         
         .circulatory-tag {
             padding: 6px 12px;
+            font-size: 13px;
+            white-space: nowrap;
             border-radius: 20px;
             background-color: #bbdefb;
             border: 2px solid #1961AB;
             color: #1961AB;
-            font-size: 12px;
             font-weight: 500;
             cursor: pointer;
             transition: all 0.2s ease;
-            white-space: nowrap;
             width: auto;
+            flex-shrink: 0;
+            flex-grow: 0;
         }
         
         .circulatory-tag:hover {
@@ -284,22 +312,29 @@
             display: flex;
             align-items: center;
             justify-content: center;
+            flex-shrink: 0;
+        }
+        
+        .circulatory-more-btn:hover {
+            background-color: #e55a2b;
+            transform: scale(1.05);
         }
         
         /* Slider containers and titles */
         .slider-demo-section {
-            margin: 40px 0;
-            max-width: 1600px; /* Much wider container */
+            margin: 8px 0; /* Further reduced from 12px for tighter spacing */
+            max-width: 1920px; /* Use full width */
             margin-left: auto;
             margin-right: auto;
             padding: 0; /* Remove padding to align with body padding */
+            /* flex: 1; */ /* Remove flex:1 - don't take remaining space */
         }
         
         .slider-demo-section .section-title {
             color: #1961AB;
             font-size: 24px;
             font-weight: 600;
-            margin-bottom: 10px;
+            margin-bottom: 0px;
             text-align: left;
         }
         
@@ -312,7 +347,7 @@
         
         .sliders-layout {
             display: flex;
-            gap: 120px; /* Very large gap to ensure no overlap */
+            gap: 40px; /* Reduced from 120px for compact layout */
             justify-content: center;
             flex-wrap: nowrap; /* Force horizontal layout, no wrapping */
             margin: 0 auto;
@@ -321,8 +356,8 @@
         
         .individual-slider {
             flex: 0 0 auto; /* Don't grow or shrink, use natural size */
-            min-width: 500px; /* Ensure enough space for each slider */
-            max-width: 600px; /* Prevent sliders from getting too wide */
+            min-width: 400px; /* Reduced from 500px */
+            max-width: 450px; /* Reduced from 600px */
         }
 
         /* BP Slider with Legend Layout */
@@ -336,8 +371,9 @@
         .alarm-legend {
             background: white;
             border-radius: 8px;
-            padding: 20px;
-            min-width: 200px;
+            padding: 15px; /* Reduced from 20px */
+            /* border: 1px solid #e9ecef; */ /* Border removed */
+            min-width: 160px; /* Reduced from 200px */
             /* margin-top removed - flexbox centering handles positioning */
         }
 
@@ -390,11 +426,6 @@
             font-size: 14px;
             font-weight: 400;
         }
-        .navigation-section {
-            margin: 20px 0;
-            padding: 0; /* Remove padding to align with body padding */
-        }
-        
         .nav-button {
             background-color: transparent;
             border: 2px solid #ff6b35;
@@ -417,6 +448,22 @@
             transform: translateY(-2px);
         }
         
+        /* Bottom right navigation button */
+        .bottom-right-nav {
+            position: fixed;
+            bottom: 63px;
+            right: 200px;
+            z-index: 1000;
+        }
+        
+        /* Bottom left navigation button - matching right button positioning */
+        .bottom-left-nav {
+            position: fixed;
+            bottom: 63px;
+            left: 200px;
+            z-index: 1000;
+        }
+        
         .subtitle {
             text-align: left; /* Changed from center to left */
             color: #6c757d;
@@ -426,16 +473,19 @@
         }
         
         .circulatoir-settings-container {
-            max-width: 1600px; /* Much wider to accommodate side-by-side sliders */
+            max-width: 1920px; /* Use full width for 1920x1080 */
             margin: 0 auto;
             padding: 0; /* Remove padding to align with body padding */
+            /* height: calc(100vh - 30px); */ /* Remove fixed height - let content determine height */
+            display: flex;
+            flex-direction: column;
         }
         
         .parameter-section {
             background: white;
             border-radius: 12px;
-            padding: 30px;
-            margin-bottom: 30px;
+            padding: 18px; /* Further reduced from 20px */
+            margin-bottom: 15px; /* Further reduced from 20px */
             /* box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); */ /* Shadow removed */
             border: 1px solid #e9ecef;
         }
@@ -444,7 +494,7 @@
             display: flex;
             align-items: center;
             gap: 15px;
-            margin-bottom: 25px;
+            margin-bottom: 18px; /* Reduced from 25px */
             color: #cd3ae1;
             font-size: 24px;
             font-weight: 600;
@@ -625,8 +675,11 @@
         .slider-demo-section {
             background: #ffffff;
             border-radius: 0px 30px 0px 30px;
-            padding: 30px;
-            margin-top: 30px;
+            padding: 20px; /* Add some padding instead of fixed height */
+            margin-top: 0px;
+            width: 1520px;
+            /* height: 120px; */ /* Remove fixed height - let content determine size */
+            height: auto; /* Let content determine height */
         }
         
         .slider-demo-section h3 {
@@ -1189,6 +1242,7 @@
             // Make test function available globally for debugging
             window.testSepsisRange = testSepsisRange;
             
+            
             // Listen for HR range changes from sepsis selection/deselection
             window.addEventListener('hrRangesChanged', function(event) {
                 console.log('💓 HR ranges changed event received in circulatoir-settings:', event.detail);
@@ -1253,8 +1307,6 @@
                         if (tagCondition === 'sepsis' && currentPatientId && window.sharedDataManager) {
                             window.sharedDataManager.handleSepsisTagChange(currentPatientId, true);
                             console.log('🦠 Sepsis selected in circulatory settings');
-                            // Also force update slider immediately
-                            setTimeout(() => testSepsisRange(), 100);
                         }
                     }
                 });
@@ -1283,6 +1335,7 @@
             
             // Event listeners are now handled by the slider components
         }
+        
 
         function loadCurrentSettings() {
             console.log('📊 Loading current circulatoir settings...');
@@ -1534,6 +1587,30 @@
                 const alarmUrl = `alarm-overview.html?bed=${currentBed}&patient=${currentPatientId}`;
                 console.log('🔗 Navigating to:', alarmUrl);
                 window.location.href = alarmUrl;
+            } else {
+                console.warn('⚠️ Missing patient or bed data, redirecting to bed overview');
+                window.location.href = 'bed-overview.html';
+            }
+        }
+
+        function goToRespiratoir() {
+            console.log('➡️ Navigating to respiratoir settings');
+            
+            // Ensure session data is preserved when going to respiratoir
+            if (currentPatientId && currentBed && window.sharedDataManager) {
+                // Update session data to maintain patient context
+                window.sharedDataManager.saveSessionData({
+                    selectedBed: currentBed,
+                    patientId: currentPatientId,
+                    previousPage: 'circulatoir-settings'
+                });
+                
+                console.log('✅ Session data preserved for patient:', currentPatientId, 'bed:', currentBed);
+                
+                // Navigate to respiratoir settings with proper URL parameters
+                const respiratiorUrl = `respiratoir-settings.html?bed=${currentBed}&patient=${currentPatientId}`;
+                console.log('🔗 Navigating to:', respiratiorUrl);
+                window.location.href = respiratiorUrl;
             } else {
                 console.warn('⚠️ Missing patient or bed data, redirecting to bed overview');
                 window.location.href = 'bed-overview.html';
