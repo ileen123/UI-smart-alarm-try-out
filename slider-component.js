@@ -31,6 +31,9 @@ class VitalParameterSlider {
         
         this.currentMin = this.config.targetRange.min;
         this.currentMax = this.config.targetRange.max;
+        this.originalMin = this.config.targetRange.min;
+        this.originalMax = this.config.targetRange.max;
+        this.hasManualAdjustments = false;
         this.isDragging = false;
         this.currentHandle = null;
         this.scale = this.calculateScale();
@@ -38,6 +41,7 @@ class VitalParameterSlider {
         
         this.render();
         this.attachEventListeners();
+        this.updateButtonState();
         
         // Load existing settings from SharedDataManager after initial render
         setTimeout(() => {
@@ -106,6 +110,9 @@ class VitalParameterSlider {
         this.container.innerHTML = sliderHTML;
         this.updateSliderPosition();
         this.generateAxes();
+        
+        // Initialize button state (should be outlined initially since no manual adjustments)
+        this.updateButtonState();
     }
 
     generateAxes() {
@@ -497,6 +504,9 @@ class VitalParameterSlider {
             this.currentMin = Math.min(this.currentMax - 1, Math.round(newValue));
         }
         
+        // Check if manual adjustments have been made
+        this.checkForManualAdjustments();
+        
         this.updateSliderPosition();
         this.notifyChange();
     }
@@ -512,6 +522,35 @@ class VitalParameterSlider {
         
         // Remove visual feedback - shadow removed
         // this.container.querySelector('.vital-slider').style.boxShadow = '0 10px 30px rgba(0, 0, 0, 0.1)';
+    }
+
+    /**
+     * Check if the user has made manual adjustments to the slider values
+     */
+    checkForManualAdjustments() {
+        const currentMin = Math.round(this.currentMin * 10) / 10;
+        const currentMax = Math.round(this.currentMax * 10) / 10;
+        
+        const hasChanged = (currentMin !== this.originalMin) || (currentMax !== this.originalMax);
+        
+        if (hasChanged !== this.hasManualAdjustments) {
+            this.hasManualAdjustments = hasChanged;
+            this.updateButtonState();
+        }
+    }
+
+    /**
+     * Update the save button state based on whether manual adjustments have been made
+     */
+    updateButtonState() {
+        const saveButton = this.container.querySelector('.save-button');
+        if (saveButton) {
+            if (this.hasManualAdjustments) {
+                saveButton.classList.remove('outlined');
+            } else {
+                saveButton.classList.add('outlined');
+            }
+        }
     }
 
     /**
@@ -546,6 +585,10 @@ class VitalParameterSlider {
                         this.currentMin = customThreshold.min;
                         this.currentMax = customThreshold.max;
                         
+                        // Update the original values to track against
+                        this.originalMin = customThreshold.min;
+                        this.originalMax = customThreshold.max;
+                        
                         // Update the configuration
                         this.config.targetRange.min = customThreshold.min;
                         this.config.targetRange.max = customThreshold.max;
@@ -553,6 +596,9 @@ class VitalParameterSlider {
                         // Update the UI
                         this.updateSliderPosition();
                         this.updateDisplayValues();
+                        
+                        // Initial button state should be outlined since no manual adjustments yet
+                        this.updateButtonState();
                         
                         console.log(`✅ Loaded settings: ${this.currentMin}-${this.currentMax} ${this.config.unit}`);
                         return true;
@@ -567,11 +613,19 @@ class VitalParameterSlider {
                         const hrThresholds = thresholds.circulatoir.HR;
                         this.currentMin = hrThresholds.min;
                         this.currentMax = hrThresholds.max;
+                        
+                        // Update the original values to track against
+                        this.originalMin = hrThresholds.min;
+                        this.originalMax = hrThresholds.max;
+                        
                         this.config.targetRange.min = hrThresholds.min;
                         this.config.targetRange.max = hrThresholds.max;
                         
                         this.updateSliderPosition();
                         this.updateDisplayValues();
+                        
+                        // Initial button state should be outlined since no manual adjustments yet
+                        this.updateButtonState();
                         
                         console.log(`✅ Loaded condition-based HR thresholds: ${this.currentMin}-${this.currentMax} ${this.config.unit}`);
                         return true;
@@ -579,11 +633,19 @@ class VitalParameterSlider {
                         const bpThresholds = thresholds.circulatoir.BP_Mean;
                         this.currentMin = bpThresholds.min;
                         this.currentMax = bpThresholds.max;
+                        
+                        // Update the original values to track against
+                        this.originalMin = bpThresholds.min;
+                        this.originalMax = bpThresholds.max;
+                        
                         this.config.targetRange.min = bpThresholds.min;
                         this.config.targetRange.max = bpThresholds.max;
                         
                         this.updateSliderPosition();
                         this.updateDisplayValues();
+                        
+                        // Initial button state should be outlined since no manual adjustments yet
+                        this.updateButtonState();
                         
                         console.log(`✅ Loaded condition-based BP thresholds: ${this.currentMin}-${this.currentMax} ${this.config.unit}`);
                         return true;
@@ -687,15 +749,25 @@ class VitalParameterSlider {
                 
                 console.log(`✅ Saved ${this.config.parameter} settings to SharedDataManager for patient ${this.config.patientId}`);
                 
+                // Update original values since changes are now saved
+                this.originalMin = this.currentMin;
+                this.originalMax = this.currentMax;
+                this.hasManualAdjustments = false;
+                
                 // Real save with success feedback
                 setTimeout(() => {
                     button.textContent = 'Saved ✓';
-                    button.style.background = 'linear-gradient(135deg, #00b894, #00a085)';
+                    button.style.background = '#FC6039';
+                    button.style.opacity = '0.7';
                     
                     setTimeout(() => {
                         button.textContent = originalText;
                         button.disabled = false;
                         button.style.background = '';
+                        button.style.opacity = '1';
+                        
+                        // Update button state to outlined since changes are saved
+                        this.updateButtonState();
                     }, 1500);
                 }, 300);
                 
@@ -718,12 +790,14 @@ class VitalParameterSlider {
             // Fallback to simulation if no data manager available
             setTimeout(() => {
                 button.textContent = 'Saved ✓';
-                button.style.background = 'linear-gradient(135deg, #00b894, #00a085)';
+                button.style.background = '#FC6039';
+                button.style.opacity = '0.7';
                 
                 setTimeout(() => {
                     button.textContent = originalText;
                     button.disabled = false;
                     button.style.background = '';
+                    button.style.opacity = '1';
                 }, 1500);
             }, 800);
             

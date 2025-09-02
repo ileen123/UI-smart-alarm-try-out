@@ -77,7 +77,9 @@
             <div class="additional-circulatory-info">
                 <h3 class="info-title">Circulatoire additionele informatie:</h3>
                 <div class="circulatory-tags-section">
-                    <button class="btn tag-btn circulatory-tag" data-condition="sepsis">Sepsis ⚙️</button>
+                    <button class="btn tag-btn circulatory-tag" data-condition="sepsis">
+                        Sepsis <img src="svg's/sepsis.svg" alt="Sepsis" class="sepsis-icon">
+                    </button>
                     <button class="circulatory-more-btn">⋯</button>
                 </div>
             </div>
@@ -135,9 +137,9 @@
     <style>
         /* Page-specific gradient background - only for circulatory settings page */
         body {
-            background: linear-gradient(to bottom, #ffffff 0%, #ffffff 20%, #E6E4E0 100%);
+            background: linear-gradient(to bottom, #ffffff 0%, #ffffff 10%, #E6E4E0 100%);
             min-height: 100vh; /* Ensure full viewport height for gradient */
-            padding: 20px 200px 5px 200px; /* Further reduced padding for no scrolling */
+            padding: 50px 200px 5px 200px; /* Further reduced padding for no scrolling */
             margin: 0;
             font-family: 'Open Sans', sans-serif;
         }
@@ -146,8 +148,8 @@
         .breadcrumb-nav {
             font-family: 'Open Sans', sans-serif;
             font-size: 14px;
-            color: #E67E22;
-            margin-bottom: 10px;
+            color: #FC6039;
+            margin-bottom: 25px;
             padding-top: 10px;
             display: flex;
             align-items: center;
@@ -155,7 +157,7 @@
         }
 
         .breadcrumb-link {
-            color: #E67E22;
+            color: #FC6039;
             text-decoration: none;
             display: inline-flex;
             align-items: center;
@@ -179,12 +181,12 @@
 
         .breadcrumb-separator {
             margin: 0 8px;
-            color: #E67E22;
+            color: #FC6039;
             font-weight: normal;
         }
 
         .breadcrumb-current {
-            color: #E67E22;
+            color: #FC6039;
             font-weight: 600;
         }
         
@@ -213,10 +215,10 @@
         
         /* Monitoring Level Controls - matching risk level button styling */
         .monitoring-level-controls {
-            margin: 10px 0; /* Further reduced from 15px */
+            margin: 0px 0; /* Further reduced from 15px */
             text-align: left; /* Changed from center to left */
             background: rgba(255, 255, 255, 0);
-            padding: 15px; /* Further reduced from 20px */
+            padding: 0px; /* Further reduced from 20px */
             border-radius: 10px;
             /* box-shadow: 0 2px 4px rgba(0,0,0,0.1); */ /* Shadow removed */
             border: 1px solid #e9ecef;
@@ -251,7 +253,7 @@
         .monitoring-buttons-direct {
             flex: 1;
             /* Container properties removed - now direct on page */
-            padding: 12px 15px 15px 15px; /* Further reduced padding */
+            padding: 12px 15px 15px 0px; /* Removed left padding to align with title */
             min-height: 120px; /* Reduced to match additional info container */
             max-height: 120px; /* Reduced to match additional info container */
             display: flex;
@@ -307,7 +309,7 @@
         
         /* Additional Circulatory Information Container - matches alarm overview form-section */
         .additional-circulatory-info {
-            flex: 0.9; /* Further reduced for better proportions */
+            flex: 1.05; /* Further reduced for better proportions */
             display: flex;
             flex-direction: column;
         }
@@ -342,11 +344,22 @@
             color: #1961AB;
             margin: 0;
             margin-bottom: 8px; /* Reduced margin to bring container closer */
-            margin-left: -15px; /* Reduced left margin for better alignment */
+            margin-left: 0px; /* Reduced left margin for better alignment */
             text-align: left;
             position: relative;
             background: transparent; /* Ensure no background */
             z-index: 10; /* Position above the blue container */
+        }
+
+        .monitoring-buttons-direct .info-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #1961AB;
+            margin: 0;
+            margin-bottom: 8px; /* Match additional info title margin */
+            text-align: left;
+            position: relative;
+            z-index: 2;
         }
         
         /* Using standard tag styling from styles.css - no custom circulatory styling needed */
@@ -429,7 +442,7 @@
             gap: 40px; /* Reduced from 120px for compact layout */
             justify-content: center;
             flex-wrap: nowrap; /* Force horizontal layout, no wrapping */
-            margin: 0 auto;
+            margin: -20px auto;
             align-items: flex-start; /* Align sliders at the top */
         }
         

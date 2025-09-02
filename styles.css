@@ -60,8 +60,8 @@ body {
 
 /* Main page title styling */
 .main-title {
-    font-size: 24px; /* Large, prominent title */
-    font-weight: 600; /* Semibold weight */
+    font-size: 30px; /* Large, prominent title */
+    font-weight: 500; /* Semibold weight */
     font-style: regular; /* Italic style for elegance */
     margin-bottom: 30px; /* Space below title */
     color: #333; /* Dark gray for readability */
@@ -277,6 +277,20 @@ body {
 .btn.risk-med.selected,
 .btn.risk-high.selected {
     color: white !important; /* Force white text for all selected risk buttons */
+}
+
+/* Sepsis icon styling */
+.sepsis-icon {
+    width: 16px;
+    height: 16px;
+    margin-left: 4px;
+    vertical-align: middle;
+    display: inline-block;
+}
+
+/* White sepsis icon when sepsis button is selected */
+.btn.tag-btn.selected .sepsis-icon {
+    filter: brightness(0) saturate(100%) invert(1);
 }
 
 /* Dropdown styling for problem selection */
