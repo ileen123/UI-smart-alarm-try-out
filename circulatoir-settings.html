@@ -28,16 +28,29 @@
     <script src="heart-circle-component.js"></script>
 </head>
 <body>
-    <!-- Patient information header section -->
-    <div class="header">
-        <img src="svg's/patient_icon.svg" alt="Patient" class="user-icon" />
-        <span id="patient-header-info">Loading patient info...</span>
+    <!-- Breadcrumb Navigation -->
+    <nav class="breadcrumb-nav">
+        <a href="#" class="breadcrumb-link" onclick="goToBedOverview()">
+            <img src="svg's/home.svg" alt="Home" class="breadcrumb-icon">
+            Patiënten Overzicht
+        </a>
+        <span class="breadcrumb-separator">></span>
+        <a href="#" class="breadcrumb-link" onclick="goBackToAlarmOverview()">Alarm Instellingen - S. Groen</a>
+        <span class="breadcrumb-separator">></span>
+        <span class="breadcrumb-current">Circulatoire Monitoring</span>
+    </nav>
+
+    <!-- Title and Patient Info Layout -->
+    <div class="title-patient-layout">
+        <!-- Main page title -->
+        <h1 class="main-title">Circulatoire Monitoring</h1>
+        
+        <!-- Patient information header section -->
+        <div class="header">
+            <img src="svg's/patient_icon.svg" alt="Patient" class="user-icon" />
+            <span id="patient-header-info">Loading patient info...</span>
+        </div>
     </div>
-    
-    
-    
-    <!-- Main page title -->
-    <h1 class="main-title">Circulatoire Monitoring</h1>
     
     <!-- Main content container -->
     <div class="circulatoir-settings-container">
@@ -89,15 +102,15 @@
                         </div>
                         <div class="legend-item">
                             <div class="legend-color yellow"></div>
-                            <span>Licht gevaar</span>
+                            <span>Lichte overschrijding</span>
                         </div>
                         <div class="legend-item">
                             <div class="legend-color orange"></div>
-                            <span>Medium gevaar</span>
+                            <span>Medium overschrijding</span>
                         </div>
                         <div class="legend-item">
                             <div class="legend-color red"></div>
-                            <span>Significant gevaar</span>
+                            <span>Significante overschrijding</span>
                         </div>
                     </div>
                 </div>
@@ -122,15 +135,80 @@
     <style>
         /* Page-specific gradient background - only for circulatory settings page */
         body {
-            background: linear-gradient(to bottom, #ffffff 0%, #ffffff 31%, #E6E4E0 100%);
+            background: linear-gradient(to bottom, #ffffff 0%, #ffffff 20%, #E6E4E0 100%);
             min-height: 100vh; /* Ensure full viewport height for gradient */
-            padding: 3px 200px 5px 200px; /* Further reduced padding for no scrolling */
+            padding: 20px 200px 5px 200px; /* Further reduced padding for no scrolling */
             margin: 0;
+            font-family: 'Open Sans', sans-serif;
+        }
+
+        /* Breadcrumb Navigation */
+        .breadcrumb-nav {
+            font-family: 'Open Sans', sans-serif;
+            font-size: 14px;
+            color: #E67E22;
+            margin-bottom: 10px;
+            padding-top: 10px;
+            display: flex;
+            align-items: center;
+            line-height: 1.2;
+        }
+
+        .breadcrumb-link {
+            color: #E67E22;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            transition: opacity 0.2s ease;
+            vertical-align: middle;
+        }
+
+        .breadcrumb-link:hover {
+            opacity: 0.8;
+            text-decoration: underline;
+        }
+
+        .breadcrumb-icon {
+            width: 16px;
+            height: 16px;
+            margin-right: 4px;
+            filter: brightness(0) saturate(100%) invert(44%) sepia(93%) saturate(1352%) hue-rotate(346deg) brightness(119%) contrast(119%);
+            vertical-align: middle;
+        }
+
+        .breadcrumb-separator {
+            margin: 0 8px;
+            color: #E67E22;
+            font-weight: normal;
+        }
+
+        .breadcrumb-current {
+            color: #E67E22;
+            font-weight: 600;
         }
         
-        /* Position header lower to match alarm overview page */
+        /* Title and Patient Info Layout */
+        .title-patient-layout {
+            display: flex;
+            align-items: center;
+            margin-top: 15px;
+            margin-bottom: 20px;
+            position: relative;
+        }
+        
+        .title-patient-layout .main-title {
+            margin: 0; /* Remove default margin */
+            flex: 0 0 auto; /* Don't grow or shrink */
+        }
+        
+        /* Position header to align with the right edge of additional-circulatory-info */
         .header {
-            margin-top: 15px; /* Reduced from 20px */
+            width: fit-content; /* Resize to content width */
+            margin: 0; /* Remove default margins */
+            position: absolute;
+            right: 0; /* Align to the right edge of the container */
+            /* This will align with the additional info box since both are in the same container width */
         }
         
         /* Monitoring Level Controls - matching risk level button styling */
@@ -162,7 +240,7 @@
         /* Layout for monitoring controls and heart circle - horizontal sections */
         .monitoring-controls-layout {
             display: flex;
-            gap: 15px; /* Keep reduced gap */
+            gap: -400px; /* Further reduced gap to bring heart circle even closer */
             margin-top: 3px; /* Further reduced from 5px */
             margin-bottom: 10px; /* Further reduced from 15px */
             align-items: flex-start;
@@ -184,7 +262,7 @@
             flex: 1;
             /* Container properties removed - now direct on page */
             padding: 0px 15px 15px 15px; /* Further reduced padding */
-            margin-left: -50px; /* Less extreme positioning for compact layout */
+            margin-left: -300px; /* Increased negative margin to move heart circle closer to monitoring buttons */
             min-height: 200px; /* Reduced from 240px to make it more compact */
             max-height: 200px; /* Reduced from 240px to make it more compact */
             display: flex;
@@ -229,7 +307,7 @@
         
         /* Additional Circulatory Information Container - matches alarm overview form-section */
         .additional-circulatory-info {
-            flex: 1;
+            flex: 0.9; /* Further reduced for better proportions */
             display: flex;
             flex-direction: column;
         }
@@ -264,6 +342,7 @@
             color: #1961AB;
             margin: 0;
             margin-bottom: 8px; /* Reduced margin to bring container closer */
+            margin-left: -15px; /* Reduced left margin for better alignment */
             text-align: left;
             position: relative;
             background: transparent; /* Ensure no background */
@@ -363,7 +442,7 @@
         /* BP Slider with Legend Layout */
         .bp-slider-with-legend {
             display: flex;
-            gap: 30px;
+            gap: 100px;
             align-items: center; /* This centers the legend vertically */
         }
 
@@ -1615,6 +1694,23 @@
                 console.warn('⚠️ Missing patient or bed data, redirecting to bed overview');
                 window.location.href = 'bed-overview.html';
             }
+        }
+
+        function goToBedOverview() {
+            console.log('🏠 Navigating to bed overview');
+            
+            // Clear current patient context since we're going back to the overview
+            if (window.sharedDataManager) {
+                window.sharedDataManager.saveSessionData({
+                    selectedBed: null,
+                    patientId: null,
+                    previousPage: 'circulatoir-settings'
+                });
+                console.log('✅ Session data cleared for bed overview navigation');
+            }
+            
+            // Navigate to bed overview
+            window.location.href = 'bed-overview.html';
         }
     </script>
 </body>

@@ -160,12 +160,7 @@ class HeartCircleComponent {
             console.log('Circle clicked, no changes');
         });
         
-        // Also add keyboard listener for 'r' key
-        document.addEventListener('keydown', (event) => {
-            if (event.key === 'r' || event.key === 'R') {
-                this.promptForRiskLevel();
-            }
-        });
+        // Keyboard listener removed to prevent prompts on page refresh
     }
     
     updateCircle(riskLevel) {
@@ -208,13 +203,6 @@ class HeartCircleComponent {
         
         this.currentState = riskLevel.toLowerCase();
         console.log(`Heart circle updated to ${riskLevel} risk level`);
-    }
-    
-    promptForRiskLevel() {
-        const riskLevel = prompt('Enter risk level (low, mid, high):');
-        if (riskLevel) {
-            this.updateCircle(riskLevel);
-        }
     }
     
     // Public methods for external control
