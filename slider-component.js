@@ -561,6 +561,16 @@ class VitalParameterSlider {
             try {
                 console.log(`🔄 Loading existing settings for ${this.config.parameter} from patient ${this.config.patientId}`);
                 
+                // Check if pneumonie is active and this is AF parameter - skip loading saved settings
+                if (this.config.parameter === 'AF') {
+                    const pneumonieState = window.sharedDataManager.getPatientConditionState('pneumonie', this.config.patientId);
+                    if (pneumonieState && pneumonieState.isActive) {
+                        console.log('🫁 Pneumonie is active - skipping saved AF settings to preserve 10-30 range');
+                        console.log('ℹ️ No custom settings loaded for AF due to active pneumonie condition');
+                        return false;
+                    }
+                }
+                
                 // Get patient medical info
                 const medicalInfo = window.sharedDataManager.getPatientMedicalInfo(this.config.patientId);
                 

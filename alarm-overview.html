@@ -789,7 +789,12 @@
                         bpRange.style.border = '2px solid #28a745'; // Green border
                         bpRange.style.borderRadius = '4px';
                         bpRange.style.padding = '2px 4px';
+                        console.log('✅ Applied target range styling to BP display');
+                    } else {
+                        console.warn('❌ BP range element not found');
                     }
+                } else {
+                    console.warn('❌ BP cards not found or no BP_Mean in target ranges');
                 }
                 
                 // Update AF display if available
@@ -805,10 +810,15 @@
                         afRangeDisplay.style.border = '2px solid #28a745'; // Green border
                         afRangeDisplay.style.borderRadius = '4px';
                         afRangeDisplay.style.padding = '2px 4px';
+                        console.log('✅ Applied target range styling to AF display');
                         
                         // Remove inactive-text class if present
                         afRangeDisplay.classList.remove('inactive-text');
+                    } else {
+                        console.warn('❌ AF range display element not found with ID: af-range-display-overview');
                     }
+                } else {
+                    console.warn('❌ No AF data in target ranges');
                 }
             } else {
                 // Fall back to original condition-based logic
