@@ -571,6 +571,16 @@ class VitalParameterSlider {
                     }
                 }
                 
+                // Check if sepsis is active and this is HR or BP parameter - skip loading saved settings
+                if (['HR', 'BP_Mean'].includes(this.config.parameter)) {
+                    const sepsisState = window.sharedDataManager.getPatientConditionState('sepsis', this.config.patientId);
+                    if (sepsisState && sepsisState.isActive) {
+                        console.log(`🦠 Sepsis is active - skipping saved ${this.config.parameter} settings to preserve sepsis ranges`);
+                        console.log(`ℹ️ No custom settings loaded for ${this.config.parameter} due to active sepsis condition`);
+                        return false;
+                    }
+                }
+                
                 // Get patient medical info
                 const medicalInfo = window.sharedDataManager.getPatientMedicalInfo(this.config.patientId);
                 
