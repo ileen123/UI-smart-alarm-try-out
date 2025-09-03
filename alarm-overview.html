@@ -84,12 +84,18 @@
                     <button class="btn tag-btn" data-condition="sepsis">
                         Sepsis <img src="svg's/sepsis.svg" alt="Sepsis" class="sepsis-icon">
                     </button>
-                    <button class="btn tag-btn" data-condition="diabetes">Diabetes �</button>
-                    <button class="btn tag-btn" data-condition="herstellende">Herstellende 👤</button>
+                    <button class="btn tag-btn" data-condition="diabetes">
+                        Diabetes <img src="svg's/diabetes.svg" alt="Diabetes" class="condition-icon">
+                    </button>
+                    <button class="btn tag-btn" data-condition="herstellende">
+                        Herstellende <img src="svg's/patient_icon.svg" alt="Herstellende" class="condition-icon">
+                    </button>
                     <button class="btn tag-btn" data-condition="pneumonie">
                         Pneumonie <img src="svg's/lung.svg" alt="Pneumonie" class="condition-icon">
                     </button>
-                    <button class="btn tag-btn" data-condition="chronisch-nierfalen">Chronisch Nierfalen �</button>
+                    <button class="btn tag-btn" data-condition="chronisch-nierfalen">
+                        Chronisch Nierfalen <img src="svg's/nierfalen.svg" alt="Nierfalen" class="condition-icon">
+                    </button>
                     <!-- More button to show additional options -->
                     <button class="more-btn">⋯</button>
                 </div>
@@ -767,8 +773,8 @@
                     console.log('🎯 Updated HR range from target ranges:', Math.round(hr.min) + ' - ' + Math.round(hr.max) + ' ' + (hr.unit || 'bpm'));
                     
                     // Apply target range styling
-                    hrRange.style.backgroundColor = '#e8f5e8'; // Light green highlight
-                    hrRange.style.border = '2px solid #28a745'; // Green border
+                    hrRange.style.backgroundColor = '#FDEAB3'; // Light green highlight
+                    hrRange.style.border = '2px solid #ffc107'; // Green border
                     hrRange.style.borderRadius = '4px';
                     hrRange.style.padding = '2px 4px';
                     console.log('✅ Applied target range styling to HR display');
@@ -993,6 +999,19 @@
                     console.warn('⚠️ Missing patient or bed data');
                     alert('Patiëntgegevens niet beschikbaar. Ga terug naar bedoverzicht.');
                     window.location.href = 'respiratory-settings.html';
+                }
+            } else if (organType === 'overig') {
+                // Navigate to the other settings page with current patient and bed data
+                console.log('🌡️ Opening other settings page for patient:', currentPatientId, 'bed:', currentBedNumber);
+                
+                if (currentPatientId && currentBedNumber) {
+                    const otherUrl = `other.html?patient=${currentPatientId}&bed=${currentBedNumber}`;
+                    console.log('🔗 Navigating to:', otherUrl);
+                    window.location.href = otherUrl;
+                } else {
+                    console.warn('⚠️ Missing patient or bed data');
+                    alert('Patiëntgegevens niet beschikbaar. Ga terug naar bedoverzicht.');
+                    window.location.href = 'other.html';
                 }
             } else {
                 // For other organ types, show placeholder message

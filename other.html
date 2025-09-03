@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     
     <!-- Page title that appears in browser tab -->
-    <title>Respiratoire Instellingen</title>
+    <title>Overige Instellingen</title>
     
     <!-- Google Fonts - Open Sans with multiple weights -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -37,13 +37,13 @@
         <span class="breadcrumb-separator">></span>
         <a href="#" class="breadcrumb-link" onclick="goBackToAlarmOverview()">Alarm Instellingen - S. Groen</a>
         <span class="breadcrumb-separator">></span>
-        <span class="breadcrumb-current">Respiratoire Monitoring</span>
+        <span class="breadcrumb-current">Overige Monitoring</span>
     </nav>
 
     <!-- Title and Patient Info Layout -->
     <div class="title-patient-layout">
         <!-- Main page title -->
-        <h1 class="main-title">Respiratoire Monitoring</h1>
+        <h1 class="main-title">Overige Monitoring</h1>
         
         <!-- Patient information header section -->
         <div class="header">
@@ -75,11 +75,9 @@
             
             <!-- Additional Circulatory Information Container -->
             <div class="additional-circulatory-info">
-                <h3 class="info-title">Respiratoire additionele informatie:</h3>
+                <h3 class="info-title">Overige additionele informatie:</h3>
                 <div class="circulatory-tags-section">
-                    <button class="btn tag-btn circulatory-tag" data-condition="pneumonie">
-                        Pneumonie <img src="svg's/lung.svg" alt="Pneumonie" class="condition-icon">
-                    </button>
+                <!-- Temperature monitoring tags could go here in the future -->
                     <button class="circulatory-more-btn">⋯</button>
                 </div>
             </div>
@@ -87,16 +85,15 @@
         
         
         <!-- Section title moved outside the container -->
-        <h2 class="section-title">Respiratoire Streefgebieden Aanpassen</h2>
+        <h2 class="section-title">Overige Streefgebieden Aanpassen</h2>
         
         <!-- Interactive Slider Demo Section -->
         <div class="slider-demo-section">
             
-            <!-- Direct slider containers without extra wrappers -->
+            <!-- Single temperature slider container -->
             <div class="sliders-layout">
-                <div id="saturatie-slider-container" class="individual-slider"></div>
-                <div class="af-slider-with-legend">
-                    <div id="af-slider-container" class="individual-slider"></div>
+                <div class="temp-slider-with-legend">
+                    <div id="temp-slider-container" class="individual-slider"></div>
                     <div class="alarm-legend">
                         <div class="legend-item">
                             <div class="legend-color green"></div>
@@ -129,7 +126,7 @@
 
     <!-- Bottom right navigation button -->
     <div class="bottom-right-nav">
-        <button class="nav-button" onclick="goToOtherSettings()">Naar Overige →</button>
+        <button class="nav-button" onclick="goToCirculatorySettings()">Naar Circulatoir →</button>
     </div>
 
     <style>
@@ -914,14 +911,13 @@
         };
         
         // Store slider references for monitoring level changes
-        let saturatieSlider = null;
-        let afSlider = null;
+        let tempSlider = null;
 
         // Initialize page when DOM is loaded
         document.addEventListener('DOMContentLoaded', function() {
             initializePage();
             setupEventListeners();
-            initializePneumonieTagState(); // Initialize pneumonie state FIRST
+            // No condition-specific initialization needed for temperature monitoring
             loadCurrentSettings(); // Then load settings (which will respect sepsis state)
 
             // Initialize heart circle component (same as alarm overview)
@@ -941,13 +937,16 @@
                     }
                 }, 500);
             }, 1000);
-        // Heart and Lung SVG content
+        // Heart, Lung, and Temperature SVG content
         const svgContent = {
             heart: `<svg class="organ-icon" viewBox="0 0 22 26" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <path d="M13.22 10.3743C12.0679 12.132 10.9163 15.0615 10.9163 19.1628M13.22 10.3743C12.0681 12.132 11.4922 14.4756 6.30842 14.4756M13.22 10.3743C14.6766 8.39884 16.9516 6.83964 19.3552 6.3986C20.0557 6.27006 20.6011 5.62288 20.4841 4.90863L20.2921 3.73684C20.1996 3.17181 19.7182 2.75127 19.159 2.81881C16.3987 3.15222 12.9705 4.8327 10.9162 7.44486C10.9162 6.27307 10.9162 2.75769 10.3402 1M5.73245 6.85896C5.15648 5.10127 4.00454 3.92948 2.27663 3.92948M1.70071 15.6441C2.85258 20.9171 7.26892 25 10.3401 25C13.4113 25 17.6365 20.9175 18.9799 15.6441C20.3232 10.3707 16.1 6.85563 13.2201 10.371C13.2201 8.61732 11.4922 6.85906 8.03639 6.85906C4.58057 6.85906 0.548838 10.371 1.70071 15.6441Z" stroke="black" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
             </svg>`,
             lung: `<svg class="organ-icon" viewBox="0 0 30 26" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <path d="M11.5007 5.62881C11.5007 4.02205 10.3628 2.41595 5.90178 6.31748C-0.397037 11.8263 1.7026 24.2213 2.40247 24.91C3.10233 25.5986 10.8008 22.1555 11.5007 20.7783C12.2006 19.4011 10.8008 17.3352 12.2006 14.5808M18.4993 5.62879C18.4993 4.02203 19.6372 2.41593 24.0982 6.31746C30.397 11.8263 28.2974 24.2213 27.5975 24.9099C26.8977 25.5985 19.1992 22.1555 18.4993 20.7783C17.7994 19.401 19.1992 17.3352 17.7994 14.5807M21.9987 16.6468C21.9987 13.3949 19.8717 11.7738 18.2519 10.7191C14.9109 8.54378 15 4.4935 15 0.999945C15 4.4935 15.0891 8.54378 11.7481 10.7191C10.1283 11.7738 8.00142 13.3949 8.00142 16.6468" stroke="black" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>`,
+            temp: `<svg class="organ-icon" viewBox="0 0 16 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M5.71349 0C3.94455 0 2.4982 1.42157 2.4982 3.15972V13.7459C0.944989 14.7857 0.000507593 16.5193 0 18.3844C0 21.4774 2.56656 24 5.71349 24C8.86042 24 11.4265 21.4774 11.4265 18.3844C11.4265 16.5193 10.482 14.7842 8.92828 13.7444V3.15972C8.92828 1.42157 7.48193 0 5.71349 0ZM5.71349 1.41162C6.71166 1.41162 7.49206 2.17865 7.49206 3.15972V14.1326C7.49212 14.2565 7.52539 14.3783 7.58851 14.4856C7.65162 14.5929 7.74237 14.682 7.85162 14.7438C9.17643 15.4954 9.99076 16.8812 9.99076 18.3844C9.99076 20.7144 8.08457 22.5884 5.714 22.5879C5.71383 22.5879 5.71416 22.5879 5.714 22.5879C3.34393 22.5884 1.43673 20.7144 1.43673 18.3849C1.43724 16.8822 2.25207 15.4964 3.57587 14.7453C3.68512 14.6834 3.77586 14.5944 3.83898 14.4871C3.9021 14.3798 3.93536 14.258 3.93543 14.1341V3.15972C3.93543 2.17865 4.71482 1.41162 5.71349 1.41162ZM11.5885 1.87453C11.3981 1.87455 11.2154 1.94891 11.0808 2.08127C10.9461 2.21363 10.8704 2.39315 10.8704 2.58033C10.8704 2.76752 10.9461 2.94704 11.0808 3.0794C11.2154 3.21176 11.3981 3.28613 11.5885 3.28615H15.2819C15.4723 3.28613 15.655 3.21176 15.7897 3.0794C15.9243 2.94704 16 2.76752 16 2.58033C16 2.39315 15.9243 2.21363 15.7896 2.08127C15.655 1.94891 15.4723 1.87455 15.2819 1.87453H11.5885ZM5.71349 2.58033C5.61915 2.58028 5.52572 2.59849 5.43854 2.63394C5.35136 2.66938 5.27214 2.72136 5.2054 2.7869C5.13867 2.85245 5.08572 2.93028 5.0496 3.01594C5.01348 3.1016 4.99488 3.19342 4.99487 3.28615V15.2102C3.51864 15.5338 2.40552 16.8384 2.40552 18.3834C2.40552 20.1708 3.89492 21.6347 5.71349 21.6347C7.53156 21.6347 9.02146 20.1708 9.02146 18.3834C9.02146 16.8384 7.90783 15.5348 6.4316 15.2102V3.28615C6.43158 3.09896 6.35592 2.91944 6.22125 2.78708C6.08658 2.65472 5.90394 2.58035 5.71349 2.58033ZM11.5885 5.10144C11.4942 5.10145 11.4008 5.11973 11.3136 5.15523C11.2265 5.19073 11.1473 5.24277 11.0806 5.30836C11.0139 5.37395 10.961 5.45182 10.925 5.5375C10.8889 5.62319 10.8704 5.71502 10.8704 5.80775C10.8704 5.99493 10.9461 6.17445 11.0808 6.30681C11.2154 6.43917 11.3981 6.51353 11.5885 6.51355H13.8431C14.0336 6.51353 14.2162 6.43917 14.3509 6.30681C14.4856 6.17445 14.5612 5.99493 14.5612 5.80775C14.5613 5.71502 14.5428 5.62319 14.5067 5.5375C14.4707 5.45182 14.4178 5.37395 14.3511 5.30836C14.2844 5.24277 14.2052 5.19073 14.1181 5.15523C14.0309 5.11972 13.9375 5.10145 13.8431 5.10144H11.5885ZM11.5885 8.32885C11.3981 8.32886 11.2154 8.40323 11.0808 8.53559C10.9461 8.66796 10.8704 8.84747 10.8704 9.03466C10.8704 9.22184 10.9461 9.40136 11.0808 9.53372C11.2154 9.66608 11.3981 9.74045 11.5885 9.74046H15.2819C15.4723 9.74045 15.655 9.66608 15.7896 9.53372C15.9243 9.40136 16 9.22184 16 9.03466C16 8.84747 15.9243 8.66796 15.7897 8.53559C15.655 8.40323 15.4723 8.32886 15.2819 8.32885H11.5885ZM11.5885 11.5563C11.3981 11.5563 11.2154 11.6306 11.0808 11.763C10.9461 11.8954 10.8704 12.0749 10.8704 12.2621C10.8704 12.4493 10.9461 12.6288 11.0808 12.7611C11.2154 12.8935 11.3981 12.9679 11.5885 12.9679H13.8431C14.0336 12.9679 14.2162 12.8935 14.3509 12.7611C14.4856 12.6288 14.5612 12.4493 14.5612 12.2621C14.5612 12.0749 14.4856 11.8954 14.3509 11.763C14.2162 11.6306 14.0336 11.5563 13.8431 11.5563H11.5885ZM5.71349 16.5437C6.75571 16.5437 7.58473 17.359 7.58473 18.3834C7.58473 19.4078 6.75571 20.2231 5.71349 20.2231C4.67127 20.2231 3.84174 19.4078 3.84174 18.3834C3.84174 17.359 4.67127 16.5437 5.71349 16.5437Z" fill="black"/>
             </svg>`
         };
 
@@ -986,7 +985,7 @@
                 size: circleSize, 
                 initialState: initialLevel 
             });
-            setTimeout(() => injectSVG('respiratory-heart-circle-container', 'lung'), 100);
+            setTimeout(() => injectSVG('respiratory-heart-circle-container', 'temp'), 100);
             
             // Map heart circle levels to button levels for initial setup
             const levelMapping = {
@@ -1816,30 +1815,6 @@
                 const circulatoryUrl = `circulatoir-settings.html?bed=${currentBed}&patient=${currentPatientId}`;
                 console.log('🔗 Navigating to:', circulatoryUrl);
                 window.location.href = circulatoryUrl;
-            } else {
-                console.warn('⚠️ Missing patient or bed data, redirecting to bed overview');
-                window.location.href = 'bed-overview.html';
-            }
-        }
-
-        function goToOtherSettings() {
-            console.log('➡️ Navigating to other settings');
-            
-            // Ensure session data is preserved when going to other settings
-            if (currentPatientId && currentBed && window.sharedDataManager) {
-                // Update session data to maintain patient context
-                window.sharedDataManager.saveSessionData({
-                    selectedBed: currentBed,
-                    patientId: currentPatientId,
-                    previousPage: 'respiratory-settings'
-                });
-                
-                console.log('✅ Session data preserved for patient:', currentPatientId, 'bed:', currentBed);
-                
-                // Navigate to other settings with proper URL parameters
-                const otherUrl = `other.html?bed=${currentBed}&patient=${currentPatientId}`;
-                console.log('🔗 Navigating to:', otherUrl);
-                window.location.href = otherUrl;
             } else {
                 console.warn('⚠️ Missing patient or bed data, redirecting to bed overview');
                 window.location.href = 'bed-overview.html';

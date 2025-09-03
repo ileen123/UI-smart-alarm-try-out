@@ -931,8 +931,8 @@ body {
 
 /* Adjust button styling for organ system adjustments */
 .adjust-btn {
-    background-color: #FC6039; /* Green background */
-    color: white; /* White text */
+    background-color: #ffffff; /* Green background */
+    color: #FC6039; /* White text */
     border: 2px solid #FC6039; /* Green border */
     padding: 8px 16px; /* Internal spacing */
     border-radius: 20px; /* Rounded corners */
@@ -946,15 +946,16 @@ body {
 
 /* Adjust button hover effect */
 .adjust-btn:hover {
-    background-color: #fd8465; /* Darker green on hover */
-    border-color: #fd8465; /* Darker green border on hover */
+    background-color: #FC6039; /* Darker green on hover */
+    border-color: #FC6039; /* Darker green border on hover */
+    color: white;
     transform: translateY(-1px); /* Slight lift effect */
 }
 
 /* Adjust button active/pressed state */
 .adjust-btn:active {
     transform: translateY(0); /* Remove lift when pressed */
-    background-color: #1e7e34; /* Even darker green when pressed */
+    background-color: #ea3a0e; /* Even darker green when pressed */
 }
 
 /* =============================================================================
