@@ -78,6 +78,9 @@
                 <h3 class="info-title">Overige additionele informatie:</h3>
                 <div class="circulatory-tags-section">
                 <!-- Temperature monitoring tags could go here in the future -->
+                    <button class="btn tag-btn" data-condition="herstellende">
+                        Herstellende <img src="svg's/patient_icon.svg" alt="Herstellende" class="condition-icon">
+                    </button>
                     <button class="circulatory-more-btn">⋯</button>
                 </div>
             </div>
@@ -405,6 +408,48 @@
         .circulatory-more-btn:hover {
             background-color: #e55a2b;
             transform: scale(1.05);
+        }
+        
+        /* Tag button styling - matches circulatory-tag styling */
+        .tag-btn {
+            padding: 6px 12px;
+            font-size: 13px;
+            white-space: nowrap;
+            border-radius: 20px;
+            background-color: #bbdefb;
+            border: 2px solid #1961AB;
+            color: #1961AB;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            width: auto;
+            flex-shrink: 0;
+            flex-grow: 0;
+        }
+        
+        .tag-btn:hover {
+            background: #90caf9;
+            border-color: #64b5f6;
+        }
+        
+        .tag-btn.selected {
+            background-color: #1961AB;
+            color: white;
+            border-color: #1961AB;
+            font-weight: 600;
+        }
+        
+        /* Tag button icon styling */
+        .tag-btn .condition-icon {
+            width: 16px;
+            height: 16px;
+            margin-left: 6px;
+            filter: brightness(0) saturate(100%) invert(25%) sepia(64%) saturate(2570%) hue-rotate(201deg) brightness(93%) contrast(92%);
+            transition: filter 0.2s ease;
+        }
+        
+        .tag-btn.selected .condition-icon {
+            filter: brightness(0) saturate(100%) invert(100%) sepia(0%) saturate(7500%) hue-rotate(109deg) brightness(103%) contrast(103%);
         }
         
         /* Slider containers and titles */
@@ -917,7 +962,7 @@
         document.addEventListener('DOMContentLoaded', function() {
             initializePage();
             setupEventListeners();
-            // No condition-specific initialization needed for temperature monitoring
+            initializeConditionStates(); // Initialize condition button states from SharedDataManager
             loadCurrentSettings(); // Then load settings (which will respect sepsis state)
 
             // Initialize heart circle component (same as alarm overview)
@@ -1221,8 +1266,8 @@
             }
         }
         
-        function initializePneumonieTagState() {
-            console.log('🫁 Initializing pneumonie tag state...');
+        function initializeConditionStates() {
+            console.log('🏥 Initializing condition states...');
             
             if (currentPatientId && window.sharedDataManager) {
                 // Ensure patient has clean state for new setup (but don't force clean existing states)
@@ -1239,6 +1284,20 @@
                     } else {
                         pneumonieButton.classList.remove('selected');
                         console.log('✅ Initialized pneumonie button as deselected');
+                    }
+                }
+                
+                // Check if herstellende is currently selected
+                const herstellendeState = window.sharedDataManager.getPatientConditionState('herstellende', currentPatientId);
+                
+                const herstellendeButton = document.querySelector('.tag-btn[data-condition="herstellende"]');
+                if (herstellendeButton) {
+                    if (herstellendeState && herstellendeState.isActive) {
+                        herstellendeButton.classList.add('selected');
+                        console.log('✅ Initialized herstellende button as selected');
+                    } else {
+                        herstellendeButton.classList.remove('selected');
+                        console.log('✅ Initialized herstellende button as deselected');
                     }
                 }
             }
@@ -1415,23 +1474,44 @@
             
             // Listen for condition state changes from other pages to update our button
             window.addEventListener('patientConditionStateChanged', function(event) {
-                console.log('🫁 Condition state changed event received on respiratory page:', event.detail);
+                console.log('🫁 Condition state changed event received on other page:', event.detail);
                 
                 const { condition, state } = event.detail;
                 
-                // Only update if it's for the current patient and it's a pneumonie condition
-                if (state.patientId === currentPatientId && condition === 'pneumonie') {
-                    const pneumonieButton = document.querySelector('.circulatory-tag[data-condition="pneumonie"]');
-                    if (pneumonieButton) {
-                        if (state.isActive) {
-                            if (!pneumonieButton.classList.contains('selected')) {
-                                pneumonieButton.classList.add('selected');
-                                console.log('✅ Synced pneumonie button to selected state from external change (respiratory)');
+                // Only update if it's for the current patient
+                if (state.patientId === currentPatientId) {
+                    // Handle pneumonie condition
+                    if (condition === 'pneumonie') {
+                        const pneumonieButton = document.querySelector('.circulatory-tag[data-condition="pneumonie"]');
+                        if (pneumonieButton) {
+                            if (state.isActive) {
+                                if (!pneumonieButton.classList.contains('selected')) {
+                                    pneumonieButton.classList.add('selected');
+                                    console.log('✅ Synced pneumonie button to selected state from external change (other)');
+                                }
+                            } else {
+                                if (pneumonieButton.classList.contains('selected')) {
+                                    pneumonieButton.classList.remove('selected');
+                                    console.log('✅ Synced pneumonie button to deselected state from external change (other)');
+                                }
                             }
-                        } else {
-                            if (pneumonieButton.classList.contains('selected')) {
-                                pneumonieButton.classList.remove('selected');
-                                console.log('✅ Synced pneumonie button to deselected state from external change (respiratory)');
+                        }
+                    }
+                    
+                    // Handle herstellende condition
+                    if (condition === 'herstellende') {
+                        const herstellendeButton = document.querySelector('.tag-btn[data-condition="herstellende"]');
+                        if (herstellendeButton) {
+                            if (state.isActive) {
+                                if (!herstellendeButton.classList.contains('selected')) {
+                                    herstellendeButton.classList.add('selected');
+                                    console.log('✅ Synced herstellende button to selected state from external change (other)');
+                                }
+                            } else {
+                                if (herstellendeButton.classList.contains('selected')) {
+                                    herstellendeButton.classList.remove('selected');
+                                    console.log('✅ Synced herstellende button to deselected state from external change (other)');
+                                }
                             }
                         }
                     }
@@ -1468,6 +1548,44 @@
                         console.warn('❌ updateSliderPosition method not available on AF slider');
                     }
                 }
+            });
+            
+            // Set up tag button listeners (for herstellende condition)
+            const tagButtons = document.querySelectorAll('.tag-btn');
+            tagButtons.forEach(button => {
+                button.addEventListener('click', function() {
+                    const condition = this.dataset.condition;
+                    
+                    if (this.classList.contains('selected')) {
+                        // Deselect tag
+                        this.classList.remove('selected');
+                        
+                        // Handle condition deselection using condition state system
+                        if (currentPatientId && window.sharedDataManager) {
+                            window.sharedDataManager.setPatientConditionState(condition, {
+                                isActive: false,
+                                patientId: currentPatientId,
+                                timestamp: Date.now(),
+                                source: 'other-settings'
+                            });
+                            console.log(`🏷️ ${condition} deselected in other settings`);
+                        }
+                    } else {
+                        // Select tag
+                        this.classList.add('selected');
+                        
+                        // Handle condition selection using condition state system
+                        if (currentPatientId && window.sharedDataManager) {
+                            window.sharedDataManager.setPatientConditionState(condition, {
+                                isActive: true,
+                                patientId: currentPatientId,
+                                timestamp: Date.now(),
+                                source: 'other-settings'
+                            });
+                            console.log(`🏷️ ${condition} selected in other settings`);
+                        }
+                    }
+                });
             });
             
             // Event listeners are now handled by the slider components

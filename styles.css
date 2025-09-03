@@ -571,6 +571,10 @@ body {
     text-align: center; /* Center all text */
     opacity: 0.3;
     transition: opacity 0.5s ease-in-out;
+    display: flex; /* Use flexbox layout */
+    flex-direction: column; /* Stack items vertically */
+    min-height: 160px; /* Increased minimum height to provide more space */
+    justify-content: space-between; /* Distribute space evenly */
 }
 
 .value-card.active {
@@ -596,6 +600,7 @@ body {
     font-weight: 700; /* Bold for emphasis on numbers */
     color: #000000; /* Dark gray for readability */
     transition: all 0.5s ease; /* Smooth transition for changes */
+    margin-bottom: 30px; /* Add bottom margin to create space before buttons */
 }
 
 .value-card.active .value-number {
@@ -830,7 +835,7 @@ body {
 /* Organ monitoring section */
 .organ-monitoring-section {
     background: white;
-    padding: 30px;
+    padding: 30px 0px 30px 0px;
     border-radius: 12px;
     box-shadow: 0 2px 8px rgba(0,0,0,0.1);
 }
@@ -939,9 +944,11 @@ body {
     font-size: 14px; /* Font size */
     font-weight: 600; /* Semi-bold weight */
     cursor: pointer; /* Pointer cursor on hover */
-    margin-top: 15px; /* Space above button */
+    margin-top: auto; /* Push button to bottom of flex container */
+    margin-bottom: 5px; /* Add bottom margin for spacing */
     width: 100%; /* Full width of container */
     transition: all 0.3s ease; /* Smooth hover transition */
+    flex-shrink: 0; /* Prevent button from shrinking */
 }
 
 /* Adjust button hover effect */

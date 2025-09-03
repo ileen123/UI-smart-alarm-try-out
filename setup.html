@@ -663,7 +663,7 @@
                                 window.sharedDataManager.ensureCleanPatientState(currentPatientId, true);
                                 
                                 // Initialize all condition buttons based on stored states
-                                const conditions = ['sepsis', 'pneumonie'];
+                                const conditions = ['sepsis', 'pneumonie', 'herstellende'];
                                 
                                 conditions.forEach(condition => {
                                     const conditionState = window.sharedDataManager.getPatientConditionState(condition, currentPatientId);

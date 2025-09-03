@@ -508,6 +508,29 @@
             return null;
         }
 
+        // Refresh risk levels for all occupied beds from patient medical info
+        function refreshRiskLevelsFromMedicalInfo() {
+            console.log('🔄 Refreshing risk levels from patient medical info...');
+            
+            Object.keys(bedData).forEach(bedNumber => {
+                const bed = bedData[bedNumber];
+                if (bed.occupied && bed.patientId) {
+                    // Get patient medical info from SharedDataManager
+                    const patientMedicalInfo = window.sharedDataManager.getPatientMedicalInfo(bed.patientId);
+                    if (patientMedicalInfo && patientMedicalInfo.selectedRiskLevel) {
+                        const oldRiskLevel = bed.riskLevel;
+                        bed.riskLevel = patientMedicalInfo.selectedRiskLevel;
+                        console.log(`✅ Updated bed ${bedNumber} risk level: ${oldRiskLevel} → ${bed.riskLevel} (patient ${bed.patientId})`);
+                    } else {
+                        console.log(`ℹ️ No risk level found for patient ${bed.patientId} in bed ${bedNumber}`);
+                    }
+                }
+            });
+            
+            // Save updated bed states to storage
+            saveBedStatesToStorage();
+        }
+
         // Load initial data
         async function loadData() {
             console.log('🔄 loadData() function called');
@@ -566,6 +589,9 @@
                     });
                 }
             }
+            
+            // Refresh risk levels from patient medical info for all occupied beds
+            refreshRiskLevelsFromMedicalInfo();
             
             updateDisplay();
         }

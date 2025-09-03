@@ -24,7 +24,7 @@
 
         <!-- Breadcrumb Navigation -->
     <nav class="breadcrumb-nav">
-        <a href="#" class="breadcrumb-link" onclick="goToBedOverview()">
+        <a href="#" class="breadcrumb-link" onclick="goBackToBedOverview()">
             <img src="svg's/home.svg" alt="Home" class="breadcrumb-icon">
             Patiënten Overzicht
         </a>
@@ -429,6 +429,13 @@
                     // Update global heart monitoring level
                     if (currentPatientId && window.sharedDataManager) {
                         window.sharedDataManager.updateGlobalHeartMonitoringLevel(currentPatientId, riskLevel);
+                        
+                        // Save the risk level to patient medical info for bed overview color updates
+                        const currentMedicalInfo = window.sharedDataManager.getPatientMedicalInfo(currentPatientId) || {};
+                        currentMedicalInfo.selectedRiskLevel = riskLevel;
+                        currentMedicalInfo.lastUpdated = new Date().toISOString();
+                        window.sharedDataManager.savePatientMedicalInfo(currentPatientId, currentMedicalInfo);
+                        console.log('✅ Risk level saved to patient medical info for bed overview color update:', riskLevel);
                     }
                 });
             });
@@ -569,6 +576,12 @@
         function updatePatientHeader(patient) {
             const headerInfo = patient.id + ' - ' + patient.name + ' - ' + patient.gender + ' - ' + patient.age + ' jaar - ' + patient.weight + ' kg';
             document.getElementById('patient-header-info').textContent = headerInfo;
+            
+            // Update breadcrumb with patient name
+            const breadcrumbCurrent = document.querySelector('.breadcrumb-current');
+            if (breadcrumbCurrent) {
+                breadcrumbCurrent.textContent = `Alarm Instellingen - ${patient.name}`;
+            }
         }
 
         function loadExistingSettings() {
@@ -718,7 +731,7 @@
                 window.sharedDataManager.ensureCleanPatientState(currentPatientId, false);
                 
                 // Initialize all condition buttons based on stored states
-                const conditions = ['sepsis', 'pneumonie'];
+                const conditions = ['sepsis', 'pneumonie', 'herstellende'];
                 
                 conditions.forEach(condition => {
                     const conditionState = window.sharedDataManager.getPatientConditionState(condition, currentPatientId);
@@ -791,8 +804,8 @@
                         console.log('🎯 Updated BP range from target ranges:', Math.round(bp.min) + ' - ' + Math.round(bp.max) + ' ' + (bp.unit || 'mmHg'));
                         
                         // Apply target range styling
-                        bpRange.style.backgroundColor = '#e8f5e8'; // Light green highlight
-                        bpRange.style.border = '2px solid #28a745'; // Green border
+                        bpRange.style.backgroundColor = '#FDEAB3'; // Light green highlight
+                        bpRange.style.border = '2px solid #ffc107'; // Green border
                         bpRange.style.borderRadius = '4px';
                         bpRange.style.padding = '2px 4px';
                         console.log('✅ Applied target range styling to BP display');
@@ -812,8 +825,8 @@
                         console.log('🎯 Updated AF range from target ranges:', Math.round(af.min) + ' - ' + Math.round(af.max) + ' ' + (af.unit || '/min'));
                         
                         // Apply target range styling
-                        afRangeDisplay.style.backgroundColor = '#e8f5e8'; // Light green highlight
-                        afRangeDisplay.style.border = '2px solid #28a745'; // Green border
+                        afRangeDisplay.style.backgroundColor = '#FDEAB3'; // Light green highlight
+                        afRangeDisplay.style.border = '2px solid #ffc107'; // Green border
                         afRangeDisplay.style.borderRadius = '4px';
                         afRangeDisplay.style.padding = '2px 4px';
                         console.log('✅ Applied target range styling to AF display');
@@ -865,7 +878,7 @@
                     
                     // Highlight if using sepsis thresholds
                     if (hasSepsis && sepsisThresholds) {
-                        hrRange.style.backgroundColor = '#fff3cd'; // Light yellow highlight
+                        hrRange.style.backgroundColor = '#FDEAB3'; // Light yellow highlight
                         hrRange.style.border = '2px solid #ffc107'; // Yellow border
                         hrRange.style.borderRadius = '4px';
                         hrRange.style.padding = '2px 4px';
@@ -895,7 +908,7 @@
                 
                 // Apply styling based on source
                 if (isSepsis) {
-                    hrRange.style.backgroundColor = '#fff3cd'; // Light yellow highlight for sepsis
+                    hrRange.style.backgroundColor = '#FDEAB3'; // Light yellow highlight for sepsis
                     hrRange.style.border = '2px solid #ffc107'; // Yellow border
                     hrRange.style.borderRadius = '4px';
                     hrRange.style.padding = '2px 4px';
@@ -923,7 +936,7 @@
                 
                 // Apply styling based on source
                 if (isSepsis) {
-                    bpRange.style.backgroundColor = '#fff3cd'; // Light yellow highlight for sepsis
+                    bpRange.style.backgroundColor = '#FDEAB3'; // Light yellow highlight for sepsis
                     bpRange.style.border = '2px solid #ffc107'; // Yellow border
                     bpRange.style.borderRadius = '4px';
                     bpRange.style.padding = '2px 4px';
@@ -953,8 +966,8 @@
                 
                 // Apply styling based on source
                 if (isPneumonie) {
-                    afRangeDisplay.style.backgroundColor = '#e1f5fe'; // Light blue highlight for pneumonie
-                    afRangeDisplay.style.border = '2px solid #29b6f6'; // Blue border
+                    afRangeDisplay.style.backgroundColor = '#FDEAB3'; // Light blue highlight for pneumonie
+                    afRangeDisplay.style.border = '2px solid #ffc107'; // Blue border
                     afRangeDisplay.style.borderRadius = '4px';
                     afRangeDisplay.style.padding = '2px 4px';
                     console.log('🫁 Applied pneumonie styling to AF display');
