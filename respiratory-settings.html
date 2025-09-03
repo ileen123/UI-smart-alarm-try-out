@@ -78,7 +78,7 @@
                 <h3 class="info-title">Respiratoire additionele informatie:</h3>
                 <div class="circulatory-tags-section">
                     <button class="btn tag-btn circulatory-tag" data-condition="pneumonie">
-                        Pneumonie <img src="svg's/pneumonie.svg" alt="Pneumonie" class="condition-icon">
+                        Pneumonie <img src="svg's/lung.svg" alt="Pneumonie" class="condition-icon">
                     </button>
                     <button class="circulatory-more-btn">⋯</button>
                 </div>
@@ -1388,8 +1388,13 @@
                         
                         // Handle pneumonie deselection
                         if (tagCondition === 'pneumonie' && currentPatientId && window.sharedDataManager) {
-                            window.sharedDataManager.setPatientConditionState(currentPatientId, 'pneumonie', false);
-                            console.log('� Pneumonie deselected in respiratory settings');
+                            window.sharedDataManager.setPatientConditionState('pneumonie', {
+                                isActive: false,
+                                patientId: currentPatientId,
+                                timestamp: Date.now(),
+                                source: 'respiratory-settings'
+                            });
+                            console.log('🫁 Pneumonie deselected in respiratory settings');
                         }
                     } else {
                         // Select tag
@@ -1397,29 +1402,38 @@
                         
                         // Handle pneumonie selection
                         if (tagCondition === 'pneumonie' && currentPatientId && window.sharedDataManager) {
-                            window.sharedDataManager.setPatientConditionState(currentPatientId, 'pneumonie', true);
-                            console.log('� Pneumonie selected in respiratory settings');
+                            window.sharedDataManager.setPatientConditionState('pneumonie', {
+                                isActive: true,
+                                patientId: currentPatientId,
+                                timestamp: Date.now(),
+                                source: 'respiratory-settings'
+                            });
+                            console.log('🫁 Pneumonie selected in respiratory settings');
                         }
                     }
                 });
             });
             
-            // Listen for pneumonie state changes from other pages to update our button
-            window.addEventListener('pneumonieStateChanged', function(event) {
-                console.log('🫁 Updating respiratory tag state from external change:', event.detail);
+            // Listen for condition state changes from other pages to update our button
+            window.addEventListener('patientConditionStateChanged', function(event) {
+                console.log('🫁 Condition state changed event received on respiratory page:', event.detail);
                 
-                const { patientId, pneumonieState } = event.detail;
+                const { condition, state } = event.detail;
                 
-                // Only update if it's for the current patient
-                if (patientId === currentPatientId) {
+                // Only update if it's for the current patient and it's a pneumonie condition
+                if (state.patientId === currentPatientId && condition === 'pneumonie') {
                     const pneumonieButton = document.querySelector('.circulatory-tag[data-condition="pneumonie"]');
                     if (pneumonieButton) {
-                        if (pneumonieState) {
-                            pneumonieButton.classList.add('selected');
-                            console.log('✅ Marked pneumonie button as selected due to external selection');
+                        if (state.isActive) {
+                            if (!pneumonieButton.classList.contains('selected')) {
+                                pneumonieButton.classList.add('selected');
+                                console.log('✅ Synced pneumonie button to selected state from external change (respiratory)');
+                            }
                         } else {
-                            pneumonieButton.classList.remove('selected');
-                            console.log('✅ Marked pneumonie button as deselected due to external deselection');
+                            if (pneumonieButton.classList.contains('selected')) {
+                                pneumonieButton.classList.remove('selected');
+                                console.log('✅ Synced pneumonie button to deselected state from external change (respiratory)');
+                            }
                         }
                     }
                 }
