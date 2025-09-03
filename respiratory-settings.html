@@ -909,7 +909,7 @@
         let currentPatientId = null;
         let currentBed = null;
         let currentSettings = {
-            saturatie: { min: 95, max: 100 },
+            saturatie: { min: 90, max: 100 },
             af: { min: 12, max: 20 }
         };
         
@@ -1074,7 +1074,7 @@
                 }
             }
             
-            // Update AF slider if it exists
+            // Update AF slider if it exists - allow monitoring level changes for visual updates
             if (afSlider && typeof afSlider.updateMonitoringLevel === 'function') {
                 console.log('🎛️ Calling afSlider.updateMonitoringLevel with:', level);
                 afSlider.updateMonitoringLevel(level);
@@ -1439,6 +1439,38 @@
                 }
             });
             
+            // Listen for AF range changes from pneumonie selection/deselection
+            window.addEventListener('afRangesChanged', function(event) {
+                console.log('🫁 AF ranges changed event received in respiratory settings:', event.detail);
+                
+                const { patientId, AF_min, AF_max, source } = event.detail;
+                
+                // Only update if it's for the current patient
+                if (patientId === currentPatientId && afSlider) {
+                    console.log('🔄 Updating AF slider config and positions...');
+                    
+                    // Update the slider's config
+                    afSlider.config.targetRange.min = AF_min;
+                    afSlider.config.targetRange.max = AF_max;
+                    
+                    // Update the current slider handle positions to match the new range
+                    afSlider.currentMin = AF_min;
+                    afSlider.currentMax = AF_max;
+                    
+                    // Update the original values so the slider doesn't think these are user changes
+                    afSlider.originalMin = AF_min;
+                    afSlider.originalMax = AF_max;
+                    
+                    // Force re-render the slider to show new target range and positions
+                    if (afSlider.updateSliderPosition) {
+                        afSlider.updateSliderPosition();
+                        console.log(`✅ Re-rendered AF slider with new target range and positions ${AF_min}-${AF_max} due to ${source}`);
+                    } else {
+                        console.warn('❌ updateSliderPosition method not available on AF slider');
+                    }
+                }
+            });
+            
             // Event listeners are now handled by the slider components
         }
         
@@ -1461,31 +1493,66 @@
                         bp: {
                             min: targetRanges.BP_Mean?.min || 65,
                             max: targetRanges.BP_Mean?.max || 85
+                        },
+                        // Load respiratory settings from target ranges (these include pneumonie-specific ranges)
+                        saturatie: {
+                            min: targetRanges.Saturatie?.min || 90,
+                            max: targetRanges.Saturatie?.max || 100
+                        },
+                        af: {
+                            min: targetRanges.AF?.min || 10,
+                            max: targetRanges.AF?.max || 25
                         }
                     };
+                    console.log('✅ Loaded respiratory settings from target ranges:', {
+                        saturatie: currentSettings.saturatie,
+                        af: currentSettings.af
+                    });
+                } else {
+                    // Load default respiratory settings if no target ranges exist
+                    currentSettings.saturatie = currentSettings.saturatie || { min: 90, max: 100 };
+                    currentSettings.af = currentSettings.af || { min: 10, max: 25 };
                 }
                 
                 // Try to load existing patient-specific fine-tuned settings
                 const savedSettings = window.sharedDataManager.getPatientCirculatoirSettings(currentPatientId);
+                const savedRespiratorySettings = window.sharedDataManager.getPatientRespiratorySettings(currentPatientId);
                 
                 if (savedSettings) {
-                    console.log('✅ Found saved fine-tuned settings:', savedSettings);
+                    console.log('✅ Found saved fine-tuned circulatory settings:', savedSettings);
                     
                     // Check if current target ranges are sepsis ranges (90-130)
                     const isSepsisActive = targetRanges && targetRanges.HR && 
                                           targetRanges.HR.min === 90 && targetRanges.HR.max === 130;
                     
+                    // Check if current target ranges are pneumonie AF ranges (10-30)
+                    const isPneumonieActive = targetRanges && targetRanges.AF && 
+                                             targetRanges.AF.min === 10 && targetRanges.AF.max === 30;
+                    
                     if (isSepsisActive) {
-                        // Sepsis is active - target ranges take priority over saved settings
-                        console.log('🦠 Sepsis is active - using target ranges instead of saved settings');
-                        // Keep currentSettings as is (target ranges)
+                        // Sepsis is active - target ranges take priority over saved settings for HR/BP
+                        console.log('🦠 Sepsis is active - using target ranges for HR/BP instead of saved settings');
+                        // Keep currentSettings HR/BP as is (target ranges)
                     } else {
-                        // Normal case - merge saved settings with target ranges (saved settings take priority for fine-tuning)
-                        currentSettings = {
-                            hr: savedSettings.hr || currentSettings.hr,
-                            bp: savedSettings.bp || currentSettings.bp
-                        };
-                        console.log('✅ Using saved fine-tuned settings:', currentSettings);
+                        // Normal case - merge saved circulatory settings with target ranges (saved settings take priority for fine-tuning)
+                        currentSettings.hr = savedSettings.hr || currentSettings.hr;
+                        currentSettings.bp = savedSettings.bp || currentSettings.bp;
+                        console.log('✅ Using saved fine-tuned circulatory settings');
+                    }
+                    
+                    // Handle respiratory settings separately - pneumonie always takes priority
+                    if (isPneumonieActive) {
+                        // Pneumonie is active - target ranges take priority for AF
+                        console.log('🫁 Pneumonie is active - using target ranges for AF instead of saved settings');
+                        // Keep currentSettings AF as is (target ranges from pneumonie)
+                    } else if (savedRespiratorySettings) {
+                        // Normal case - use saved respiratory settings if no pneumonie
+                        currentSettings.saturatie = savedRespiratorySettings.saturatie || currentSettings.saturatie;
+                        currentSettings.af = savedRespiratorySettings.af || currentSettings.af;
+                        console.log('✅ Using saved respiratory settings:', {
+                            saturatie: currentSettings.saturatie,
+                            af: currentSettings.af
+                        });
                     }
                 } else {
                     // If no fine-tuned settings, check if we need to load from medical info
@@ -1561,7 +1628,7 @@
                             parameter: 'Saturatie',
                             name: 'Saturatie',
                             unit: '%',
-                            targetRange: currentSettings.saturatie || { min: 95, max: 100 },
+                            targetRange: currentSettings.saturatie || { min: 90, max: 100 },
                             yAxis: { min: 80, max: 100, step: 5 },
                             monitoringLevel: 'mid',
                             patientId: currentPatientId,
@@ -1602,6 +1669,22 @@
                 const afContainer = document.getElementById('af-slider-container');
                 if (afContainer) {
                     console.log('🌬️ Creating AF slider...');
+                    console.log('🔍 DEBUG: currentSettings.af before AF slider creation:', currentSettings.af);
+                    
+                    // Double-check target ranges right before slider creation
+                    const targetRanges = window.sharedDataManager.getPatientTargetRanges(currentPatientId);
+                    console.log('🔍 DEBUG: Target ranges right before AF slider creation:', targetRanges?.AF);
+                    
+                    // If pneumonie is active, ensure we use the correct pneumonie AF ranges
+                    if (currentPatientId && window.sharedDataManager) {
+                        const pneumonieState = window.sharedDataManager.getPatientConditionState('pneumonie', currentPatientId);
+                        if (pneumonieState && pneumonieState.isActive) {
+                            console.log('🫁 Pneumonie is active - forcing AF range to 10-30 for slider initialization');
+                            currentSettings.af = { min: 10, max: 30 };
+                        }
+                    }
+                    
+                    console.log('🔍 DEBUG: Final currentSettings.af for AF slider creation:', currentSettings.af);
                     afContainer.innerHTML = '<p style="color: blue;">Loading AF slider...</p>';
                     
                     try {
@@ -1617,12 +1700,24 @@
                             onChange: (data) => {
                                 console.log('AF Slider changed:', data);
                                 if (window.sharedDataManager && data.type === 'save') {
+                                    // Check if pneumonie is currently active (similar to sepsis logic)
+                                    const targetRanges = window.sharedDataManager.getPatientTargetRanges(currentPatientId);
+                                    const isPneumonieActive = targetRanges && targetRanges.AF && 
+                                                             targetRanges.AF.min === 10 && targetRanges.AF.max === 30;
+                                    
+                                    if (isPneumonieActive) {
+                                        console.log('🫁 Pneumonie is active - ignoring manual AF adjustments');
+                                        // Don't save manual adjustments when pneumonie is active
+                                        return;
+                                    }
+                                    
+                                    // Normal case - save manual adjustments
                                     const newSettings = { saturatie: currentSettings.saturatie, af: { min: data.min, max: data.max } };
                                     window.sharedDataManager.savePatientRespiratorySettings(currentPatientId, newSettings);
                                     currentSettings = newSettings;
                                     const updatedTargetRanges = {
                                         Saturatie: { 
-                                            min: Math.round(currentSettings.saturatie?.min || 95), 
+                                            min: Math.round(currentSettings.saturatie?.min || 90), 
                                             max: Math.round(currentSettings.saturatie?.max || 100), 
                                             unit: '%' 
                                         },
@@ -1636,6 +1731,30 @@
                         
                         if (afSlider) {
                             console.log('✅ AF Slider initialized successfully');
+                            
+                            // Check if pneumonie is currently active and force AF slider to use pneumonie ranges
+                            if (currentPatientId && window.sharedDataManager) {
+                                const pneumonieState = window.sharedDataManager.getPatientConditionState('pneumonie', currentPatientId);
+                                console.log('🫁 Checking pneumonie state after AF slider creation:', pneumonieState);
+                                
+                                if (pneumonieState && pneumonieState.isActive) {
+                                    console.log('🫁 Pneumonie is active - forcing AF slider to use 10-30 range');
+                                    
+                                    // Force the slider to use pneumonie ranges
+                                    afSlider.config.targetRange.min = 10;
+                                    afSlider.config.targetRange.max = 30;
+                                    afSlider.currentMin = 10;
+                                    afSlider.currentMax = 30;
+                                    afSlider.originalMin = 10;
+                                    afSlider.originalMax = 30;
+                                    
+                                    // Force re-render the slider to show pneumonie range
+                                    if (afSlider.updateSliderPosition) {
+                                        afSlider.updateSliderPosition();
+                                        console.log('✅ AF slider forced to pneumonie range: 10-30 /min');
+                                    }
+                                }
+                            }
                         } else {
                             console.error('❌ AF Slider initialization returned null');
                             afContainer.innerHTML = '<p style="color: red;">AF Slider initialization returned null</p>';

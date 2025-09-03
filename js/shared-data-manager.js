@@ -44,10 +44,18 @@ class SharedDataManager {
      */
     autoInitializeFromLegacyData() {
         try {
+            // Check if auto-initialization has already been completed
+            const initFlag = localStorage.getItem('autoInitComplete');
+            if (initFlag === 'true') {
+                console.log('ℹ️ Auto-initialization already completed, skipping...');
+                return;
+            }
+            
             console.log('🔄 Auto-initializing from legacy localStorage data...');
             
-            // Migrate patient data
-            for (let i = 0; i < localStorage.length; i++) {
+            // Migrate patient data - but limit the scan to avoid performance issues
+            const maxScans = Math.min(localStorage.length, 50); // Limit to 50 items max
+            for (let i = 0; i < maxScans; i++) {
                 const key = localStorage.key(i);
                 if (key && key.startsWith(this.storageKeys.PATIENT_PREFIX) && key.endsWith('_medicalInfo')) {
                     const patientId = key.replace(this.storageKeys.PATIENT_PREFIX, '').replace('_medicalInfo', '');
@@ -92,6 +100,8 @@ class SharedDataManager {
                 console.log('✅ Migrated session data');
             }
             
+            // Set flag to prevent repeated auto-initialization
+            localStorage.setItem('autoInitComplete', 'true');
             console.log('✅ Auto-initialization complete');
         } catch (error) {
             console.error('❌ Error during auto-initialization:', error);
@@ -309,9 +319,10 @@ class SharedDataManager {
                 return appData.patients;
             }
 
-            // Fallback: scan localStorage for patient keys
+            // Fallback: scan localStorage for patient keys (limited for performance)
             const patients = {};
-            for (let i = 0; i < localStorage.length; i++) {
+            const maxScans = Math.min(localStorage.length, 50); // Limit to 50 items max
+            for (let i = 0; i < maxScans; i++) {
                 const key = localStorage.key(i);
                 if (key && key.startsWith(this.storageKeys.PATIENT_PREFIX) && key.endsWith('_medicalInfo')) {
                     const patientId = key.replace(this.storageKeys.PATIENT_PREFIX, '').replace('_medicalInfo', '');
@@ -384,7 +395,7 @@ class SharedDataManager {
     }
 
     /**
-     * Debug: List all localStorage keys and values
+     * Debug: List all localStorage keys and values (limited for performance)
      */
     debugLocalStorage() {
         console.log('🔍 DEBUG: All localStorage data:');
@@ -393,11 +404,17 @@ class SharedDataManager {
         console.log('🏥 Bed States:', this.getBedStates());
         console.log('📝 Session Data:', this.getSessionData());
         
-        console.log('\n📋 Raw localStorage keys:');
-        for (let i = 0; i < localStorage.length; i++) {
+        console.log('\n📋 Raw localStorage keys (limited to first 20 for performance):');
+        const maxItems = Math.min(localStorage.length, 20);
+        for (let i = 0; i < maxItems; i++) {
             const key = localStorage.key(i);
             const value = localStorage.getItem(key);
-            console.log(`  - ${key}:`, value);
+            // Truncate long values for readability
+            const displayValue = value && value.length > 100 ? value.substring(0, 100) + '...' : value;
+            console.log(`  - ${key}:`, displayValue);
+        }
+        if (localStorage.length > 20) {
+            console.log(`  ... and ${localStorage.length - 20} more items`);
         }
     }
 
@@ -1004,7 +1021,16 @@ class SharedDataManager {
         // Set a timestamp for manual changes (to prioritize over automatic updates)
         sessionStorage.setItem('manualTargetRangesChange', Date.now().toString());
         
+        // Dispatch event to notify all pages of target range changes
+        window.dispatchEvent(new CustomEvent('targetRangesChanged', {
+            detail: {
+                patientId: patientId,
+                targetRanges: targetRanges
+            }
+        }));
+        
         console.log('🌐 Global target ranges updated for patient:', patientId);
+        console.log('📡 Dispatched targetRangesChanged event');
     }
 
     /**
@@ -1024,16 +1050,28 @@ class SharedDataManager {
      * Save current HR values as backup before applying sepsis ranges
      */
     saveHRBackup(patientId) {
+        // Get current target ranges to backup both HR and BP
+        const targetRanges = this.getPatientTargetRanges(patientId) || this.getDefaultTargetRanges();
+        
         const backupData = {
-            HR_low: window.HR_low,
-            HR_high: window.HR_high,
+            HR_low: targetRanges.HR?.min || window.HR_low || 70,
+            HR_high: targetRanges.HR?.max || window.HR_high || 110,
+            BP_low: targetRanges.BP_Mean?.min || 65,
+            BP_high: targetRanges.BP_Mean?.max || 85,
             timestamp: new Date().toISOString()
         };
         
         const backupKey = `${this.storageKeys.PATIENT_PREFIX}${patientId}_hrBackup`;
-        localStorage.setItem(backupKey, JSON.stringify(backupData));
         
-        console.log('💾 Saved HR backup for patient:', patientId, backupData);
+        // Only save backup if it doesn't already exist (don't overwrite with sepsis values)
+        const existingBackup = localStorage.getItem(backupKey);
+        if (!existingBackup) {
+            localStorage.setItem(backupKey, JSON.stringify(backupData));
+            console.log('💾 Saved HR/BP backup for patient:', patientId, backupData);
+        } else {
+            console.log('ℹ️ HR/BP backup already exists, not overwriting:', JSON.parse(existingBackup));
+        }
+        
         return backupData;
     }
 
@@ -1049,6 +1087,15 @@ class SharedDataManager {
             console.error('❌ Error getting HR backup:', error);
             return null;
         }
+    }
+
+    /**
+     * Clear HR backup (useful for testing or when patient state is reset)
+     */
+    clearHRBackup(patientId) {
+        const backupKey = `${this.storageKeys.PATIENT_PREFIX}${patientId}_hrBackup`;
+        localStorage.removeItem(backupKey);
+        console.log('🗑️ Cleared HR backup for patient:', patientId);
     }
 
     /**
@@ -1108,7 +1155,7 @@ class SharedDataManager {
             window.HR_low = backup.HR_low;
             window.HR_high = backup.HR_high;
             
-            // Update target ranges
+            // Update target ranges with backed up values
             const targetRanges = this.getPatientTargetRanges(patientId) || this.getDefaultTargetRanges();
             targetRanges.HR = {
                 min: backup.HR_low,
@@ -1116,17 +1163,21 @@ class SharedDataManager {
                 unit: 'bpm'
             };
             
-            // Restore default BP ranges too
+            // Restore backed up BP ranges instead of hardcoded values
             targetRanges.BP_Mean = {
-                min: 65,
-                max: 85,
+                min: backup.BP_low || 65,
+                max: backup.BP_high || 85,
                 unit: 'mmHg'
             };
             
             this.savePatientTargetRanges(patientId, targetRanges);
             
+            // Clear the backup after successful restore
+            const backupKey = `${this.storageKeys.PATIENT_PREFIX}${patientId}_hrBackup`;
+            localStorage.removeItem(backupKey);
+            
             console.log('🔙 Restored previous HR ranges:', window.HR_low, '-', window.HR_high);
-            console.log('🔙 Restored default BP ranges: 65 - 85 mmHg');
+            console.log('🔙 Restored previous BP ranges:', backup.BP_low || 65, '-', backup.BP_high || 85, 'mmHg');
         } else {
             // Fallback to default normal ranges
             const normalThresholds = this.getThresholds('normal');
@@ -1179,6 +1230,89 @@ class SharedDataManager {
         } else {
             this.restorePreviousHRRanges(patientId);
         }
+    }
+
+    /**
+     * Apply pneumonie-specific AF ranges (10-30 instead of 10-25)
+     */
+    applyPneumonieAFRanges(patientId) {
+        // Save current AF ranges for restoration later
+        const targetRanges = this.getPatientTargetRanges(patientId) || this.getDefaultTargetRanges();
+        
+        // Backup current AF ranges if not already backed up
+        const afBackupKey = `${this.storageKeys.PATIENT_PREFIX}${patientId}_af_backup`;
+        if (!localStorage.getItem(afBackupKey)) {
+            const currentAF = targetRanges.AF || { min: 10, max: 25, unit: '/min' };
+            localStorage.setItem(afBackupKey, JSON.stringify(currentAF));
+            console.log('💾 Backed up current AF ranges:', currentAF);
+        }
+        
+        // Apply pneumonie-specific AF ranges
+        targetRanges.AF = {
+            min: 10,
+            max: 30,
+            unit: '/min'
+        };
+        
+        this.savePatientTargetRanges(patientId, targetRanges);
+        
+        console.log('🫁 Applied pneumonie AF ranges: 10 - 30 /min');
+        
+        // Emit event to update all pages
+        const event = new CustomEvent('afRangesChanged', {
+            detail: { 
+                patientId, 
+                AF_min: 10, 
+                AF_max: 30,
+                source: 'pneumonie' 
+            }
+        });
+        window.dispatchEvent(event);
+    }
+
+    /**
+     * Restore previous AF ranges when pneumonie is deselected
+     */
+    restorePreviousAFRanges(patientId) {
+        const afBackupKey = `${this.storageKeys.PATIENT_PREFIX}${patientId}_af_backup`;
+        const backup = JSON.parse(localStorage.getItem(afBackupKey));
+        
+        if (backup) {
+            // Update target ranges
+            const targetRanges = this.getPatientTargetRanges(patientId) || this.getDefaultTargetRanges();
+            targetRanges.AF = {
+                min: backup.min,
+                max: backup.max,
+                unit: backup.unit || '/min'
+            };
+            
+            this.savePatientTargetRanges(patientId, targetRanges);
+            
+            console.log('🔙 Restored previous AF ranges:', backup.min, '-', backup.max, backup.unit);
+        } else {
+            // Fallback to default AF ranges
+            const targetRanges = this.getPatientTargetRanges(patientId) || this.getDefaultTargetRanges();
+            targetRanges.AF = {
+                min: 10,
+                max: 25,
+                unit: '/min'
+            };
+            
+            this.savePatientTargetRanges(patientId, targetRanges);
+            
+            console.log('🔙 Restored default AF ranges: 10 - 25 /min');
+        }
+        
+        // Emit event to update all pages
+        const event = new CustomEvent('afRangesChanged', {
+            detail: { 
+                patientId, 
+                AF_min: 10, 
+                AF_max: 25,
+                source: 'restore' 
+            }
+        });
+        window.dispatchEvent(event);
     }
 
     /**
@@ -1249,6 +1383,13 @@ class SharedDataManager {
             const conditionsKey = `${this.storageKeys.PATIENT_PREFIX}${patientId}_conditions`;
             let conditions = JSON.parse(localStorage.getItem(conditionsKey)) || {};
             
+            // Check if this is already the current state to prevent recursion
+            const currentState = conditions[condition];
+            if (currentState && currentState.isActive === isActive) {
+                console.log(`ℹ️ ${condition} state already ${isActive}, skipping to prevent recursion`);
+                return true;
+            }
+            
             conditions[condition] = {
                 isActive: isActive,
                 timestamp: timestamp,
@@ -1256,12 +1397,21 @@ class SharedDataManager {
             };
             localStorage.setItem(conditionsKey, JSON.stringify(conditions));
             
-            // Handle sepsis-specific slider updates
-            if (condition === 'sepsis') {
+            // Handle sepsis-specific slider updates (but only if called from external source)
+            if (condition === 'sepsis' && source !== 'internal') {
                 if (isActive) {
                     this.applySepsisHRRanges(patientId);
                 } else {
                     this.restorePreviousHRRanges(patientId);
+                }
+            }
+            
+            // Handle pneumonie-specific breathing frequency (AF) updates (but only if called from external source)
+            if (condition === 'pneumonie' && source !== 'internal') {
+                if (isActive) {
+                    this.applyPneumonieAFRanges(patientId);
+                } else {
+                    this.restorePreviousAFRanges(patientId);
                 }
             }
             

@@ -171,7 +171,6 @@ body {
     background: white; /* White background for each section */
     padding: 20px 20px 25px 20px; /* More padding at bottom for better spacing */
     border-radius: 10px; /* Rounded corners */
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1); /* Subtle shadow */
     min-height: 180px; /* Reduced minimum height for better alignment */
     max-height: 180px; /* Maximum height to keep sections aligned */
     display: flex;
@@ -213,14 +212,61 @@ body {
 
 .alarm-indicator-svg svg,
 .alarm-indicator-svg img {
-    max-width: 120%; /* Responsive scaling */
-    height: 60px; /* Fixed smaller height to fit in container */
+    max-width: 100%; /* Responsive scaling */
+    height: 50px; /* Fixed smaller height to fit in container */
     display: block; /* Remove extra spacing */
 }
 
 /* =============================================================================
    5. BUTTON STYLES - Interactive Elements
 ============================================================================= */
+
+ /* Breadcrumb Navigation */
+        .breadcrumb-nav {
+            font-family: 'Open Sans', sans-serif;
+            font-size: 14px;
+            color: #FC6039;
+            margin-bottom: 25px;
+            padding-top: 10px;
+            display: flex;
+            align-items: center;
+            line-height: 1.2;
+        }
+
+        .breadcrumb-link {
+            color: #FC6039;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            transition: opacity 0.2s ease;
+            vertical-align: middle;
+        }
+
+        .breadcrumb-link:hover {
+            opacity: 0.8;
+            text-decoration: underline;
+        }
+
+        .breadcrumb-icon {
+            width: 16px;
+            height: 16px;
+            margin-right: 4px;
+            filter: brightness(0) saturate(100%) invert(44%) sepia(93%) saturate(1352%) hue-rotate(346deg) brightness(119%) contrast(119%);
+            vertical-align: middle;
+        }
+
+        .breadcrumb-separator {
+            margin: 0 8px;
+            color: #FC6039;
+            font-weight: normal;
+        }
+
+        .breadcrumb-current {
+            color: #FC6039;
+            font-weight: 600;
+        }
+
 
 /* Base button styling for all interactive buttons */
 .btn {
@@ -317,7 +363,7 @@ body {
     width: 100%; /* Full width of container */
     padding: 12px 16px; /* Internal spacing */
     border: 2px solid #FC6039; /* Gray border */
-    border-radius: 15px; /* Rounded corners */
+    border-radius: 20px; /* Rounded corners */
     background: white; /* White background */
     font-size: 14px; /* Standard font size */
     cursor: pointer; /* Hand cursor */
@@ -326,13 +372,13 @@ body {
 
 .problem-dropdown:focus {
     outline: none; /* Remove default outline */
-    border-color: #1961AB; /* Blue border when focused */
+    border-color: #FC6039; /* Blue border when focused */
 }
 
 /* Selected state for dropdown - when option is chosen */
 .problem-dropdown.selected {
     background-color: #e3f2fd; /* Light blue background */
-    border-color: #1961AB; /* Blue border */
+    border-color: #FC6039; /* Blue border */
     border-width: 3px; /* Thicker border for emphasis */
     font-weight: 600; /* Slightly bolder text */
     color: #0056b3; /* Darker blue text color */
@@ -885,11 +931,11 @@ body {
 
 /* Adjust button styling for organ system adjustments */
 .adjust-btn {
-    background-color: #28a745; /* Green background */
+    background-color: #FC6039; /* Green background */
     color: white; /* White text */
-    border: 2px solid #28a745; /* Green border */
+    border: 2px solid #FC6039; /* Green border */
     padding: 8px 16px; /* Internal spacing */
-    border-radius: 6px; /* Rounded corners */
+    border-radius: 20px; /* Rounded corners */
     font-size: 14px; /* Font size */
     font-weight: 600; /* Semi-bold weight */
     cursor: pointer; /* Pointer cursor on hover */
@@ -900,8 +946,8 @@ body {
 
 /* Adjust button hover effect */
 .adjust-btn:hover {
-    background-color: #218838; /* Darker green on hover */
-    border-color: #218838; /* Darker green border on hover */
+    background-color: #fd8465; /* Darker green on hover */
+    border-color: #fd8465; /* Darker green border on hover */
     transform: translateY(-1px); /* Slight lift effect */
 }
 

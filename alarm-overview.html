@@ -21,6 +21,18 @@
     <script src="js/shared-data-manager.js"></script>
 </head>
 <body>
+
+        <!-- Breadcrumb Navigation -->
+    <nav class="breadcrumb-nav">
+        <a href="#" class="breadcrumb-link" onclick="goToBedOverview()">
+            <img src="svg's/home.svg" alt="Home" class="breadcrumb-icon">
+            Patiënten Overzicht
+        </a>
+        <span class="breadcrumb-separator">></span>
+        <span class="breadcrumb-current">Alarm Instellingen - S. Groen</span>
+    </nav>
+
+
     <!-- Patient information header section -->
     <div class="header">
         <img src="svg's/patient_icon.svg" alt="Patient" class="user-icon" />
@@ -128,7 +140,7 @@
                 <div class="value-label inactive-text">Saturatie</div>
                 <div class="value-number inactive-text">90 - 100 %</div>
                 <div class="value-label inactive-text">AF</div>
-                <div class="value-number inactive-text">10 - 25 /min</div>
+                <div class="value-number inactive-text" id="af-range-display-overview">10 - 25 /min</div>
                 <button class="adjust-btn" onclick="adjustOrganSettings('respiratoir')">Aanpassen</button>
             </div>
             
@@ -296,6 +308,16 @@
                 }
             });
             
+            // Listen for AF range changes from pneumonie selection/deselection
+            window.addEventListener('afRangesChanged', function(event) {
+                console.log('🫁 AF ranges changed event received:', event.detail);
+                if (event.detail.patientId === currentPatientId) {
+                    // Update the AF display immediately
+                    updateAFDisplay(event.detail.AF_min, event.detail.AF_max, event.detail.source === 'pneumonie');
+                    console.log('✅ Updated AF display due to range change');
+                }
+            });
+            
             // Listen for condition state changes from other pages
             window.addEventListener('patientConditionStateChanged', function(event) {
                 console.log('🏥 Condition state changed event received:', event.detail);
@@ -422,6 +444,43 @@
                                 timestamp: Date.now(),
                                 source: 'alarm-overview'
                             });
+                            
+                            // Handle condition-specific range restoration
+                            if (condition === 'pneumonie') {
+                                console.log('🫁 Pneumonie deselected - restoring previous AF ranges');
+                                
+                                // Set condition state first
+                                window.sharedDataManager.setPatientConditionState('pneumonie', {
+                                    patientId: currentPatientId,
+                                    isActive: false,
+                                    timestamp: Date.now(),
+                                    source: 'alarm-overview'
+                                });
+                                
+                                console.log('🔍 DEBUG: restorePreviousAFRanges method available:', typeof window.sharedDataManager.restorePreviousAFRanges);
+                                if (window.sharedDataManager.restorePreviousAFRanges) {
+                                    window.sharedDataManager.restorePreviousAFRanges(currentPatientId);
+                                } else {
+                                    console.error('❌ restorePreviousAFRanges method not found!');
+                                }
+                            } else if (condition === 'sepsis') {
+                                console.log('🦠 Sepsis deselected - restoring previous HR/BP ranges');
+                                
+                                // Set condition state first
+                                window.sharedDataManager.setPatientConditionState('sepsis', {
+                                    patientId: currentPatientId,
+                                    isActive: false,
+                                    timestamp: Date.now(),
+                                    source: 'alarm-overview'
+                                });
+                                
+                                console.log('🔍 DEBUG: restorePreviousHRRanges method available:', typeof window.sharedDataManager.restorePreviousHRRanges);
+                                if (window.sharedDataManager.restorePreviousHRRanges) {
+                                    window.sharedDataManager.restorePreviousHRRanges(currentPatientId);
+                                } else {
+                                    console.error('❌ restorePreviousHRRanges method not found!');
+                                }
+                            }
                         }
                     } else {
                         // Select tag
@@ -436,12 +495,53 @@
                                 timestamp: Date.now(),
                                 source: 'alarm-overview'
                             });
+                            
+                            // Handle condition-specific range changes
+                            if (condition === 'pneumonie') {
+                                console.log('🫁 Pneumonie selected - applying AF range changes');
+                                console.log('🔍 DEBUG: SharedDataManager available:', !!window.sharedDataManager);
+                                console.log('🔍 DEBUG: applyPneumonieAFRanges method available:', typeof window.sharedDataManager.applyPneumonieAFRanges);
+                                
+                                // Set condition state first
+                                window.sharedDataManager.setPatientConditionState('pneumonie', {
+                                    patientId: currentPatientId,
+                                    isActive: true,
+                                    timestamp: Date.now(),
+                                    source: 'alarm-overview'
+                                });
+                                
+                                if (window.sharedDataManager.applyPneumonieAFRanges) {
+                                    window.sharedDataManager.applyPneumonieAFRanges(currentPatientId);
+                                } else {
+                                    console.error('❌ applyPneumonieAFRanges method not found!');
+                                }
+                            } else if (condition === 'sepsis') {
+                                console.log('🦠 Sepsis selected - applying HR/BP range changes');
+                                console.log('🔍 DEBUG: SharedDataManager available:', !!window.sharedDataManager);
+                                console.log('🔍 DEBUG: applySepsisHRRanges method available:', typeof window.sharedDataManager.applySepsisHRRanges);
+                                
+                                // Set condition state first
+                                window.sharedDataManager.setPatientConditionState('sepsis', {
+                                    patientId: currentPatientId,
+                                    isActive: true,
+                                    timestamp: Date.now(),
+                                    source: 'alarm-overview'
+                                });
+                                
+                                if (window.sharedDataManager.applySepsisHRRanges) {
+                                    window.sharedDataManager.applySepsisHRRanges(currentPatientId);
+                                } else {
+                                    console.error('❌ applySepsisHRRanges method not found!');
+                                }
+                            }
                         }
                     }
                     console.log('Selected tags:', selectedTags);
                     
-                    // Update parameter ranges based on selected conditions
-                    updateParameterRanges();
+                    // Update parameter ranges based on selected conditions (but not for pneumonie or sepsis - they handle their own ranges)
+                    if (condition !== 'pneumonie' && condition !== 'sepsis') {
+                        updateParameterRanges();
+                    }
                 });
             });
         }
@@ -691,6 +791,25 @@
                         bpRange.style.padding = '2px 4px';
                     }
                 }
+                
+                // Update AF display if available
+                if (targetRanges.AF) {
+                    const afRangeDisplay = document.getElementById('af-range-display-overview');
+                    if (afRangeDisplay) {
+                        const af = targetRanges.AF;
+                        afRangeDisplay.textContent = Math.round(af.min) + ' - ' + Math.round(af.max) + ' ' + (af.unit || '/min');
+                        console.log('🎯 Updated AF range from target ranges:', Math.round(af.min) + ' - ' + Math.round(af.max) + ' ' + (af.unit || '/min'));
+                        
+                        // Apply target range styling
+                        afRangeDisplay.style.backgroundColor = '#e8f5e8'; // Light green highlight
+                        afRangeDisplay.style.border = '2px solid #28a745'; // Green border
+                        afRangeDisplay.style.borderRadius = '4px';
+                        afRangeDisplay.style.padding = '2px 4px';
+                        
+                        // Remove inactive-text class if present
+                        afRangeDisplay.classList.remove('inactive-text');
+                    }
+                }
             } else {
                 // Fall back to original condition-based logic
                 console.log('🔍 DEBUG: No target ranges found, using condition-based thresholds');
@@ -803,6 +922,36 @@
                 
                 // Remove inactive-text class if present
                 bpRange.classList.remove('inactive-text');
+            }
+        }
+
+        function updateAFDisplay(afMin, afMax, isPneumonie) {
+            console.log('🫁 Updating AF display:', afMin, '-', afMax, '/min, pneumonie:', isPneumonie);
+            
+            // Find the AF display element by ID
+            const afRangeDisplay = document.getElementById('af-range-display-overview');
+            
+            if (afRangeDisplay) {
+                // Update the display text with unit
+                afRangeDisplay.textContent = afMin + ' - ' + afMax + ' /min';
+                
+                // Apply styling based on source
+                if (isPneumonie) {
+                    afRangeDisplay.style.backgroundColor = '#e1f5fe'; // Light blue highlight for pneumonie
+                    afRangeDisplay.style.border = '2px solid #29b6f6'; // Blue border
+                    afRangeDisplay.style.borderRadius = '4px';
+                    afRangeDisplay.style.padding = '2px 4px';
+                    console.log('🫁 Applied pneumonie styling to AF display');
+                } else {
+                    afRangeDisplay.style.backgroundColor = '#e8f5e8'; // Light green for restored
+                    afRangeDisplay.style.border = '2px solid #28a745'; // Green border
+                    afRangeDisplay.style.borderRadius = '4px';
+                    afRangeDisplay.style.padding = '2px 4px';
+                    console.log('🔙 Applied restored styling to AF display');
+                }
+                
+                // Remove inactive-text class if present
+                afRangeDisplay.classList.remove('inactive-text');
             }
         }
 

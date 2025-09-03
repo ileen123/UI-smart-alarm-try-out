@@ -144,7 +144,7 @@
                 <div class="value-label inactive-text">Saturatie</div>
                 <div class="value-number inactive-text">90 - 100</div>
                 <div class="value-label inactive-text">AF</div>
-                <div class="value-number inactive-text">10 - 25</div>
+                <div class="value-number inactive-text" id="af-range-display">10 - 25</div>
             </div>
             
             <!-- Temperature parameters -->
@@ -429,6 +429,12 @@
                                                 timestamp: Date.now(),
                                                 source: 'setup-page'
                                             });
+                                            
+                                            // Handle pneumonie-specific AF range restoration
+                                            if (tagCondition === 'pneumonie') {
+                                                console.log('🫁 Pneumonie deselected on setup page - restoring previous AF ranges');
+                                                window.sharedDataManager.restorePreviousAFRanges(currentPatientId);
+                                            }
                                         }
                                     } else {
                                         // Select tag
@@ -445,6 +451,12 @@
                                                 timestamp: Date.now(),
                                                 source: 'setup-page'
                                             });
+                                            
+                                            // Handle pneumonie-specific AF range changes
+                                            if (tagCondition === 'pneumonie') {
+                                                console.log('🫁 Pneumonie selected on setup page - applying AF range changes');
+                                                window.sharedDataManager.applyPneumonieAFRanges(currentPatientId);
+                                            }
                                         }
                                     }
                                     
@@ -468,6 +480,16 @@
                                     }
                                     
                                     console.log('✅ Directly updated HR and BP displays with values:', HR_low, '-', HR_high, 'BP:', BP_low, '-', BP_high);
+                                }
+                            });
+                            
+                            // Listen for AF range changes from pneumonie selection/deselection
+                            window.addEventListener('afRangesChanged', function(event) {
+                                console.log('🫁 AF ranges changed event received in setup page:', event.detail);
+                                if (event.detail.patientId === currentPatientId) {
+                                    const { AF_min, AF_max, source } = event.detail;
+                                    updateAFDisplayDirectly(AF_min, AF_max, source === 'pneumonie');
+                                    console.log('✅ Directly updated AF display with values:', AF_min, '-', AF_max);
                                 }
                             });
                         }
@@ -533,6 +555,37 @@
                                 console.log(`✅ BP display updated directly: ${bpLow} - ${bpHigh} mmHg`);
                             } else {
                                 console.warn('❌ Could not find BP display element on setup page');
+                            }
+                        }
+                        
+                        // Function to directly update AF display on setup page
+                        function updateAFDisplayDirectly(afMin, afMax, isPneumonie) {
+                            console.log(`🫁 Directly updating AF display: ${afMin}-${afMax} /min (pneumonie: ${isPneumonie})`);
+                            
+                            const afRangeDisplay = document.getElementById('af-range-display');
+                            
+                            if (afRangeDisplay) {
+                                afRangeDisplay.textContent = `${afMin} - ${afMax}`;
+                                
+                                // Apply pneumonie styling if needed
+                                if (isPneumonie) {
+                                    afRangeDisplay.style.backgroundColor = '#e1f5fe'; // Light blue highlight
+                                    afRangeDisplay.style.border = '2px solid #29b6f6'; // Blue border
+                                    afRangeDisplay.style.borderRadius = '4px';
+                                    afRangeDisplay.style.padding = '2px 4px';
+                                    console.log('✅ Applied pneumonie styling to AF display');
+                                } else {
+                                    // Remove pneumonie styling
+                                    afRangeDisplay.style.backgroundColor = '';
+                                    afRangeDisplay.style.border = '';
+                                    afRangeDisplay.style.borderRadius = '';
+                                    afRangeDisplay.style.padding = '';
+                                    console.log('✅ Removed pneumonie styling from AF display');
+                                }
+                                
+                                console.log(`✅ AF display updated directly: ${afMin} - ${afMax} /min`);
+                            } else {
+                                console.warn('❌ Could not find AF display element on setup page');
                             }
                         }
                         
@@ -704,7 +757,13 @@
                             
                             // Save target ranges for current patient if we have a patient ID
                             if (currentPatientId && currentThresholds.circulatoir) {
+                                // Get existing target ranges to preserve AF and other ranges
+                                const existingTargetRanges = window.sharedDataManager.getPatientTargetRanges(currentPatientId) || {};
+                                
                                 const targetRanges = {
+                                    // Preserve existing ranges
+                                    ...existingTargetRanges,
+                                    // Update only HR and BP_Mean
                                     HR: {
                                         min: Math.round(currentThresholds.circulatoir.HR?.min || 60),
                                         max: Math.round(currentThresholds.circulatoir.HR?.max || 100),
@@ -716,6 +775,9 @@
                                         unit: currentThresholds.circulatoir.BP_Mean?.unit || 'mmHg'
                                     }
                                 };
+                                
+                                console.log('🔍 Preserving existing target ranges:', existingTargetRanges);
+                                console.log('🔍 New target ranges with preserved AF:', targetRanges);
                                 
                                 // Update target ranges in shared data manager
                                 window.sharedDataManager.updateGlobalTargetRanges(currentPatientId, targetRanges);
