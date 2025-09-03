@@ -1182,29 +1182,99 @@ class SharedDataManager {
     }
 
     /**
-     * Set patient condition state (e.g., pneumonie, sepsis)
+     * Ensure patient has clean initial state for new setup
      * @param {string} patientId - Patient identifier
-     * @param {string} condition - Condition name (pneumonie, sepsis, etc.)
-     * @param {boolean} state - True if condition is active, false otherwise
+     * @param {boolean} forceClean - Force clean initialization even if data exists
      */
-    setPatientConditionState(patientId, condition, state) {
+    ensureCleanPatientState(patientId, forceClean = false) {
+        console.log(`🔍 Checking patient state for: ${patientId}`);
+        
+        const conditionsKey = `${this.storageKeys.PATIENT_PREFIX}${patientId}_conditions`;
+        const existingConditions = localStorage.getItem(conditionsKey);
+        
+        // If no existing conditions or force clean requested, initialize clean states
+        if (!existingConditions || forceClean) {
+            console.log(`🧹 No existing conditions found or force clean requested for ${patientId}`);
+            this.initializeCleanConditionStates(patientId);
+            
+            // Also ensure target ranges start with normal defaults
+            const targetRangesKey = `${this.storageKeys.PATIENT_PREFIX}${patientId}_targetRanges`;
+            const existingRanges = localStorage.getItem(targetRangesKey);
+            if (!existingRanges || forceClean) {
+                const cleanRanges = this.getDefaultTargetRanges();
+                localStorage.setItem(targetRangesKey, JSON.stringify(cleanRanges));
+                console.log(`✅ Clean target ranges initialized for ${patientId}:`, cleanRanges);
+            }
+        } else {
+            console.log(`✅ Existing condition states found for ${patientId}`);
+        }
+    }
+
+    /**
+     * Initialize clean condition states for a new patient
+     * @param {string} patientId - Patient identifier
+     */
+    initializeCleanConditionStates(patientId) {
+        console.log(`🧹 Initializing clean condition states for new patient: ${patientId}`);
+        
+        const conditionsKey = `${this.storageKeys.PATIENT_PREFIX}${patientId}_conditions`;
+        const cleanConditions = {
+            sepsis: {
+                isActive: false,
+                timestamp: Date.now(),
+                source: 'initialization'
+            },
+            pneumonie: {
+                isActive: false,
+                timestamp: Date.now(),
+                source: 'initialization'
+            }
+        };
+        
+        localStorage.setItem(conditionsKey, JSON.stringify(cleanConditions));
+        console.log(`✅ Clean condition states initialized for patient ${patientId}`);
+        return cleanConditions;
+    }
+
+    /**
+     * Set patient condition state (e.g., pneumonie, sepsis)
+     * @param {string} condition - Condition name (pneumonie, sepsis, etc.)
+     * @param {Object} stateObj - State object with isActive, patientId, timestamp, source
+     */
+    setPatientConditionState(condition, stateObj) {
         try {
-            console.log(`🏥 Setting ${condition} state for patient ${patientId}: ${state}`);
+            const { isActive, patientId, timestamp, source } = stateObj;
+            console.log(`🏥 Setting ${condition} state for patient ${patientId}: ${isActive}`);
             
             const conditionsKey = `${this.storageKeys.PATIENT_PREFIX}${patientId}_conditions`;
             let conditions = JSON.parse(localStorage.getItem(conditionsKey)) || {};
             
-            conditions[condition] = state;
+            conditions[condition] = {
+                isActive: isActive,
+                timestamp: timestamp,
+                source: source
+            };
             localStorage.setItem(conditionsKey, JSON.stringify(conditions));
             
+            // Handle sepsis-specific slider updates
+            if (condition === 'sepsis') {
+                if (isActive) {
+                    this.applySepsisHRRanges(patientId);
+                } else {
+                    this.restorePreviousHRRanges(patientId);
+                }
+            }
+            
             // Dispatch event for cross-page synchronization
-            const eventName = `${condition}StateChanged`;
-            window.dispatchEvent(new CustomEvent(eventName, {
+            window.dispatchEvent(new CustomEvent('patientConditionStateChanged', {
                 detail: {
-                    patientId: patientId,
-                    [`${condition}State`]: state,
                     condition: condition,
-                    timestamp: new Date().toISOString()
+                    state: {
+                        isActive: isActive,
+                        patientId: patientId,
+                        timestamp: timestamp,
+                        source: source
+                    }
                 }
             }));
             
@@ -1218,29 +1288,60 @@ class SharedDataManager {
 
     /**
      * Get patient condition state
-     * @param {string} patientId - Patient identifier
      * @param {string} condition - Condition name (pneumonie, sepsis, etc.)
-     * @returns {boolean} - True if condition is active, false otherwise
+     * @param {string} patientId - Patient identifier (optional, uses current if not provided)
+     * @returns {Object|null} - Condition state object or null if not found
      */
-    getPatientConditionState(patientId, condition) {
+    getPatientConditionState(condition, patientId = null) {
         try {
-            const conditionsKey = `${this.storageKeys.PATIENT_PREFIX}${patientId}_conditions`;
+            // Use current patient if not specified
+            const targetPatientId = patientId || this.getCurrentPatientId();
+            if (!targetPatientId) return null;
+            
+            const conditionsKey = `${this.storageKeys.PATIENT_PREFIX}${targetPatientId}_conditions`;
             const conditions = JSON.parse(localStorage.getItem(conditionsKey)) || {};
-            return conditions[condition] || false;
+            
+            // Return the condition state if it exists, otherwise return default inactive state
+            return conditions[condition] || {
+                isActive: false,
+                timestamp: Date.now(),
+                source: 'default'
+            };
         } catch (error) {
             console.error(`❌ Error getting ${condition} state:`, error);
-            return false;
+            return {
+                isActive: false,
+                timestamp: Date.now(),
+                source: 'error-fallback'
+            };
         }
     }
 
     /**
-     * Get all condition states for a patient
-     * @param {string} patientId - Patient identifier
-     * @returns {Object} - Object with condition names as keys and boolean states as values
+     * Get current patient ID from URL or storage
+     * @returns {string|null} - Current patient ID or null
      */
-    getPatientConditions(patientId) {
+    getCurrentPatientId() {
+        // Try to get from URL parameters first
+        const urlParams = new URLSearchParams(window.location.search);
+        const patientId = urlParams.get('patient');
+        if (patientId) return patientId;
+        
+        // Fallback to localStorage if available
+        return localStorage.getItem('currentPatientId') || null;
+    }
+
+    /**
+     * Get all condition states for a patient
+     * @param {string} patientId - Patient identifier (optional, uses current if not provided)
+     * @returns {Object} - Object with condition names as keys and state objects as values
+     */
+    getPatientConditions(patientId = null) {
         try {
-            const conditionsKey = `${this.storageKeys.PATIENT_PREFIX}${patientId}_conditions`;
+            const targetPatientId = patientId || this.getCurrentPatientId();
+            if (!targetPatientId) return {};
+            
+            const conditionsKey = `${this.storageKeys.PATIENT_PREFIX}${targetPatientId}_conditions`;
             return JSON.parse(localStorage.getItem(conditionsKey)) || {};
         } catch (error) {
             console.error(`❌ Error getting patient conditions:`, error);

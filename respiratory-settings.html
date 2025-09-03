@@ -1223,15 +1223,18 @@
         }
         
         function initializePneumonieTagState() {
-            console.log('� Initializing pneumonie tag state...');
+            console.log('🫁 Initializing pneumonie tag state...');
             
             if (currentPatientId && window.sharedDataManager) {
-                // Check if pneumonie is active by checking the global shared state
-                const isPneumonieActive = window.sharedDataManager.getPatientConditionState(currentPatientId, 'pneumonie') || false;
+                // Ensure patient has clean state for new setup (but don't force clean existing states)
+                window.sharedDataManager.ensureCleanPatientState(currentPatientId, false);
+                
+                // Check if pneumonie is currently selected using the new condition state method
+                const pneumonieState = window.sharedDataManager.getPatientConditionState('pneumonie', currentPatientId);
                 
                 const pneumonieButton = document.querySelector('.circulatory-tag[data-condition="pneumonie"]');
                 if (pneumonieButton) {
-                    if (isPneumonieActive) {
+                    if (pneumonieState && pneumonieState.isActive) {
                         pneumonieButton.classList.add('selected');
                         console.log('✅ Initialized pneumonie button as selected');
                     } else {

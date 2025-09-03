@@ -1225,8 +1225,11 @@
             console.log('🦠 Initializing sepsis tag state...');
             
             if (currentPatientId && window.sharedDataManager) {
+                // Ensure patient has clean state for new setup (but don't force clean existing states)
+                window.sharedDataManager.ensureCleanPatientState(currentPatientId, false);
+                
                 // Check if sepsis is currently selected using the new condition state method
-                const sepsisState = window.sharedDataManager.getPatientConditionState('sepsis');
+                const sepsisState = window.sharedDataManager.getPatientConditionState('sepsis', currentPatientId);
                 const sepsisButton = document.querySelector('.circulatory-tag[data-condition="sepsis"]');
                 
                 if (sepsisButton) {
@@ -1294,23 +1297,55 @@
                 if (typeof window.HR_low !== 'undefined' && typeof window.HR_high !== 'undefined') {
                     console.log('🔄 Forcing HR slider update with global values:', window.HR_low, '-', window.HR_high);
                     
-                    if (hrSlider) {
-                        // Directly update slider internal values
-                        hrSlider.currentMin = window.HR_low;
-                        hrSlider.currentMax = window.HR_high;
-                        hrSlider.config.targetRange.min = window.HR_low;
-                        hrSlider.config.targetRange.max = window.HR_high;
+                    if (hrSlider && hrSlider.container) {
+                        // Method 1: Use updateConfig if available (preferred method)
+                        if (typeof hrSlider.updateConfig === 'function') {
+                            hrSlider.updateConfig({
+                                targetRange: {
+                                    min: window.HR_low,
+                                    max: window.HR_high
+                                }
+                            });
+                            console.log('✅ HR slider updated via updateConfig method');
+                        } else {
+                            // Method 2: Direct property manipulation + position update
+                            hrSlider.currentMin = window.HR_low;
+                            hrSlider.currentMax = window.HR_high;
+                            
+                            // Safely update config if it exists
+                            if (hrSlider.config && hrSlider.config.targetRange) {
+                                hrSlider.config.targetRange.min = window.HR_low;
+                                hrSlider.config.targetRange.max = window.HR_high;
+                            }
+                            
+                            // Update the visual elements directly
+                            const maxValueElement = hrSlider.container.querySelector('.sliding-value-outside.max-value');
+                            const minValueElement = hrSlider.container.querySelector('.sliding-value-outside.min-value');
+                            if (maxValueElement) maxValueElement.textContent = Math.round(window.HR_high);
+                            if (minValueElement) minValueElement.textContent = Math.round(window.HR_low);
+                            
+                            // Update slider positions
+                            if (typeof hrSlider.updateSliderPosition === 'function') {
+                                hrSlider.updateSliderPosition();
+                            }
+                            
+                            console.log('✅ HR slider updated via direct manipulation');
+                        }
                         
-                        // Update the visual elements directly
-                        const maxValueElement = hrSlider.container.querySelector('.sliding-value-outside.max-value');
-                        const minValueElement = hrSlider.container.querySelector('.sliding-value-outside.min-value');
-                        if (maxValueElement) maxValueElement.textContent = Math.round(window.HR_high);
-                        if (minValueElement) minValueElement.textContent = Math.round(window.HR_low);
+                        // Force a timeout to ensure DOM updates are processed
+                        setTimeout(() => {
+                            // Double-check that the visual values are updated
+                            const maxValueElement = hrSlider.container.querySelector('.sliding-value-outside.max-value');
+                            const minValueElement = hrSlider.container.querySelector('.sliding-value-outside.min-value');
+                            if (maxValueElement && maxValueElement.textContent != Math.round(window.HR_high)) {
+                                maxValueElement.textContent = Math.round(window.HR_high);
+                            }
+                            if (minValueElement && minValueElement.textContent != Math.round(window.HR_low)) {
+                                minValueElement.textContent = Math.round(window.HR_low);
+                            }
+                            console.log('🔄 Verified HR slider visual update:', window.HR_low, '-', window.HR_high);
+                        }, 100);
                         
-                        // Update slider positions
-                        hrSlider.updateSliderPosition();
-                        
-                        console.log('✅ HR slider FORCE updated from globals:', window.HR_low, '-', window.HR_high);
                     } else {
                         console.warn('⚠️ HR slider not available for global update');
                     }

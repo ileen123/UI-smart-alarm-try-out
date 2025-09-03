@@ -294,6 +294,38 @@
                 }
             });
             
+            // Listen for condition state changes from other pages
+            window.addEventListener('patientConditionStateChanged', function(event) {
+                console.log('🏥 Condition state changed event received:', event.detail);
+                
+                const { condition, state } = event.detail;
+                
+                // Only update if it's for the current patient
+                if (state.patientId === currentPatientId) {
+                    const conditionButton = document.querySelector(`.tag-btn[data-condition="${condition}"]`);
+                    if (conditionButton) {
+                        if (state.isActive) {
+                            if (!conditionButton.classList.contains('selected')) {
+                                conditionButton.classList.add('selected');
+                                if (!selectedTags.includes(condition)) {
+                                    selectedTags.push(condition);
+                                }
+                                console.log(`✅ Synced ${condition} button to selected state from external change`);
+                            }
+                        } else {
+                            if (conditionButton.classList.contains('selected')) {
+                                conditionButton.classList.remove('selected');
+                                selectedTags = selectedTags.filter(t => t !== condition);
+                                console.log(`✅ Synced ${condition} button to deselected state from external change`);
+                            }
+                        }
+                        
+                        // Update parameter ranges after condition state change
+                        updateParameterRanges();
+                    }
+                }
+            });
+            
             // Make all circles appear active since patient is already assigned
             setTimeout(() => {
                 updateAllOpacity(true);
@@ -380,18 +412,28 @@
                         this.classList.remove('selected');
                         selectedTags = selectedTags.filter(t => t !== condition);
                         
-                        // Handle sepsis deselection
-                        if (condition === 'sepsis' && currentPatientId && window.sharedDataManager) {
-                            window.sharedDataManager.handleSepsisTagChange(currentPatientId, false);
+                        // Handle condition deselection using new condition state system
+                        if (currentPatientId && window.sharedDataManager) {
+                            window.sharedDataManager.setPatientConditionState(condition, {
+                                isActive: false,
+                                patientId: currentPatientId,
+                                timestamp: Date.now(),
+                                source: 'alarm-overview'
+                            });
                         }
                     } else {
                         // Select tag
                         this.classList.add('selected');
                         selectedTags.push(condition);
                         
-                        // Handle sepsis selection
-                        if (condition === 'sepsis' && currentPatientId && window.sharedDataManager) {
-                            window.sharedDataManager.handleSepsisTagChange(currentPatientId, true);
+                        // Handle condition selection using new condition state system
+                        if (currentPatientId && window.sharedDataManager) {
+                            window.sharedDataManager.setPatientConditionState(condition, {
+                                isActive: true,
+                                patientId: currentPatientId,
+                                timestamp: Date.now(),
+                                source: 'alarm-overview'
+                            });
                         }
                     }
                     console.log('Selected tags:', selectedTags);
@@ -561,32 +603,35 @@
         }
 
         function initializeSepsisTagState() {
-            console.log('🦠 Initializing sepsis tag state on alarm overview...');
+            console.log('🏥 Initializing condition states on alarm overview...');
             
             if (currentPatientId && window.sharedDataManager) {
-                // Check if sepsis ranges are currently active by checking the target ranges
-                const targetRanges = window.sharedDataManager.getPatientTargetRanges(currentPatientId);
+                // Ensure patient has clean state for new setup (but don't force clean existing states)
+                window.sharedDataManager.ensureCleanPatientState(currentPatientId, false);
                 
-                if (targetRanges && targetRanges.HR) {
-                    const isSepsisActive = (targetRanges.HR.min === 90 && targetRanges.HR.max === 130);
+                // Initialize all condition buttons based on stored states
+                const conditions = ['sepsis', 'pneumonie'];
+                
+                conditions.forEach(condition => {
+                    const conditionState = window.sharedDataManager.getPatientConditionState(condition, currentPatientId);
+                    const conditionButton = document.querySelector(`.tag-btn[data-condition="${condition}"]`);
                     
-                    const sepsisButton = document.querySelector('.tag-btn[data-condition="sepsis"]');
-                    if (sepsisButton) {
-                        if (isSepsisActive) {
-                            sepsisButton.classList.add('selected');
-                            if (!selectedTags.includes('sepsis')) {
-                                selectedTags.push('sepsis');
+                    if (conditionButton) {
+                        if (conditionState && conditionState.isActive) {
+                            conditionButton.classList.add('selected');
+                            if (!selectedTags.includes(condition)) {
+                                selectedTags.push(condition);
                             }
-                            console.log('✅ Initialized sepsis button as selected (90-130 range detected)');
+                            console.log(`✅ Initialized ${condition} button as selected`);
                         } else {
-                            sepsisButton.classList.remove('selected');
-                            selectedTags = selectedTags.filter(t => t !== 'sepsis');
-                            console.log('✅ Initialized sepsis button as deselected');
+                            conditionButton.classList.remove('selected');
+                            selectedTags = selectedTags.filter(t => t !== condition);
+                            console.log(`✅ Initialized ${condition} button as deselected`);
                         }
                     }
-                }
+                });
                 
-                // Update parameter ranges after initializing sepsis state
+                // Update parameter ranges after initializing condition states
                 updateParameterRanges();
             }
         }

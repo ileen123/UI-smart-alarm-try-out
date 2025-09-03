@@ -240,6 +240,16 @@
                         document.addEventListener('DOMContentLoaded', async function() {
                             console.log('DOM loaded, initializing SharedDataManager...');
                             
+                            // AGGRESSIVE CLEAR: First clear all tag buttons before any initialization
+                            console.log('🧹 Aggressive clearing of all tag buttons...');
+                            const allTagButtons = document.querySelectorAll('.tag-btn');
+                            allTagButtons.forEach(btn => {
+                                btn.classList.remove('selected');
+                                console.log('🧹 Cleared button:', btn.dataset.condition || btn.textContent.trim());
+                            });
+                            selectedTags = [];
+                            console.log('🧹 Cleared selectedTags array');
+                            
                             // Check if coming from bed overview and load patient data
                             loadPatientFromBedOverview();
                             
@@ -319,6 +329,38 @@
                                 }
                             });
                             
+                            // Listen for condition state changes from other pages
+                            window.addEventListener('patientConditionStateChanged', function(event) {
+                                console.log('🏥 Condition state changed event received on setup page:', event.detail);
+                                
+                                const { condition, state } = event.detail;
+                                
+                                // Only update if it's for the current patient
+                                if (state.patientId === currentPatientId) {
+                                    const conditionButton = document.querySelector(`.tag-btn[data-condition="${condition}"]`);
+                                    if (conditionButton) {
+                                        if (state.isActive) {
+                                            if (!conditionButton.classList.contains('selected')) {
+                                                conditionButton.classList.add('selected');
+                                                if (!selectedTags.includes(condition)) {
+                                                    selectedTags.push(condition);
+                                                }
+                                                console.log(`✅ Synced ${condition} button to selected state from external change (setup)`);
+                                            }
+                                        } else {
+                                            if (conditionButton.classList.contains('selected')) {
+                                                conditionButton.classList.remove('selected');
+                                                selectedTags = selectedTags.filter(t => t !== condition);
+                                                console.log(`✅ Synced ${condition} button to deselected state from external change (setup)`);
+                                            }
+                                        }
+                                        
+                                        // Update parameter ranges after condition state change
+                                        updateParameterRanges();
+                                    }
+                                }
+                            });
+                            
                             // Lung (respiratoir) - start inactive
                             console.log('Creating lung component...');
                             window.organComponents.lung = new HeartCircleComponent('lung-circle-container', { size: circleSize, initialState: 'low' });
@@ -377,9 +419,14 @@
                                         this.classList.remove('selected');
                                         selectedTags = selectedTags.filter(tag => tag !== tagCondition);
                                         
-                                        // Handle sepsis deselection
-                                        if (tagCondition === 'sepsis' && currentPatientId && window.sharedDataManager) {
-                                            window.sharedDataManager.handleSepsisTagChange(currentPatientId, false);
+                                        // Handle condition deselection using new condition state system
+                                        if (currentPatientId && window.sharedDataManager) {
+                                            window.sharedDataManager.setPatientConditionState(tagCondition, {
+                                                isActive: false,
+                                                patientId: currentPatientId,
+                                                timestamp: Date.now(),
+                                                source: 'setup-page'
+                                            });
                                         }
                                     } else {
                                         // Select tag
@@ -388,9 +435,14 @@
                                             selectedTags.push(tagCondition);
                                         }
                                         
-                                        // Handle sepsis selection
-                                        if (tagCondition === 'sepsis' && currentPatientId && window.sharedDataManager) {
-                                            window.sharedDataManager.handleSepsisTagChange(currentPatientId, true);
+                                        // Handle condition selection using new condition state system
+                                        if (currentPatientId && window.sharedDataManager) {
+                                            window.sharedDataManager.setPatientConditionState(tagCondition, {
+                                                isActive: true,
+                                                patientId: currentPatientId,
+                                                timestamp: Date.now(),
+                                                source: 'setup-page'
+                                            });
                                         }
                                     }
                                     
@@ -539,30 +591,42 @@
                         }
 
                         function initializeSepsisTagState() {
-                            console.log('🦠 Initializing sepsis tag state on index page...');
+                            console.log('🏥 Initializing condition states on setup page...');
                             
                             if (currentPatientId && window.sharedDataManager) {
-                                // Check if sepsis ranges are currently active by checking the target ranges
-                                const targetRanges = window.sharedDataManager.getPatientTargetRanges(currentPatientId);
+                                // Clear any existing selected tags for fresh start
+                                selectedTags = [];
+                                console.log('🧹 Cleared selectedTags for fresh patient setup');
                                 
-                                if (targetRanges && targetRanges.HR) {
-                                    const isSepsisActive = (targetRanges.HR.min === 90 && targetRanges.HR.max === 130);
+                                // For setup page, this is often a new patient setup, so force clean state
+                                window.sharedDataManager.ensureCleanPatientState(currentPatientId, true);
+                                
+                                // Initialize all condition buttons based on stored states
+                                const conditions = ['sepsis', 'pneumonie'];
+                                
+                                conditions.forEach(condition => {
+                                    const conditionState = window.sharedDataManager.getPatientConditionState(condition, currentPatientId);
+                                    const conditionButton = document.querySelector(`.tag-btn[data-condition="${condition}"]`);
                                     
-                                    const sepsisButton = document.querySelector('.tag-btn[data-condition="sepsis"]');
-                                    if (sepsisButton) {
-                                        if (isSepsisActive) {
-                                            sepsisButton.classList.add('selected');
-                                            if (!selectedTags.includes('sepsis')) {
-                                                selectedTags.push('sepsis');
+                                    if (conditionButton) {
+                                        // Force deselect all condition buttons for new setup
+                                        conditionButton.classList.remove('selected');
+                                        
+                                        if (conditionState && conditionState.isActive) {
+                                            conditionButton.classList.add('selected');
+                                            if (!selectedTags.includes(condition)) {
+                                                selectedTags.push(condition);
                                             }
-                                            console.log('✅ Initialized sepsis button as selected (90-130 range detected)');
+                                            console.log(`✅ Initialized ${condition} button as selected (setup)`);
                                         } else {
-                                            sepsisButton.classList.remove('selected');
-                                            selectedTags = selectedTags.filter(t => t !== 'sepsis');
-                                            console.log('✅ Initialized sepsis button as deselected');
+                                            console.log(`✅ Initialized ${condition} button as deselected (setup)`);
                                         }
                                     }
-                                }
+                                });
+                                
+                                console.log('🔍 Final selectedTags after initialization:', selectedTags);
+                                // Update parameter ranges after initializing condition states
+                                updateParameterRanges();
                             }
                         }
 
