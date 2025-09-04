@@ -308,7 +308,7 @@ body {
     color: #FC6039; /* Orange text */
 }
 
-.btn.risk-med { 
+.btn.risk-mid { 
     border-color: #FC6039; /* Blue border for medium risk */
     color: #FC6039; /* Blue text */
 }
@@ -320,7 +320,7 @@ body {
 
 /* Selected state for specific risk buttons - overrides unselected colors */
 .btn.risk-low.selected,
-.btn.risk-med.selected,
+.btn.risk-mid.selected,
 .btn.risk-high.selected {
     color: white !important; /* Force white text for all selected risk buttons */
 }
@@ -409,7 +409,7 @@ body {
 .tags-section {
     background-color: #e3f2fd; /* Light blue background */
     padding: 12px; /* Reduced padding for better alignment */
-    border-radius: 8px; /* Slightly smaller border radius */
+    border-radius: 10px; /* Slightly smaller border radius */
     margin-top: 10px; /* Reduced space above tags section */
     flex: 1; /* Take remaining space in form section */
     display: flex;
@@ -462,12 +462,13 @@ body {
     flex-direction: row;
     justify-content: space-between;
     align-items: flex-start;
-    background-color: #e8e8e8;
+    background-color: #E6E4E0;
     padding: 30px 30px 20px 30px;
-    border-radius: 10px;
+    border-radius: 0px 30px 0px 30px;
     max-width: 100%;
     margin-bottom: 40px;
     gap: 30px;
+    min-height: auto; /* Allow automatic height adjustment */
 }
 
 /* Individual organ monitoring item */
@@ -475,6 +476,10 @@ body {
     text-align: center;
     flex: 1 1 0;
     min-width: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 15px; /* Add spacing between elements */
 }
 
 /* Monitoring labels and status */
@@ -548,6 +553,7 @@ body {
 .monitor-status {
     font-size: 12px; /* Small font */
     color: #000000; /* Medium gray */
+    margin-top: 10px;
     font-style: italic; /* Italicized for emphasis */
 }
 
@@ -566,15 +572,35 @@ body {
 /* Individual parameter value card */
 .value-card {
     background: white; /* White background */
-    padding: 15px; /* Internal spacing */
-    border-radius: 8px; /* Slightly rounded corners */
+    padding: 12px; /* Reduced internal spacing */
+    border-radius: 0px 30px 0px 30px; /* Slightly rounded corners */
     text-align: center; /* Center all text */
     opacity: 0.3;
     transition: opacity 0.5s ease-in-out;
     display: flex; /* Use flexbox layout */
     flex-direction: column; /* Stack items vertically */
-    min-height: 160px; /* Increased minimum height to provide more space */
+    min-height: 200px; /* Reduced minimum height for compact display */
     justify-content: space-between; /* Distribute space evenly */
+    min-width: 300px; /* Take full width of monitor-item */
+    max-width: 300px; /* Maximum width to prevent cards from being too wide */
+}
+
+/* Parameter group - groups parameter name with its value */
+.parameter-group {
+    margin-bottom: 20px; /* Default space between different parameters */
+}
+
+.parameter-group:last-child {
+    margin-bottom: 0; /* No bottom margin for last parameter */
+}
+
+/* Page-specific parameter spacing adjustments */
+.setup-page .parameter-group {
+    margin-bottom: 15px; /* Tighter spacing for setup page */
+}
+
+.alarm-overview-page .parameter-group {
+    margin-bottom: 20px; /* Standard spacing for alarm overview page */
 }
 
 .value-card.active {
@@ -586,7 +612,7 @@ body {
     font-size: 12px; /* Small font */
     font-weight: 600; /* Semibold for parameter labels */
     color: #666; /* Medium gray */
-    margin-bottom: 5px; /* Space below label */
+    margin-bottom: 2px; /* Reduced space below label - closer to value */
     transition: color 0.5s ease-in-out;
 }
 
@@ -600,7 +626,7 @@ body {
     font-weight: 700; /* Bold for emphasis on numbers */
     color: #000000; /* Dark gray for readability */
     transition: all 0.5s ease; /* Smooth transition for changes */
-    margin-bottom: 30px; /* Add bottom margin to create space before buttons */
+    margin-bottom: 0; /* No bottom margin - grouped with label */
 }
 
 .value-card.active .value-number {
@@ -612,9 +638,83 @@ body {
     background-color: #fff3cd; /* Light yellow background */
     color: #856404; /* Dark yellow text */
     padding: 4px 8px; /* Add padding when highlighted */
-    border-radius: 4px; /* Rounded corners */
+    border-radius: 20px; /* Rounded corners */
     border: 2px solid #ffc107; /* Yellow border */
     animation: pulse 0.6s ease-in-out; /* Pulse animation */
+    transition: all 0.3s ease-out; /* Smooth transition for fade-out */
+}
+
+/* Fade-out animation for highlight removal */
+.value-number.highlight.fade-out {
+    background-color: transparent;
+    color: inherit;
+    padding: 0;
+    border: none;
+    transform: scale(1);
+    box-shadow: none;
+}
+
+/* Blue highlight variant for pneumonie */
+.value-number.highlight-blue {
+    background-color: #e1f5fe; /* Light blue background */
+    color: #01579b; /* Dark blue text */
+    padding: 4px 8px; /* Add padding when highlighted */
+    border-radius: 20px; /* Rounded corners */
+    border: 2px solid #29b6f6; /* Blue border */
+    animation: pulse-blue 0.6s ease-in-out; /* Blue pulse animation */
+    transition: all 0.3s ease-out; /* Smooth transition for fade-out */
+}
+
+/* Blue fade-out animation for highlight removal */
+.value-number.highlight-blue.fade-out {
+    background-color: transparent;
+    color: inherit;
+    padding: 0;
+    border: none;
+    transform: scale(1);
+    box-shadow: none;
+}
+
+/* Green highlight variant for restored/positive changes */
+.value-number.highlight-green {
+    background-color: #e8f5e8; /* Light green background */
+    color: #155724; /* Dark green text */
+    padding: 4px 8px; /* Add padding when highlighted */
+    border-radius: 20px; /* Rounded corners */
+    border: 2px solid #28a745; /* Green border */
+    animation: pulse-green 0.6s ease-in-out; /* Green pulse animation */
+    transition: all 0.3s ease-out; /* Smooth transition for fade-out */
+}
+
+/* Green fade-out animation for highlight removal */
+.value-number.highlight-green.fade-out {
+    background-color: transparent;
+    color: inherit;
+    padding: 0;
+    border: none;
+    transform: scale(1);
+    box-shadow: none;
+}
+
+/* Beige highlight variant for alarm-overview page */
+.value-number.highlight-beige {
+    background-color: #FDEAB3; /* Light beige background */
+    color: #8b4513; /* Dark brown text */
+    padding: 4px 8px; /* Add padding when highlighted */
+    border-radius: 20px; /* Rounded corners */
+    border: 2px solid #d4a574; /* Brown border */
+    animation: pulse-beige 0.6s ease-in-out; /* Beige pulse animation */
+    transition: all 0.3s ease-out; /* Smooth transition for fade-out */
+}
+
+/* Beige fade-out animation for highlight removal */
+.value-number.highlight-beige.fade-out {
+    background-color: transparent;
+    color: inherit;
+    padding: 0;
+    border: none;
+    transform: scale(1);
+    box-shadow: none;
 }
 
 /* Pulse animation for highlighting changes */
@@ -630,6 +730,54 @@ body {
     100% {
         transform: scale(1);
         box-shadow: 0 0 0 0 rgba(255, 193, 7, 0);
+    }
+}
+
+/* Blue pulse animation for pneumonie highlighting */
+@keyframes pulse-blue {
+    0% {
+        transform: scale(1);
+        box-shadow: 0 0 0 0 rgba(41, 182, 246, 0.7);
+    }
+    70% {
+        transform: scale(1.05);
+        box-shadow: 0 0 0 10px rgba(41, 182, 246, 0);
+    }
+    100% {
+        transform: scale(1);
+        box-shadow: 0 0 0 0 rgba(41, 182, 246, 0);
+    }
+}
+
+/* Green pulse animation for positive/restored highlighting */
+@keyframes pulse-green {
+    0% {
+        transform: scale(1);
+        box-shadow: 0 0 0 0 rgba(40, 167, 69, 0.7);
+    }
+    70% {
+        transform: scale(1.05);
+        box-shadow: 0 0 0 10px rgba(40, 167, 69, 0);
+    }
+    100% {
+        transform: scale(1);
+        box-shadow: 0 0 0 0 rgba(40, 167, 69, 0);
+    }
+}
+
+/* Beige pulse animation for alarm-overview highlighting */
+@keyframes pulse-beige {
+    0% {
+        transform: scale(1);
+        box-shadow: 0 0 0 0 rgba(212, 165, 116, 0.7);
+    }
+    70% {
+        transform: scale(1.05);
+        box-shadow: 0 0 0 10px rgba(212, 165, 116, 0);
+    }
+    100% {
+        transform: scale(1);
+        box-shadow: 0 0 0 0 rgba(212, 165, 116, 0);
     }
 }
 
@@ -664,6 +812,14 @@ body {
     background-color: #1961AB; /* Blue background */
     border-color: #1961AB; /* Blue border */
     color: white; /* White text */
+}
+
+/* Disabled state for primary button */
+.nav-btn.primary.disabled {
+    background-color: #ccc; /* Gray background */
+    border-color: #ccc; /* Gray border */
+    color: #666; /* Darker gray text */
+    cursor: not-allowed; /* Not-allowed cursor */
 }
 
 /* =============================================================================
@@ -785,9 +941,9 @@ body {
 /* Tags section (right column) */
 .tags-section {
     flex: 1;
-    background: white;
+    background: #C2E4FF;
     padding: 20px;
-    border-radius: 12px;
+    border-radius: 30px 0px 30px 0px;
     box-shadow: 0 2px 8px rgba(0,0,0,0.1);
 }
 

@@ -978,11 +978,11 @@
             // Get current monitoring level from SharedDataManager
             let initialLevel = 'mid';
             if (currentPatientId && window.sharedDataManager) {
-                initialLevel = window.sharedDataManager.getHeartMonitoringLevel(currentPatientId);
-                console.log(`Loading heart monitoring level for patient ${currentPatientId}:`, initialLevel);
+                initialLevel = window.sharedDataManager.getLungMonitoringLevel(currentPatientId);
+                console.log(`Loading lung monitoring level for patient ${currentPatientId}:`, initialLevel);
             }
             
-            window.respiratoryHeartCircle = new HeartCircleComponent('respiratory-heart-circle-container', { 
+            window.respiratoryLungCircle = new HeartCircleComponent('respiratory-heart-circle-container', { 
                 size: circleSize, 
                 initialState: initialLevel 
             });
@@ -1005,13 +1005,13 @@
                 updateSlidersMonitoringLevel(buttonLevel);
             }, 1500); // Wait for sliders to be fully initialized
             
-            // Listen for global heart monitoring level changes
-            document.addEventListener('heartMonitoringLevelChanged', function(event) {
+            // Listen for global lung monitoring level changes
+            document.addEventListener('lungMonitoringLevelChanged', function(event) {
                 const { patientId, level } = event.detail;
                 if (patientId === currentPatientId) {
-                    console.log(`Received heart monitoring level change for patient ${patientId}:`, level);
-                    if (window.circulatoirHeartCircle) {
-                        window.circulatoirHeartCircle.setRiskLevel(level);
+                    console.log(`Received lung monitoring level change for patient ${patientId}:`, level);
+                    if (window.respiratoryLungCircle) {
+                        window.respiratoryLungCircle.setRiskLevel(level);
                     }
                     
                     const buttonLevel = levelMapping[level] || 'mid';
@@ -1092,15 +1092,15 @@
         function changeMonitoringLevel(level) {
             console.log(`🔄 Changing monitoring level to: ${level}`);
             
-            // Map button levels to heart circle levels
+            // Map button levels to lung circle levels
             const levelMapping = {
                 'loose': 'low',
                 'mid': 'mid',
                 'tight': 'high'
             };
             
-            const heartLevel = levelMapping[level] || level;
-            console.log(`Mapped ${level} to heart level: ${heartLevel}`);
+            const lungLevel = levelMapping[level] || level;
+            console.log(`Mapped ${level} to lung level: ${lungLevel}`);
             
             // Update button states - remove active/selected from all buttons
             document.querySelectorAll('.button-group .btn').forEach(btn => {
@@ -1114,27 +1114,27 @@
                 console.log(`✅ Button ${level} selected`);
             }
             
-            // Update heart circle if it exists
-            if (window.respiratoryHeartCircle) {
-                console.log(`� Updating respiratory heart circle to: ${heartLevel}`);
-                window.respiratoryHeartCircle.setRiskLevel(heartLevel);
+            // Update lung circle if it exists
+            if (window.respiratoryLungCircle) {
+                console.log(`🫁 Updating respiratory lung circle to: ${lungLevel}`);
+                window.respiratoryLungCircle.setRiskLevel(lungLevel);
             } else {
-                console.warn('❌ respiratoryHeartCircle not found');
+                console.warn('❌ respiratoryLungCircle not found');
             }
             
             // Save to SharedDataManager for global sync
             if (currentPatientId && window.sharedDataManager) {
-                window.sharedDataManager.updateGlobalHeartMonitoringLevel(currentPatientId, heartLevel);
-                console.log(`✅ Saved heart level ${heartLevel} for patient ${currentPatientId}`);
+                window.sharedDataManager.updateGlobalLungMonitoringLevel(currentPatientId, lungLevel);
+                console.log(`✅ Saved lung level ${lungLevel} for patient ${currentPatientId}`);
                 
                 // Mark this as a recent manual change to prioritize it over calculated values
-                sessionStorage.setItem('recentHeartLevelChange', Date.now().toString());
+                sessionStorage.setItem('recentLungLevelChange', Date.now().toString());
             }
             
             // Update sliders if they exist
             updateSlidersMonitoringLevel(level);
             
-            console.log(`✅ Monitoring level changed to: ${level} (heart: ${heartLevel})`);
+            console.log(`✅ Monitoring level changed to: ${level} (lung: ${lungLevel})`);
         }
 
         function initializePage() {

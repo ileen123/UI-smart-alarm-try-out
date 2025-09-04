@@ -20,7 +20,7 @@
     <script src="js/data-manager.js"></script>
     <script src="js/shared-data-manager.js"></script>
 </head>
-<body>
+<body class="setup-page">
     <!-- Patient information header section -->
     <div class="header">
         <img src="svg's/patient_icon.svg" alt="Patient" class="user-icon" />
@@ -72,7 +72,7 @@
             <h2 class="section-title">Wat is het risico - level van de patiënt?</h2>
             <div class="button-group">
                 <button class="btn risk-low">Laag</button>
-                <button class="btn risk-mid">Mid</button>
+                <button class="btn risk-med">Mid</button>
                 <button class="btn risk-high">Hoog</button>
             </div>
             <!-- Static alarm indicator SVG -->
@@ -90,18 +90,12 @@
                     <button class="btn tag-btn" data-condition="sepsis">
                         Sepsis <img src="svg's/sepsis.svg" alt="Sepsis" class="sepsis-icon">
                     </button>
-                    <button class="btn tag-btn" data-condition="diabetes">
-                        Diabetes <img src="svg's/diabetes.svg" alt="Diabetes" class="condition-icon">
-                    </button>
-                    <button class="btn tag-btn" data-condition="herstellende">
-                        Herstellende <img src="svg's/patient_icon.svg" alt="Herstellende" class="condition-icon">
-                    </button>
+                    <button class="btn tag-btn" data-condition="diabetes">Diabetes 🔧</button>
+                    <button class="btn tag-btn" data-condition="herstellende">Herstellende 👤</button>
                     <button class="btn tag-btn" data-condition="pneumonie">
                         Pneumonie <img src="svg's/lung.svg" alt="Pneumonie" class="condition-icon">
                     </button>
-                    <button class="btn tag-btn" data-condition="chronisch-nierfalen">
-                        Chronisch Nierfalen <img src="svg's/nierfalen.svg" alt="Nierfalen" class="condition-icon">
-                    </button>
+                    <button class="btn tag-btn" data-condition="chronisch-nierfalen">Chronisch Nierfalen 🧠</button>
                     <!-- More button to show additional options -->
                     <button class="more-btn">⋯</button>
                 </div>
@@ -119,37 +113,49 @@
             <div class="monitor-item">
                 <div class="monitor-label inactive-text">Circulatoir</div>
                 <div id="heart-circle-container"></div>
-                <div id="heart-status" class="monitor-status inactive-text">los</div>
+                <div class="monitor-status inactive-text">los</div>
                 <!-- Circulatory parameters -->
                 <div class="value-card">
-                    <div class="value-label inactive-text">HR</div>
-                    <div class="value-number inactive-text">70 - 110</div>
-                    <div class="value-label inactive-text">BP Mean</div>
-                    <div class="value-number inactive-text">65 - 85 mmHg</div>
+                    <div class="parameter-group">
+                        <div class="value-label inactive-text">HR</div>
+                        <div class="value-number inactive-text">70 - 110 bpm</div>
+                    </div>
+                    
+                    <div class="parameter-group">
+                        <div class="value-label inactive-text">BP Mean</div>
+                        <div class="value-number inactive-text">65 - 85 mmHg</div>
+                    </div>
                 </div>
             </div>
             <!-- Respiratory system -->
             <div class="monitor-item">
                 <div class="monitor-label inactive-text">Respiratoir</div>
                 <div id="lung-circle-container"></div>
-                <div id="lung-status" class="monitor-status inactive-text">los</div>
+                <div class="monitor-status inactive-text">los</div>
                 <!-- Respiratory parameters -->
                 <div class="value-card">
-                    <div class="value-label inactive-text">Saturatie</div>
-                    <div class="value-number inactive-text">90 - 100</div>
-                    <div class="value-label inactive-text">AF</div>
-                    <div class="value-number inactive-text" id="af-range-display">10 - 25</div>
+                    <div class="parameter-group">
+                        <div class="value-label inactive-text">Saturatie</div>
+                        <div class="value-number inactive-text">90 - 100%</div>
+                    </div>
+                    
+                    <div class="parameter-group">
+                        <div class="value-label inactive-text">AF</div>
+                        <div class="value-number inactive-text" id="af-range-display">10 - 25 /min</div>
+                    </div>
                 </div>
             </div>
             <!-- Other/Temperature system -->
             <div class="monitor-item">
                 <div class="monitor-label inactive-text">Overig</div>
                 <div id="temp-circle-container"></div>
-                <div id="temp-status" class="monitor-status inactive-text">los</div>
+                <div class="monitor-status inactive-text">los</div>
                 <!-- Temperature parameters -->
                 <div class="value-card">
-                    <div class="value-label inactive-text">Temp.</div>
-                    <div class="value-number inactive-text">36.5 - 39</div>
+                    <div class="parameter-group">
+                        <div class="value-label inactive-text">Temp.</div>
+                        <div class="value-number inactive-text">36.5 - 39 °C</div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -160,7 +166,7 @@
         <!-- Back button with onclick event -->
         <button class="nav-btn" onclick="goBack()">← Terug</button>
         <!-- Confirm button with onclick event -->
-        <button class="nav-btn primary" onclick="confirmSettings()">Bevestigen</button>
+        <button class="nav-btn primary disabled" id="confirm-btn" onclick="confirmSettings()">Bevestigen</button>
     </div>
 
             <!-- Import Heart Circle Component -->
@@ -275,6 +281,9 @@
                             
                             // Set up event listeners
                             setupEventListeners();
+                            
+                            // Initialize progress bar state
+                            updateProgressBar();
                         });
                         
                         async function initializeCircleComponents() {
@@ -297,33 +306,6 @@
                                 if (window.organComponents?.heart) {
                                     console.log(`Received heart monitoring level change:`, level);
                                     window.organComponents.heart.setRiskLevel(level);
-                                    
-                                    // Update monitoring status after risk level change
-                                    setTimeout(() => updateMonitoringStatus(), 100);
-                                }
-                            });
-                            
-                            // Listen for global lung monitoring level changes
-                            document.addEventListener('lungMonitoringLevelChanged', function(event) {
-                                const { level } = event.detail;
-                                if (window.organComponents?.lung) {
-                                    console.log(`Received lung monitoring level change:`, level);
-                                    window.organComponents.lung.setRiskLevel(level);
-                                    
-                                    // Update monitoring status after risk level change
-                                    setTimeout(() => updateMonitoringStatus(), 100);
-                                }
-                            });
-                            
-                            // Listen for global temp monitoring level changes
-                            document.addEventListener('tempMonitoringLevelChanged', function(event) {
-                                const { level } = event.detail;
-                                if (window.organComponents?.temp) {
-                                    console.log(`Received temp monitoring level change:`, level);
-                                    window.organComponents.temp.setRiskLevel(level);
-                                    
-                                    // Update monitoring status after risk level change
-                                    setTimeout(() => updateMonitoringStatus(), 100);
                                 }
                             });
                             
@@ -406,53 +388,6 @@
                             }, 200);
                         }
                         
-                        // Function to update monitoring status text based on circle states
-                        function updateMonitoringStatus() {
-                            if (!window.organComponents) return;
-                            
-                            // Update heart status
-                            if (window.organComponents.heart) {
-                                const heartLevel = window.organComponents.heart.getRiskLevel();
-                                const heartStatusElement = document.getElementById('heart-status');
-                                if (heartStatusElement) {
-                                    heartStatusElement.textContent = getStatusText(heartLevel);
-                                }
-                            }
-                            
-                            // Update lung status
-                            if (window.organComponents.lung) {
-                                const lungLevel = window.organComponents.lung.getRiskLevel();
-                                const lungStatusElement = document.getElementById('lung-status');
-                                if (lungStatusElement) {
-                                    lungStatusElement.textContent = getStatusText(lungLevel);
-                                }
-                            }
-                            
-                            // Update temp status
-                            if (window.organComponents.temp) {
-                                const tempLevel = window.organComponents.temp.getRiskLevel();
-                                const tempStatusElement = document.getElementById('temp-status');
-                                if (tempStatusElement) {
-                                    tempStatusElement.textContent = getStatusText(tempLevel);
-                                }
-                            }
-                        }
-                        
-                        // Function to convert risk level to Dutch status text (setup page version)
-                        function getStatusText(riskLevel) {
-                            switch(riskLevel?.toLowerCase()) {
-                                case 'low':
-                                    return 'los';
-                                case 'med':
-                                case 'medium':
-                                    return 'mid';
-                                case 'high':
-                                    return 'strak';
-                                default:
-                                    return 'los';
-                            }
-                        }
-                        
                         function setupEventListeners() {
                             // Set up problem dropdown listener
                             const problemDropdown = document.getElementById('problemDropdown');
@@ -461,11 +396,12 @@
                                     selectedProblem = this.value;
                                     window.dataManager?.setSelectedProblem(selectedProblem);
                                     updateOrganCirclesBasedOnProblem(selectedProblem);
+                                    updateProgressBar(); // Update progress when problem is selected
                                 });
                             }
                             
                             // Set up risk level button listeners
-                            const riskButtons = document.querySelectorAll('.btn.risk-low, .btn.risk-mid, .btn.risk-high');
+                            const riskButtons = document.querySelectorAll('.btn.risk-low, .btn.risk-med, .btn.risk-high');
                             riskButtons.forEach(button => {
                                 button.addEventListener('click', function() {
                                     // Remove selected class from all risk buttons
@@ -475,12 +411,13 @@
                                     
                                     // Get risk level and update circles
                                     const riskLevel = this.classList.contains('risk-low') ? 'low' : 
-                                                     this.classList.contains('risk-high') ? 'high' : 'mid';
+                                                     this.classList.contains('risk-high') ? 'high' : 'med';
                                     console.log('Risk button clicked, detected risk level:', riskLevel);
                                     selectedRiskLevel = riskLevel;
                                     console.log('selectedRiskLevel is now:', selectedRiskLevel);
                                     window.dataManager?.setSelectedRiskLevel(riskLevel);
                                     updateOrganCirclesWithRisk(riskLevel);
+                                    updateProgressBar(); // Update progress when risk level is selected
                                 });
                             });
                             
@@ -580,11 +517,13 @@
                                 
                                 // Apply sepsis styling if needed
                                 if (isSepsis) {
-                                    window.sharedDataManager.highlightElement(hrRange, 'highlight', 1500);
-                                    console.log('✅ Applied sepsis highlighting to HR display');
+                                    hrRange.style.backgroundColor = '#fff3cd'; // Light yellow highlight
+                                    hrRange.style.border = '2px solid #ffc107'; // Yellow border
+                                    hrRange.style.borderRadius = '4px';
+                                    hrRange.style.padding = '2px 4px';
+                                    console.log('✅ Applied sepsis styling to HR display');
                                 } else {
-                                    // Remove any existing highlighting
-                                    hrRange.classList.remove('highlight', 'fade-out');
+                                    // Remove sepsis styling
                                     hrRange.style.backgroundColor = '';
                                     hrRange.style.border = '';
                                     hrRange.style.borderRadius = '';
@@ -610,11 +549,13 @@
                                 
                                 // Apply sepsis styling if needed
                                 if (isSepsis) {
-                                    window.sharedDataManager.highlightElement(bpRange, 'highlight', 1500);
-                                    console.log('✅ Applied sepsis highlighting to BP display');
+                                    bpRange.style.backgroundColor = '#fff3cd'; // Light yellow highlight
+                                    bpRange.style.border = '2px solid #ffc107'; // Yellow border
+                                    bpRange.style.borderRadius = '4px';
+                                    bpRange.style.padding = '2px 4px';
+                                    console.log('✅ Applied sepsis styling to BP display');
                                 } else {
-                                    // Remove any existing highlighting
-                                    bpRange.classList.remove('highlight', 'fade-out');
+                                    // Remove sepsis styling
                                     bpRange.style.backgroundColor = '';
                                     bpRange.style.border = '';
                                     bpRange.style.borderRadius = '';
@@ -639,11 +580,13 @@
                                 
                                 // Apply pneumonie styling if needed
                                 if (isPneumonie) {
-                                    window.sharedDataManager.highlightElement(afRangeDisplay, 'highlight-blue', 1500);
-                                    console.log('✅ Applied pneumonie highlighting to AF display');
+                                    afRangeDisplay.style.backgroundColor = '#e1f5fe'; // Light blue highlight
+                                    afRangeDisplay.style.border = '2px solid #29b6f6'; // Blue border
+                                    afRangeDisplay.style.borderRadius = '4px';
+                                    afRangeDisplay.style.padding = '2px 4px';
+                                    console.log('✅ Applied pneumonie styling to AF display');
                                 } else {
-                                    // Remove any existing highlighting
-                                    afRangeDisplay.classList.remove('highlight', 'highlight-blue', 'fade-out');
+                                    // Remove pneumonie styling
                                     afRangeDisplay.style.backgroundColor = '';
                                     afRangeDisplay.style.border = '';
                                     afRangeDisplay.style.borderRadius = '';
@@ -675,7 +618,7 @@
                                 if (dropdown) dropdown.value = '';
                                 
                                 // Remove any selected classes from risk buttons
-                                document.querySelectorAll('.btn.risk-low, .btn.risk-mid, .btn.risk-high').forEach(btn => {
+                                document.querySelectorAll('.btn.risk-low, .btn.risk-med, .btn.risk-high').forEach(btn => {
                                     btn.classList.remove('selected');
                                 });
                                 
@@ -725,7 +668,7 @@
                                 window.sharedDataManager.ensureCleanPatientState(currentPatientId, true);
                                 
                                 // Initialize all condition buttons based on stored states
-                                const conditions = ['sepsis', 'pneumonie', 'herstellende'];
+                                const conditions = ['sepsis', 'pneumonie'];
                                 
                                 conditions.forEach(condition => {
                                     const conditionState = window.sharedDataManager.getPatientConditionState(condition, currentPatientId);
@@ -792,9 +735,6 @@
                                 });
                                 console.log('Temp set to:', finalOrganStates.temp);
                             }
-                            
-                            // Update monitoring status after all circles are updated
-                            setTimeout(() => updateMonitoringStatus(), 100);
                             
                             // Update opacity for all monitoring elements
                             updateAllOpacity(isActivated);
@@ -868,11 +808,13 @@
                                 
                                 // Highlight if using sepsis thresholds
                                 if (hasSepsis && sepsisThresholds) {
-                                    window.sharedDataManager.highlightElement(hrRange, 'highlight', 1500);
+                                    hrRange.style.backgroundColor = '#fff3cd'; // Light yellow highlight
+                                    hrRange.style.border = '2px solid #ffc107'; // Yellow border
+                                    hrRange.style.borderRadius = '4px';
+                                    hrRange.style.padding = '2px 4px';
                                     console.log('🔍 DEBUG: Applied sepsis highlighting to HR range');
                                 } else {
                                     // Reset to normal styling
-                                    hrRange.classList.remove('highlight', 'fade-out');
                                     hrRange.style.backgroundColor = '';
                                     hrRange.style.border = '';
                                     hrRange.style.borderRadius = '';
@@ -890,11 +832,13 @@
                                 
                                 // Highlight if using sepsis thresholds
                                 if (hasSepsis && sepsisThresholds) {
-                                    window.sharedDataManager.highlightElement(bpRange, 'highlight', 1500);
+                                    bpRange.style.backgroundColor = '#fff3cd'; // Light yellow highlight
+                                    bpRange.style.border = '2px solid #ffc107'; // Yellow border
+                                    bpRange.style.borderRadius = '4px';
+                                    bpRange.style.padding = '2px 4px';
                                     console.log('🔍 DEBUG: Applied sepsis highlighting to BP range');
                                 } else {
                                     // Reset to normal styling
-                                    bpRange.classList.remove('highlight', 'fade-out');
                                     bpRange.style.backgroundColor = '';
                                     bpRange.style.border = '';
                                     bpRange.style.borderRadius = '';
@@ -917,44 +861,79 @@
                                 
                                 // Apply styling based on source
                                 if (isSepsis) {
-                                    window.sharedDataManager.highlightElement(hrRange, 'highlight', 1500);
-                                    console.log('🦠 Applied sepsis highlighting to HR display in index');
+                                    hrRange.style.backgroundColor = '#fff3cd'; // Light yellow highlight for sepsis
+                                    hrRange.style.border = '2px solid #ffc107'; // Yellow border
+                                    hrRange.style.borderRadius = '4px';
+                                    hrRange.style.padding = '2px 4px';
+                                    console.log('🦠 Applied sepsis styling to HR display in index');
                                 } else {
-                                    window.sharedDataManager.highlightElement(hrRange, 'highlight-green', 1500);
-                                    console.log('🔙 Applied restored highlighting to HR display in index');
+                                    hrRange.style.backgroundColor = '#e8f5e8'; // Light green for restored
+                                    hrRange.style.border = '2px solid #28a745'; // Green border
+                                    hrRange.style.borderRadius = '4px';
+                                    hrRange.style.padding = '2px 4px';
+                                    console.log('🔙 Applied restored styling to HR display in index');
                                 }
                             }
                         }
 
                         function updateProgressBar() {
                             const stepNumbers = document.querySelectorAll('.step-number');
-                            let completedSteps = 1; // Always start with step 1
                             
-                            if (selectedProblem) completedSteps = 2;
-                            if (selectedRiskLevel) completedSteps = 3;
+                            // Reset all steps to inactive first
+                            stepNumbers.forEach(step => {
+                                step.classList.add('inactive');
+                                step.style.backgroundColor = '';
+                            });
+                            
+                            // Step 1 is always blue (active by default)
+                            if (stepNumbers[0]) {
+                                stepNumbers[0].classList.remove('inactive');
+                                stepNumbers[0].style.backgroundColor = '#1961AB';
+                            }
+                            
+                            // Step 2 becomes blue when problem is selected
+                            if (selectedProblem && stepNumbers[1]) {
+                                stepNumbers[1].classList.remove('inactive');
+                                stepNumbers[1].style.backgroundColor = '#1961AB';
+                            }
+                            
+                            // Steps 3 and ✓ become blue when risk level is selected
+                            if (selectedRiskLevel) {
+                                if (stepNumbers[2]) {
+                                    stepNumbers[2].classList.remove('inactive');
+                                    stepNumbers[2].style.backgroundColor = '#1961AB';
+                                }
+                                if (stepNumbers[3]) {
+                                    stepNumbers[3].classList.remove('inactive');
+                                    stepNumbers[3].style.backgroundColor = '#1961AB';
+                                }
+                            }
+                            
+                            // Update confirm button state
+                            updateConfirmButton();
                             
                             // Update data manager with current progress
+                            let completedSteps = 1; // Always start with step 1
+                            if (selectedProblem) completedSteps = 2;
+                            if (selectedRiskLevel) completedSteps = 4; // All steps complete
+                            
                             if (window.dataManager) {
                                 window.dataManager.setProgressStep(completedSteps);
                             }
-                            
-                            stepNumbers.forEach((step, index) => {
-                                if (index < completedSteps) {
-                                    step.classList.remove('inactive');
-                                    if (index === completedSteps - 1) {
-                                        step.style.backgroundColor = '#1961AB';
-                                    }
+                        }
+
+                        function updateConfirmButton() {
+                            const confirmBtn = document.getElementById('confirm-btn');
+                            if (confirmBtn) {
+                                if (selectedProblem && selectedRiskLevel) {
+                                    // Both selections made - enable button
+                                    confirmBtn.classList.remove('disabled');
+                                    confirmBtn.style.pointerEvents = 'auto';
                                 } else {
-                                    step.classList.add('inactive');
+                                    // Missing selection(s) - disable button
+                                    confirmBtn.classList.add('disabled');
+                                    confirmBtn.style.pointerEvents = 'none';
                                 }
-                            });
-                            
-                            // Handle the checkmark (last step) - activate when all main steps are done
-                            if (completedSteps >= 3) {
-                                const checkmarkStep = stepNumbers[stepNumbers.length - 1];
-                                checkmarkStep.classList.remove('inactive');
-                                checkmarkStep.classList.add('checkmark-ready');
-                                checkmarkStep.style.backgroundColor = '#28a745';
                             }
                         }
 
@@ -980,6 +959,12 @@
                         }
 
                         function confirmSettings() {
+                            // Check if button is disabled
+                            const confirmBtn = document.getElementById('confirm-btn');
+                            if (confirmBtn && confirmBtn.classList.contains('disabled')) {
+                                return; // Don't execute if button is disabled
+                            }
+                            
                             console.log('confirmSettings called - selectedRiskLevel:', selectedRiskLevel);
                             console.log('confirmSettings called - selectedProblem:', selectedProblem);
                             

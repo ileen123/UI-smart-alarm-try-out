@@ -21,7 +21,7 @@
             font-family: 'Open Sans', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             font-weight: 400;
             background-color: #ffffff;
-            padding: 20px;
+            padding: 20px 200px;
         }
 
         .header {
@@ -89,7 +89,7 @@
             gap: 30px;
             align-items: start;
             max-width: 1400px;
-            margin: 0 auto;
+            margin: 150px auto;
         }
 
         /* Left column - 2 beds */
@@ -147,7 +147,7 @@
             color: #666;
         }
 
-        .bed-card.occupied.risk-med {
+        .bed-card.occupied.risk-mid {
             background: #1191FA;
             color: white;
         }
@@ -182,7 +182,7 @@
             background: rgba(255,255,255,0.9);
             color: #333;
             padding: 4px 8px;
-            border-radius: 8px;
+            border-radius: 0px 8px 0px 8px;
             font-size: 12px;
             font-weight: bold;
         }
@@ -212,8 +212,8 @@
         }
 
         .add-patient-btn:hover {
-            border-color: #34495e;
-            color: #34495e;
+            color: #ff6b35;
+            border: 3px solid #ff6b35;
             transform: scale(1.1);
         }
 
@@ -223,7 +223,7 @@
             border-radius: 50%;
             border: none;
             background: #fff;
-            color: #e74c3c;
+            color: #FC6039;
             font-size: 24px;
             cursor: pointer;
             display: flex;
@@ -232,11 +232,16 @@
             box-shadow: 0 2px 8px rgba(0,0,0,0.2);
         }
 
+        .alarm-icon {
+            width: 24px;
+            height: 24px;
+        }
+
         .discharge-btn {
             padding: 6px 12px;
-            border: 1px solid #e74c3c;
+            border: 1px solid #FC6039;
             background: #fff;
-            color: #e74c3c;
+            color: #f74518;
             border-radius: 15px;
             font-size: 12px;
             cursor: pointer;
@@ -370,12 +375,12 @@
         }
 
         .btn-cancel {
-            background: #e74c3c;
+            background: #FC6039;
             color: white;
         }
 
         .btn-cancel:hover {
-            background: #c0392b;
+            background: #fc5126;
         }
     </style>
     
@@ -471,6 +476,21 @@
             try {
                 const savedBedStates = window.sharedDataManager.getBedStates();
                 if (savedBedStates) {
+                    // Migrate old "med" values to "mid" in bed states
+                    let hasChanges = false;
+                    Object.keys(savedBedStates).forEach(bedNumber => {
+                        if (savedBedStates[bedNumber].riskLevel === 'med') {
+                            savedBedStates[bedNumber].riskLevel = 'mid';
+                            hasChanges = true;
+                            console.log('🔄 Migrated bed ' + bedNumber + ' risk level from "med" to "mid"');
+                        }
+                    });
+                    
+                    // Save back if we made changes
+                    if (hasChanges) {
+                        window.sharedDataManager.saveBedStates(savedBedStates);
+                    }
+                    
                     console.log('✅ Loaded bed states via shared data manager:', savedBedStates);
                     return savedBedStates;
                 } else {
@@ -497,6 +517,14 @@
             try {
                 const savedInfo = window.sharedDataManager.getPatientMedicalInfo(patientId);
                 if (savedInfo) {
+                    // Migrate old "med" values to "mid" for consistency
+                    if (savedInfo.selectedRiskLevel === 'med') {
+                        savedInfo.selectedRiskLevel = 'mid';
+                        // Save the migrated data back
+                        window.sharedDataManager.savePatientMedicalInfo(patientId, savedInfo);
+                        console.log('🔄 Migrated risk level from "med" to "mid" for patient ' + patientId);
+                    }
+                    
                     console.log('✅ Loaded medical info for patient ' + patientId + ' via shared data manager:', savedInfo);
                     return savedInfo;
                 } else {
@@ -519,7 +547,9 @@
                     const patientMedicalInfo = window.sharedDataManager.getPatientMedicalInfo(bed.patientId);
                     if (patientMedicalInfo && patientMedicalInfo.selectedRiskLevel) {
                         const oldRiskLevel = bed.riskLevel;
-                        bed.riskLevel = patientMedicalInfo.selectedRiskLevel;
+                        // Migrate old "med" values to "mid"
+                        const riskLevel = patientMedicalInfo.selectedRiskLevel === 'med' ? 'mid' : patientMedicalInfo.selectedRiskLevel;
+                        bed.riskLevel = riskLevel;
                         console.log(`✅ Updated bed ${bedNumber} risk level: ${oldRiskLevel} → ${bed.riskLevel} (patient ${bed.patientId})`);
                     } else {
                         console.log(`ℹ️ No risk level found for patient ${bed.patientId} in bed ${bedNumber}`);
@@ -621,6 +651,16 @@
             });
         }
 
+        // Function to translate risk levels to Dutch
+        function translateRiskLevel(riskLevel) {
+            const translations = {
+                'low': 'laag',
+                'mid': 'mid',
+                'high': 'hoog'
+            };
+            return translations[riskLevel] || riskLevel;
+        }
+
         function updateBedDisplay(bedNumber) {
             const bed = bedData[bedNumber];
             const bedElement = document.getElementById('bed-' + bedNumber);
@@ -628,14 +668,17 @@
             if (bed.occupied) {
                 const patient = getPatientById(bed.patientId);
                 const patientMedicalInfo = loadPatientMedicalInfo(bed.patientId);
-                const riskClass = bed.riskLevel ? 'risk-' + bed.riskLevel : 'risk-med';
+                const riskClass = bed.riskLevel ? 'risk-' + bed.riskLevel : 'risk-mid';
                 
+                
+
+
                 // Create display text for medical info
                 let medicalDisplay = 'Alarm Instellingen';
                 if (patientMedicalInfo) {
                     const problem = patientMedicalInfo.selectedProblem || 'Geen probleem geselecteerd';
                     const riskLevel = patientMedicalInfo.selectedRiskLevel || 'Geen risico geselecteerd';
-                    medicalDisplay = problem + ' (' + riskLevel + ')';
+                    medicalDisplay = problem + ' (' + translateRiskLevel(riskLevel) + ')';
                 }
                 
                 console.log('Updating bed ' + bedNumber + ' display with risk level: ' + bed.riskLevel + ', CSS class: ' + riskClass);
@@ -644,7 +687,7 @@
                     '<div class="bed-number">' + bedNumber + '</div>' +
                     '<div class="bed-vpk">VPK: ' + bed.vpkCode + '</div>' +
                     '<div class="bed-icon">' +
-                        '<button class="alarm-btn" onclick="event.stopPropagation(); navigateToAlarmSettings(' + bedNumber + ', \'' + bed.patientId + '\')">🔔</button>' +
+                        '<button class="alarm-btn" onclick="event.stopPropagation(); navigateToAlarmSettings(' + bedNumber + ', \'' + bed.patientId + '\')"><svg class="alarm-icon" width="26" height="32" viewBox="0 0 26 32" fill="none" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" clip-rule="evenodd" d="M3.9015 21.8751H22.105C21.5979 21.0816 21.2059 20.023 21.1188 18.4159V18.4005C21.0612 16.0508 20.9803 14.1972 20.7532 12.718C20.537 11.3143 20.1932 10.2804 19.6083 9.50695L19.5974 9.49154C18.8461 8.42376 17.8536 7.5732 16.7211 6.98768C15.5964 6.40677 14.3271 6.08939 13.0157 6.08785H12.9908C11.6779 6.08939 10.4101 6.4068 9.28537 6.98768C8.15603 7.57013 7.16822 8.41911 6.41688 9.48227L6.39821 9.50847C5.81329 10.282 5.46954 11.3159 5.2533 12.7196C5.02618 14.1941 4.94529 16.0401 4.88773 18.3776V18.4192C4.80062 20.0247 4.40865 21.0831 3.9015 21.8751ZM23.7569 22.0477C23.0584 21.2988 22.4144 20.305 22.3102 18.3574C22.2511 15.9536 22.1671 14.057 21.9353 12.5423C21.6911 10.9522 21.2804 9.75035 20.5648 8.80426C19.703 7.58548 18.5675 6.61165 17.2732 5.94294C16.6183 5.6055 15.923 5.34357 15.2027 5.16792C15.7441 4.61785 16.077 3.86899 16.077 3.04312C16.077 2.20183 15.7332 1.4422 15.1763 0.890593L15.1747 0.892133C14.6178 0.342069 13.8494 0 13.0031 0C12.1756 0 11.4211 0.326654 10.8673 0.85825L10.83 0.892149C10.2731 1.44375 9.92929 2.20339 9.92929 3.04468C9.92929 3.869 10.2622 4.61941 10.8035 5.16794C10.0833 5.34359 9.38794 5.604 8.73305 5.94296C7.4388 6.61167 6.3032 7.5855 5.44143 8.80428C4.7274 9.75187 4.31519 10.9522 4.07096 12.5423C3.83918 14.0539 3.75517 15.9476 3.69606 18.3467L3.69451 18.3575C3.59028 20.3097 2.94316 21.3051 2.24315 22.0524L2.22137 22.074C2.05337 22.2527 1.88226 22.4176 1.71427 22.5794C0.777789 23.4823 -0.0575398 24.2881 0.0031107 26.2296C0.00155481 26.2527 0.0031108 26.2758 0.00466628 26.2989C0.0544451 26.8968 0.28467 27.3621 0.696911 27.6934C1.0687 27.9923 1.57115 28.1587 2.20429 28.1926C2.22918 28.1957 2.25563 28.1972 2.28052 28.1972H8.33004C8.5276 29.1941 9.04407 30.0801 9.77052 30.7442C10.6199 31.5239 11.7555 32 12.9999 32C14.2444 32 15.3784 31.5239 16.2293 30.7442C16.9542 30.0801 17.4707 29.1941 17.6698 28.1972H23.7193V28.1957H23.7427C24.3991 28.1695 24.9202 28.0016 25.3029 27.6949C25.7152 27.3637 25.947 26.8983 25.9952 26.3005H25.9936L25.9952 26.2743C26.0714 24.3005 25.2298 23.49 24.2856 22.5794C24.1191 22.4191 23.9496 22.2558 23.7831 22.0786C23.7769 22.0694 23.7662 22.0584 23.7569 22.0477ZM23.0818 23.0584C23.2078 23.1848 23.3338 23.3065 23.4582 23.4267C24.1971 24.1386 24.8567 24.7749 24.8085 26.2079C24.7867 26.4698 24.7011 26.6609 24.5549 26.7795C24.3807 26.9198 24.1038 26.9983 23.7242 27.0168V27.0153H2.26317C1.89294 26.9953 1.62226 26.9167 1.45114 26.7795C1.30336 26.6609 1.2178 26.4698 1.19758 26.2079L1.19602 26.194C1.15247 24.7688 1.81049 24.1355 2.54782 23.4252C2.67227 23.305 2.79827 23.1833 2.92427 23.0569L23.0815 23.06L23.0818 23.0584ZM15.425 29.8813C14.7919 30.4622 13.9409 30.8166 13.0029 30.8166C12.0665 30.8166 11.2156 30.4622 10.5809 29.8813C10.094 29.4345 9.73311 28.8551 9.55733 28.1987H16.4487C16.2729 28.8536 15.9119 29.4345 15.425 29.8813ZM14.3314 1.72565V1.72873C14.6705 2.06463 14.8821 2.52994 14.8821 3.04458C14.8821 3.55923 14.6721 4.02456 14.3345 4.36044L14.3314 4.36352C13.9985 4.69326 13.538 4.89974 13.0278 4.90589L13.0029 4.90435H12.978C12.4678 4.89819 12.0074 4.69172 11.6745 4.36198L11.6714 4.3589C11.3338 4.02454 11.1238 3.55922 11.1238 3.04304C11.1238 2.52994 11.3338 2.0646 11.6745 1.72719L11.7009 1.69945C12.0369 1.37896 12.4958 1.18327 13.0029 1.18327C13.5225 1.18327 13.9923 1.39129 14.3314 1.72565Z" fill="#FC6039"/><path d="M17.4041 13.9091H16.6699C16.5736 13.4633 16.3962 13.0483 16.1565 12.6766L16.6774 12.1568C16.9876 11.8466 16.9876 11.3437 16.6774 11.0335C16.3666 10.7234 15.8627 10.7234 15.5519 11.0335L15.0309 11.5534C14.6585 11.3136 14.2426 11.1365 13.7959 11.0404V10.3077C13.7959 9.8695 13.4398 9.51351 13 9.51351C12.5602 9.51351 12.2041 9.8695 12.2041 10.3077V11.0404C11.7574 11.1371 11.3415 11.3142 10.9697 11.5534L10.4488 11.0335C10.1386 10.7234 9.634 10.7234 9.32382 11.0335C9.01302 11.3437 9.01302 11.8466 9.32382 12.1568L9.84414 12.676C9.60317 13.0477 9.42638 13.4633 9.32949 13.9091H8.59589C8.15673 13.9091 7.8 14.2645 7.8 14.7033C7.8 15.1422 8.1561 15.4976 8.59589 15.4976H9.32949C9.42638 15.9433 9.6038 16.3583 9.84351 16.73L9.32319 17.2493C9.01239 17.5594 9.01239 18.0623 9.32319 18.3725C9.4786 18.5276 9.68181 18.6048 9.88629 18.6048C10.0908 18.6048 10.2934 18.5276 10.4494 18.3725L10.9697 17.8526C11.3422 18.0925 11.758 18.2689 12.2047 18.3656V19.0977C12.2047 19.5359 12.5608 19.8919 13.0006 19.8919C13.4404 19.8919 13.7965 19.5365 13.7965 19.0977V18.3656C14.2432 18.2695 14.6597 18.0918 15.0322 17.8526L15.5525 18.3719C15.7079 18.5269 15.9111 18.6048 16.1156 18.6048C16.3188 18.6048 16.5227 18.5276 16.6781 18.3725C16.9889 18.0623 16.9889 17.5594 16.6787 17.2499L16.1578 16.7294C16.3981 16.3583 16.5749 15.9427 16.6711 15.4976H17.4041C17.8433 15.4976 18.2 15.1422 18.2 14.7033C18.2 14.2645 17.8433 13.9091 17.4041 13.9091ZM13.0006 16.8638C11.8065 16.8638 10.8357 15.8956 10.8344 14.7052L10.8351 14.7033L10.8344 14.7014C10.8357 13.5104 11.8065 12.5423 13.0006 12.5423C14.1941 12.5423 15.1649 13.5117 15.1649 14.7033C15.1649 15.8944 14.1941 16.8638 13.0006 16.8638Z" fill="#FC6039"/></svg></button>' +
                         '<button class="discharge-btn" onclick="event.stopPropagation(); dischargePatient(' + bedNumber + ')" title="Patiënt ontslaan">Ontslaan</button>' +
                     '</div>' +
                     '<div class="patient-name">' + (patient ? patient.name : 'Unknown') + '</div>' +
@@ -760,7 +803,7 @@
             bedData[selectedBed].occupied = true;
             bedData[selectedBed].patientId = selectedPatient;
             bedData[selectedBed].vpkCode = vpkCode;
-            bedData[selectedBed].riskLevel = 'med'; // default risk level
+            bedData[selectedBed].riskLevel = 'mid'; // default risk level
             
             console.log('✅ Updated bed data:', bedData[selectedBed]);
             
@@ -957,7 +1000,7 @@
             console.log('Testing risk levels...');
             // Manually set bed 1 to different risk levels for testing
             bedData[1] = { bedNumber: 1, occupied: true, patientId: "1", vpkCode: "TEST", riskLevel: 'low' };
-            bedData[2] = { bedNumber: 2, occupied: true, patientId: "2", vpkCode: "TEST", riskLevel: 'med' };
+            bedData[2] = { bedNumber: 2, occupied: true, patientId: "2", vpkCode: "TEST", riskLevel: 'mid' };
             bedData[3] = { bedNumber: 3, occupied: true, patientId: "3", vpkCode: "TEST", riskLevel: 'high' };
             updateDisplay();
         }

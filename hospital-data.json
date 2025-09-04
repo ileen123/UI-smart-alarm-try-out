@@ -25,7 +25,7 @@
             "weight": 78,
             "medicalInfo": {
                 "selectedProblem": "Longontsteking",
-                "selectedRiskLevel": "med",
+                "selectedRiskLevel": "mid",
                 "selectedTags": ["respiratory", "antibiotics"],
                 "organSettings": {
                     "heart": false,

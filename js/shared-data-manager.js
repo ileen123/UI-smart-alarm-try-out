@@ -725,6 +725,54 @@ class SharedDataManager {
     }
 
     /**
+     * Set lung monitoring level (loose, mid, tight)
+     */
+    setLungMonitoringLevel(patientId, level) {
+        const appData = this.getAppData();
+        if (!appData.patients[patientId]) {
+            appData.patients[patientId] = {};
+        }
+        if (!appData.patients[patientId].monitoring) {
+            appData.patients[patientId].monitoring = {};
+        }
+        appData.patients[patientId].monitoring.lungLevel = level;
+        this.saveAppData(appData);
+        console.log(`Lung monitoring level set for patient ${patientId}:`, level);
+    }
+
+    /**
+     * Get lung monitoring level (returns 'mid' as default)
+     */
+    getLungMonitoringLevel(patientId) {
+        const appData = this.getAppData();
+        return appData.patients?.[patientId]?.monitoring?.lungLevel || 'mid';
+    }
+
+    /**
+     * Set temp monitoring level (loose, mid, tight)
+     */
+    setTempMonitoringLevel(patientId, level) {
+        const appData = this.getAppData();
+        if (!appData.patients[patientId]) {
+            appData.patients[patientId] = {};
+        }
+        if (!appData.patients[patientId].monitoring) {
+            appData.patients[patientId].monitoring = {};
+        }
+        appData.patients[patientId].monitoring.tempLevel = level;
+        this.saveAppData(appData);
+        console.log(`Temp monitoring level set for patient ${patientId}:`, level);
+    }
+
+    /**
+     * Get temp monitoring level (returns 'mid' as default)
+     */
+    getTempMonitoringLevel(patientId) {
+        const appData = this.getAppData();
+        return appData.patients?.[patientId]?.monitoring?.tempLevel || 'mid';
+    }
+
+    /**
      * Update heart monitoring level globally across all components
      */
     updateGlobalHeartMonitoringLevel(patientId, level) {
@@ -746,6 +794,48 @@ class SharedDataManager {
         document.dispatchEvent(event);
         
         console.log(`Global heart monitoring level updated for patient ${patientId}:`, level);
+    }
+
+    updateGlobalLungMonitoringLevel(patientId, level) {
+        // Save the level
+        this.setLungMonitoringLevel(patientId, level);
+        
+        // Update all lung circle components if they exist
+        if (window.organComponents?.lung) {
+            window.organComponents.lung.setRiskLevel(level);
+        }
+        if (window.respiratoryLungCircle) {
+            window.respiratoryLungCircle.setRiskLevel(level);
+        }
+        
+        // Trigger custom event for any other listeners
+        const event = new CustomEvent('lungMonitoringLevelChanged', {
+            detail: { patientId, level }
+        });
+        document.dispatchEvent(event);
+        
+        console.log(`Global lung monitoring level updated for patient ${patientId}:`, level);
+    }
+
+    updateGlobalTempMonitoringLevel(patientId, level) {
+        // Save the level
+        this.setTempMonitoringLevel(patientId, level);
+        
+        // Update all temp circle components if they exist
+        if (window.organComponents?.temp) {
+            window.organComponents.temp.setRiskLevel(level);
+        }
+        if (window.tempCircle) {
+            window.tempCircle.setRiskLevel(level);
+        }
+        
+        // Trigger custom event for any other listeners
+        const event = new CustomEvent('tempMonitoringLevelChanged', {
+            detail: { patientId, level }
+        });
+        document.dispatchEvent(event);
+        
+        console.log(`Global temp monitoring level updated for patient ${patientId}:`, level);
     }
 
     /**
@@ -1497,6 +1587,64 @@ class SharedDataManager {
             console.error(`❌ Error getting patient conditions:`, error);
             return {};
         }
+    }
+
+    /**
+     * Highlight an element with automatic fade-out after 1.5 seconds
+     * @param {string|HTMLElement} element - Element ID or element reference
+     * @param {string} highlightClass - CSS class to add (default: 'highlight')
+     * @param {number} duration - Duration in milliseconds before fade-out (default: 1500)
+     */
+    highlightElement(element, highlightClass = 'highlight', duration = 1500) {
+        try {
+            // Get element reference
+            const el = typeof element === 'string' ? document.getElementById(element) : element;
+            if (!el) {
+                console.warn('⚠️ Element not found for highlighting:', element);
+                return;
+            }
+
+            // Remove any existing highlight classes and reset styles
+            el.classList.remove(highlightClass, 'fade-out');
+            el.style.backgroundColor = '';
+            el.style.color = '';
+            el.style.padding = '';
+            el.style.border = '';
+            el.style.borderRadius = '';
+
+            // Add highlight class
+            el.classList.add(highlightClass);
+            console.log('✨ Applied highlight to:', el.id || el.className);
+
+            // Set timeout to fade out
+            setTimeout(() => {
+                if (el && el.classList.contains(highlightClass)) {
+                    // Add fade-out class for smooth transition
+                    el.classList.add('fade-out');
+                    
+                    // Remove all highlight classes after transition
+                    setTimeout(() => {
+                        el.classList.remove(highlightClass, 'fade-out');
+                        console.log('🎯 Highlight faded out for:', el.id || el.className);
+                    }, 300); // Allow time for CSS transition
+                }
+            }, duration);
+
+        } catch (error) {
+            console.error('❌ Error highlighting element:', error);
+        }
+    }
+
+    /**
+     * Highlight multiple elements with the same settings
+     * @param {Array<string|HTMLElement>} elements - Array of element IDs or element references
+     * @param {string} highlightClass - CSS class to add (default: 'highlight')
+     * @param {number} duration - Duration in milliseconds before fade-out (default: 1500)
+     */
+    highlightElements(elements, highlightClass = 'highlight', duration = 1500) {
+        elements.forEach(element => {
+            this.highlightElement(element, highlightClass, duration);
+        });
     }
 }
 

@@ -20,7 +20,7 @@
     <script src="js/data-manager.js"></script>
     <script src="js/shared-data-manager.js"></script>
 </head>
-<body>
+<body class="alarm-overview-page">
 
         <!-- Breadcrumb Navigation -->
     <nav class="breadcrumb-nav">
@@ -66,7 +66,7 @@
             <h2 class="section-title">Wat is het risico - level van de patiënt?</h2>
             <div class="button-group">
                 <button class="btn risk-low" data-risk="low">Laag</button>
-                <button class="btn risk-med" data-risk="med">Mid</button>
+                <button class="btn risk-mid" data-risk="mid">Mid</button>
                 <button class="btn risk-high" data-risk="high">Hoog</button>
             </div>
             <!-- Static alarm indicator SVG -->
@@ -114,47 +114,41 @@
             <div class="monitor-item">
                 <div class="monitor-label inactive-text">Circulatoir</div>
                 <div id="heart-circle-container"></div>
-                <div class="monitor-status inactive-text">los</div>
+                <div id="heart-status" class="monitor-status inactive-text">los</div>
+                <!-- Circulatory parameters -->
+                <div class="value-card">
+                    <div class="value-label inactive-text">HR</div>
+                    <div class="value-number inactive-text">70 - 110 bpm</div>
+                    <div class="value-label inactive-text">BP Mean</div>
+                    <div class="value-number inactive-text">65 - 85 mmHg</div>
+                    <button class="adjust-btn" onclick="adjustOrganSettings('circulatoir')">Aanpassen</button>
+                </div>
             </div>
             <!-- Respiratory system -->
             <div class="monitor-item">
                 <div class="monitor-label inactive-text">Respiratoir</div>
                 <div id="lung-circle-container"></div>
-                <div class="monitor-status inactive-text">los</div>
+                <div id="lung-status" class="monitor-status inactive-text">los</div>
+                <!-- Respiratory parameters -->
+                <div class="value-card">
+                    <div class="value-label inactive-text">Saturatie</div>
+                    <div class="value-number inactive-text">90 - 100 %</div>
+                    <div class="value-label inactive-text">AF</div>
+                    <div class="value-number inactive-text" id="af-range-display-overview">10 - 25 /min</div>
+                    <button class="adjust-btn" onclick="adjustOrganSettings('respiratoir')">Aanpassen</button>
+                </div>
             </div>
             <!-- Other/Temperature system -->
             <div class="monitor-item">
                 <div class="monitor-label inactive-text">Overig</div>
                 <div id="temp-circle-container"></div>
-                <div class="monitor-status inactive-text">los</div>
-            </div>
-        </div>
-        
-        <!-- Parameter value cards showing normal ranges for each organ system -->
-        <div class="monitor-values">
-            <!-- Circulatory parameters -->
-            <div class="value-card">
-                <div class="value-label inactive-text">HR</div>
-                <div class="value-number inactive-text">70 - 110 bpm</div>
-                <div class="value-label inactive-text">BP Mean</div>
-                <div class="value-number inactive-text">65 - 85 mmHg</div>
-                <button class="adjust-btn" onclick="adjustOrganSettings('circulatoir')">Aanpassen</button>
-            </div>
-            
-            <!-- Respiratory parameters -->
-            <div class="value-card">
-                <div class="value-label inactive-text">Saturatie</div>
-                <div class="value-number inactive-text">90 - 100 %</div>
-                <div class="value-label inactive-text">AF</div>
-                <div class="value-number inactive-text" id="af-range-display-overview">10 - 25 /min</div>
-                <button class="adjust-btn" onclick="adjustOrganSettings('respiratoir')">Aanpassen</button>
-            </div>
-            
-            <!-- Temperature parameters -->
-            <div class="value-card">
-                <div class="value-label inactive-text">Temp.</div>
-                <div class="value-number inactive-text">36.5 - 39 °C</div>
-                <button class="adjust-btn" onclick="adjustOrganSettings('overig')">Aanpassen</button>
+                <div id="temp-status" class="monitor-status inactive-text">los</div>
+                <!-- Temperature parameters -->
+                <div class="value-card">
+                    <div class="value-label inactive-text">Temp.</div>
+                    <div class="value-number inactive-text">36.5 - 39 °C</div>
+                    <button class="adjust-btn" onclick="adjustOrganSettings('overig')">Aanpassen</button>
+                </div>
             </div>
         </div>
     </div>
@@ -202,6 +196,8 @@
             // Load saved heart monitoring level and apply it
             setTimeout(() => {
                 loadSavedHeartMonitoringLevel();
+                // Update monitoring status after everything is loaded
+                setTimeout(() => updateMonitoringStatus(), 200);
             }, 1000); // Increased delay to ensure it runs after loadExistingSettings
         });
 
@@ -264,6 +260,33 @@
                 if (patientId === currentPatientId && window.organComponents?.heart) {
                     console.log(`Received heart monitoring level change for patient ${patientId}:`, level);
                     window.organComponents.heart.setRiskLevel(level);
+                    
+                    // Update monitoring status after risk level change
+                    setTimeout(() => updateMonitoringStatus(), 100);
+                }
+            });
+            
+            // Listen for global lung monitoring level changes
+            document.addEventListener('lungMonitoringLevelChanged', function(event) {
+                const { patientId, level } = event.detail;
+                if (patientId === currentPatientId && window.organComponents?.lung) {
+                    console.log(`Received lung monitoring level change for patient ${patientId}:`, level);
+                    window.organComponents.lung.setRiskLevel(level);
+                    
+                    // Update monitoring status after risk level change
+                    setTimeout(() => updateMonitoringStatus(), 100);
+                }
+            });
+            
+            // Listen for global temp monitoring level changes
+            document.addEventListener('tempMonitoringLevelChanged', function(event) {
+                const { patientId, level } = event.detail;
+                if (patientId === currentPatientId && window.organComponents?.temp) {
+                    console.log(`Received temp monitoring level change for patient ${patientId}:`, level);
+                    window.organComponents.temp.setRiskLevel(level);
+                    
+                    // Update monitoring status after risk level change
+                    setTimeout(() => updateMonitoringStatus(), 100);
                 }
             });
             
@@ -399,6 +422,53 @@
             });
         }
 
+        // Function to update monitoring status text based on circle states
+        function updateMonitoringStatus() {
+            if (!window.organComponents) return;
+            
+            // Update heart status
+            if (window.organComponents.heart) {
+                const heartLevel = window.organComponents.heart.getRiskLevel();
+                const heartStatusElement = document.getElementById('heart-status');
+                if (heartStatusElement) {
+                    heartStatusElement.textContent = getStatusText(heartLevel);
+                }
+            }
+            
+            // Update lung status
+            if (window.organComponents.lung) {
+                const lungLevel = window.organComponents.lung.getRiskLevel();
+                const lungStatusElement = document.getElementById('lung-status');
+                if (lungStatusElement) {
+                    lungStatusElement.textContent = getStatusText(lungLevel);
+                }
+            }
+            
+            // Update temp status
+            if (window.organComponents.temp) {
+                const tempLevel = window.organComponents.temp.getRiskLevel();
+                const tempStatusElement = document.getElementById('temp-status');
+                if (tempStatusElement) {
+                    tempStatusElement.textContent = getStatusText(tempLevel);
+                }
+            }
+        }
+        
+        // Function to convert risk level to Dutch status text
+        function getStatusText(riskLevel) {
+            switch(riskLevel?.toLowerCase()) {
+                case 'low':
+                    return 'los';
+                case 'med':
+                case 'medium':
+                    return 'mid';
+                case 'high':
+                    return 'strak';
+                default:
+                    return 'los';
+            }
+        }
+
         function setupEventListeners() {
             // Set up problem dropdown listener
             const problemDropdown = document.getElementById('problem-dropdown');
@@ -411,7 +481,7 @@
             }
 
             // Set up risk level button listeners
-            const riskButtons = document.querySelectorAll('.btn.risk-low, .btn.risk-med, .btn.risk-high');
+            const riskButtons = document.querySelectorAll('.btn.risk-low, .btn.risk-mid, .btn.risk-high');
             riskButtons.forEach(button => {
                 button.addEventListener('click', function() {
                     // Remove selected class from all risk buttons
@@ -425,6 +495,9 @@
                     selectedRiskLevel = riskLevel;
                     console.log('Risk button clicked, detected risk level:', selectedRiskLevel);
                     updateOrganCirclesWithRisk(riskLevel);
+                    
+                    // Update monitoring status text after circles are updated
+                    setTimeout(() => updateMonitoringStatus(), 100);
                     
                     // Update global heart monitoring level
                     if (currentPatientId && window.sharedDataManager) {
@@ -676,6 +749,9 @@
                 window.organComponents.heart.setRiskLevel(savedHeartLevel);
                 console.log(`✅ Applied saved heart monitoring level: ${savedHeartLevel}`);
                 
+                // Update monitoring status after setting risk level
+                setTimeout(() => updateMonitoringStatus(), 100);
+                
                 // Update the risk level buttons if they correspond to the heart level
                 updateRiskButtonsForHeartLevel(savedHeartLevel);
             }
@@ -704,7 +780,7 @@
 
         function selectRiskLevel(riskLevel) {
             // Clear previous selection
-            document.querySelectorAll('.btn.risk-low, .btn.risk-med, .btn.risk-high').forEach(btn => {
+            document.querySelectorAll('.btn.risk-low, .btn.risk-mid, .btn.risk-high').forEach(btn => {
                 btn.classList.remove('selected');
             });
             
@@ -712,8 +788,8 @@
             let riskButton;
             if (riskLevel === 'low') {
                 riskButton = document.querySelector('.btn.risk-low');
-            } else if (riskLevel === 'med') {
-                riskButton = document.querySelector('.btn.risk-med');
+            } else if (riskLevel === 'mid' || riskLevel === 'med') {
+                riskButton = document.querySelector('.btn.risk-mid');
             } else if (riskLevel === 'high') {
                 riskButton = document.querySelector('.btn.risk-high');
             }
@@ -786,11 +862,8 @@
                     console.log('🎯 Updated HR range from target ranges:', Math.round(hr.min) + ' - ' + Math.round(hr.max) + ' ' + (hr.unit || 'bpm'));
                     
                     // Apply target range styling
-                    hrRange.style.backgroundColor = '#FDEAB3'; // Light green highlight
-                    hrRange.style.border = '2px solid #ffc107'; // Green border
-                    hrRange.style.borderRadius = '4px';
-                    hrRange.style.padding = '2px 4px';
-                    console.log('✅ Applied target range styling to HR display');
+                    window.sharedDataManager.highlightElement(hrRange, 'highlight-beige', 1500);
+                    console.log('✅ Applied target range highlighting to HR display');
                 }
                 
                 // Update BP display if available
@@ -804,11 +877,8 @@
                         console.log('🎯 Updated BP range from target ranges:', Math.round(bp.min) + ' - ' + Math.round(bp.max) + ' ' + (bp.unit || 'mmHg'));
                         
                         // Apply target range styling
-                        bpRange.style.backgroundColor = '#FDEAB3'; // Light green highlight
-                        bpRange.style.border = '2px solid #ffc107'; // Green border
-                        bpRange.style.borderRadius = '4px';
-                        bpRange.style.padding = '2px 4px';
-                        console.log('✅ Applied target range styling to BP display');
+                        window.sharedDataManager.highlightElement(bpRange, 'highlight-beige', 1500);
+                        console.log('✅ Applied target range highlighting to BP display');
                     } else {
                         console.warn('❌ BP range element not found');
                     }
@@ -827,7 +897,7 @@
                         // Apply target range styling
                         afRangeDisplay.style.backgroundColor = '#FDEAB3'; // Light green highlight
                         afRangeDisplay.style.border = '2px solid #ffc107'; // Green border
-                        afRangeDisplay.style.borderRadius = '4px';
+                        afRangeDisplay.style.borderRadius = '20px';
                         afRangeDisplay.style.padding = '2px 4px';
                         console.log('✅ Applied target range styling to AF display');
                         
@@ -880,7 +950,7 @@
                     if (hasSepsis && sepsisThresholds) {
                         hrRange.style.backgroundColor = '#FDEAB3'; // Light yellow highlight
                         hrRange.style.border = '2px solid #ffc107'; // Yellow border
-                        hrRange.style.borderRadius = '4px';
+                        hrRange.style.borderRadius = '20px';
                         hrRange.style.padding = '2px 4px';
                         console.log('🔍 DEBUG: Applied sepsis highlighting to HR range');
                     } else {
@@ -910,7 +980,7 @@
                 if (isSepsis) {
                     hrRange.style.backgroundColor = '#FDEAB3'; // Light yellow highlight for sepsis
                     hrRange.style.border = '2px solid #ffc107'; // Yellow border
-                    hrRange.style.borderRadius = '4px';
+                    hrRange.style.borderRadius = '20px';
                     hrRange.style.padding = '2px 4px';
                     console.log('🦠 Applied sepsis styling to HR display');
                 } else {
@@ -938,7 +1008,7 @@
                 if (isSepsis) {
                     bpRange.style.backgroundColor = '#FDEAB3'; // Light yellow highlight for sepsis
                     bpRange.style.border = '2px solid #ffc107'; // Yellow border
-                    bpRange.style.borderRadius = '4px';
+                    bpRange.style.borderRadius = '20px';
                     bpRange.style.padding = '2px 4px';
                     console.log('🦠 Applied sepsis styling to BP display');
                 } else {
@@ -968,13 +1038,13 @@
                 if (isPneumonie) {
                     afRangeDisplay.style.backgroundColor = '#FDEAB3'; // Light blue highlight for pneumonie
                     afRangeDisplay.style.border = '2px solid #ffc107'; // Blue border
-                    afRangeDisplay.style.borderRadius = '4px';
+                    afRangeDisplay.style.borderRadius = '20px';
                     afRangeDisplay.style.padding = '2px 4px';
                     console.log('🫁 Applied pneumonie styling to AF display');
                 } else {
                     afRangeDisplay.style.backgroundColor = '#e8f5e8'; // Light green for restored
                     afRangeDisplay.style.border = '2px solid #28a745'; // Green border
-                    afRangeDisplay.style.borderRadius = '4px';
+                    afRangeDisplay.style.borderRadius = '20px';
                     afRangeDisplay.style.padding = '2px 4px';
                     console.log('🔙 Applied restored styling to AF display');
                 }
@@ -1210,6 +1280,9 @@
                 });
                 console.log('Temp set to:', finalOrganStates.temp);
             }
+            
+            // Update monitoring status after all circles are updated
+            setTimeout(() => updateMonitoringStatus(), 100);
             
             // Update opacity for all monitoring elements
             updateAllOpacity(isActivated);
