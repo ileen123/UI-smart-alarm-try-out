@@ -20,7 +20,7 @@
     <script src="js/data-manager.js"></script>
     <script src="js/shared-data-manager.js"></script>
 </head>
-<body>
+<body class="setup-page">
     <!-- Patient information header section -->
     <div class="header">
         <img src="svg's/patient_icon.svg" alt="Patient" class="user-icon" />
@@ -37,7 +37,7 @@
         </div>
         <div class="step-line"></div>
         <div class="step">
-            <div class="step-number">2</div>
+            <div class="step-number inactive">2</div>
         </div>
         <div class="step-line"></div>
         <div class="step">
@@ -122,10 +122,15 @@
                 <div id="heart-status" class="monitor-status inactive-text">los</div>
                 <!-- Circulatory parameters -->
                 <div class="value-card">
-                    <div class="value-label inactive-text">HR</div>
-                    <div class="value-number inactive-text">70 - 110</div>
-                    <div class="value-label inactive-text">BP Mean</div>
-                    <div class="value-number inactive-text">65 - 85 mmHg</div>
+                    <div class="parameter-group">
+                        <div class="value-label inactive-text">HR</div>
+                        <div class="value-number inactive-text">70 - 110 bpm</div>
+                    </div>
+                    
+                    <div class="parameter-group">
+                        <div class="value-label inactive-text">BP Mean</div>
+                        <div class="value-number inactive-text">65 - 85 mmHg</div>
+                    </div>
                 </div>
             </div>
             <!-- Respiratory system -->
@@ -135,10 +140,15 @@
                 <div id="lung-status" class="monitor-status inactive-text">los</div>
                 <!-- Respiratory parameters -->
                 <div class="value-card">
-                    <div class="value-label inactive-text">Saturatie</div>
-                    <div class="value-number inactive-text">90 - 100</div>
-                    <div class="value-label inactive-text">AF</div>
-                    <div class="value-number inactive-text" id="af-range-display">10 - 25</div>
+                    <div class="parameter-group">
+                        <div class="value-label inactive-text">Saturatie</div>
+                        <div class="value-number inactive-text">90 - 100%</div>
+                    </div>
+                    
+                    <div class="parameter-group">
+                        <div class="value-label inactive-text">AF</div>
+                        <div class="value-number inactive-text" id="af-range-display">10 - 25 /min</div>
+                    </div>
                 </div>
             </div>
             <!-- Other/Temperature system -->
@@ -148,8 +158,10 @@
                 <div id="temp-status" class="monitor-status inactive-text">los</div>
                 <!-- Temperature parameters -->
                 <div class="value-card">
-                    <div class="value-label inactive-text">Temp.</div>
-                    <div class="value-number inactive-text">36.5 - 39</div>
+                    <div class="parameter-group">
+                        <div class="value-label inactive-text">Temp.</div>
+                        <div class="value-number inactive-text">36.5 - 39 °C</div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -160,7 +172,7 @@
         <!-- Back button with onclick event -->
         <button class="nav-btn" onclick="goBack()">← Terug</button>
         <!-- Confirm button with onclick event -->
-        <button class="nav-btn primary" onclick="confirmSettings()">Bevestigen</button>
+        <button class="nav-btn primary disabled" id="confirm-btn" onclick="confirmSettings()">Bevestigen</button>
     </div>
 
             <!-- Import Heart Circle Component -->
@@ -275,6 +287,9 @@
                             
                             // Set up event listeners
                             setupEventListeners();
+                            
+                            // Initialize progress bar state
+                            updateProgressBar();
                         });
                         
                         async function initializeCircleComponents() {
@@ -461,6 +476,7 @@
                                     selectedProblem = this.value;
                                     window.dataManager?.setSelectedProblem(selectedProblem);
                                     updateOrganCirclesBasedOnProblem(selectedProblem);
+                                    updateProgressBar(); // Update progress when problem is selected
                                 });
                             }
                             
@@ -481,6 +497,7 @@
                                     console.log('selectedRiskLevel is now:', selectedRiskLevel);
                                     window.dataManager?.setSelectedRiskLevel(riskLevel);
                                     updateOrganCirclesWithRisk(riskLevel);
+                                    updateProgressBar(); // Update progress when risk level is selected
                                 });
                             });
                             
@@ -928,33 +945,62 @@
 
                         function updateProgressBar() {
                             const stepNumbers = document.querySelectorAll('.step-number');
-                            let completedSteps = 1; // Always start with step 1
                             
-                            if (selectedProblem) completedSteps = 2;
-                            if (selectedRiskLevel) completedSteps = 3;
+                            // Reset all steps to inactive first
+                            stepNumbers.forEach(step => {
+                                step.classList.add('inactive');
+                                step.style.backgroundColor = '';
+                            });
+                            
+                            // Step 1 is always blue (active by default)
+                            if (stepNumbers[0]) {
+                                stepNumbers[0].classList.remove('inactive');
+                                stepNumbers[0].style.backgroundColor = '#1961AB';
+                            }
+                            
+                            // Step 2 becomes blue when problem is selected
+                            if (selectedProblem && stepNumbers[1]) {
+                                stepNumbers[1].classList.remove('inactive');
+                                stepNumbers[1].style.backgroundColor = '#1961AB';
+                            }
+                            
+                            // Steps 3 and ✓ become blue when risk level is selected
+                            if (selectedRiskLevel) {
+                                if (stepNumbers[2]) {
+                                    stepNumbers[2].classList.remove('inactive');
+                                    stepNumbers[2].style.backgroundColor = '#1961AB';
+                                }
+                                if (stepNumbers[3]) {
+                                    stepNumbers[3].classList.remove('inactive');
+                                    stepNumbers[3].style.backgroundColor = '#1961AB';
+                                }
+                            }
+                            
+                            // Update confirm button state
+                            updateConfirmButton();
                             
                             // Update data manager with current progress
+                            let completedSteps = 1; // Always start with step 1
+                            if (selectedProblem) completedSteps = 2;
+                            if (selectedRiskLevel) completedSteps = 4; // All steps complete
+                            
                             if (window.dataManager) {
                                 window.dataManager.setProgressStep(completedSteps);
                             }
-                            
-                            stepNumbers.forEach((step, index) => {
-                                if (index < completedSteps) {
-                                    step.classList.remove('inactive');
-                                    if (index === completedSteps - 1) {
-                                        step.style.backgroundColor = '#1961AB';
-                                    }
+                        }
+
+                        function updateConfirmButton() {
+                            const confirmBtn = document.getElementById('confirm-btn');
+                            if (confirmBtn) {
+                                if (selectedProblem && selectedRiskLevel) {
+                                    // Both selections made - enable button
+                                    confirmBtn.classList.remove('disabled');
+                                    confirmBtn.style.pointerEvents = 'auto';
                                 } else {
-                                    step.classList.add('inactive');
+                                    // Missing selection(s) - disable button
+                                    confirmBtn.classList.add('disabled');
+                                    confirmBtn.style.pointerEvents = 'none';
                                 }
-                            });
-                            
-                            // Handle the checkmark (last step) - activate when all main steps are done
-                            if (completedSteps >= 3) {
-                                const checkmarkStep = stepNumbers[stepNumbers.length - 1];
-                                checkmarkStep.classList.remove('inactive');
-                                checkmarkStep.classList.add('checkmark-ready');
-                                checkmarkStep.style.backgroundColor = '#28a745';
                             }
                         }
 
@@ -980,6 +1026,12 @@
                         }
 
                         function confirmSettings() {
+                            // Check if button is disabled
+                            const confirmBtn = document.getElementById('confirm-btn');
+                            if (confirmBtn && confirmBtn.classList.contains('disabled')) {
+                                return; // Don't execute if button is disabled
+                            }
+                            
                             console.log('confirmSettings called - selectedRiskLevel:', selectedRiskLevel);
                             console.log('confirmSettings called - selectedProblem:', selectedProblem);
                             
