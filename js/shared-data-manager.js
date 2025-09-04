@@ -975,6 +975,54 @@ class SharedDataManager {
     }
 
     /**
+     * Save patient-specific other (temperature) settings
+     */
+    savePatientOtherSettings(patientId, otherSettings) {
+        try {
+            const settingsKey = `${this.storageKeys.PATIENT_PREFIX}${patientId}_otherSettings`;
+            localStorage.setItem(settingsKey, JSON.stringify(otherSettings));
+            
+            // Also save to centralized app data
+            const appData = this.getAppData();
+            if (appData) {
+                if (!appData.patients[patientId]) {
+                    appData.patients[patientId] = {};
+                }
+                appData.patients[patientId].otherSettings = otherSettings;
+                appData.patients[patientId].lastUpdated = new Date().toISOString();
+                this.saveAppData(appData);
+            }
+            
+            console.log('✅ Other settings saved for patient:', patientId, otherSettings);
+            return true;
+        } catch (error) {
+            console.error('❌ Error saving other settings:', error);
+            return false;
+        }
+    }
+
+    /**
+     * Get patient-specific other (temperature) settings
+     */
+    getPatientOtherSettings(patientId) {
+        try {
+            // Try centralized app data first
+            const appData = this.getAppData();
+            if (appData && appData.patients[patientId] && appData.patients[patientId].otherSettings) {
+                return appData.patients[patientId].otherSettings;
+            }
+            
+            // Fallback to individual storage
+            const settingsKey = `${this.storageKeys.PATIENT_PREFIX}${patientId}_otherSettings`;
+            const data = localStorage.getItem(settingsKey);
+            return data ? JSON.parse(data) : null;
+        } catch (error) {
+            console.error('❌ Error getting other settings:', error);
+            return null;
+        }
+    }
+
+    /**
      * Save patient-specific vital parameter target ranges
      */
     savePatientTargetRanges(patientId, targetRanges) {

@@ -499,6 +499,13 @@
             align-items: center; /* This centers the legend vertically */
         }
 
+        /* Temperature Slider with Legend Layout */
+        .temp-slider-with-legend {
+            display: flex;
+            gap: 100px;
+            align-items: center; /* This centers the legend vertically */
+        }
+
         /* Alarm Legend Styles */
         .alarm-legend {
             background: white;
@@ -951,8 +958,7 @@
         let currentPatientId = null;
         let currentBed = null;
         let currentSettings = {
-            saturatie: { min: 90, max: 100 },
-            af: { min: 12, max: 20 }
+            temperature: { min: 36.5, max: 39.0 }
         };
         
         // Store slider references for monitoring level changes
@@ -1096,38 +1102,24 @@
 
         // Helper function to update sliders monitoring level (moved outside closure for global access)
         function updateSlidersMonitoringLevel(level) {
-            console.log(`🎛️ Updating respiratory sliders monitoring level to: ${level}`);
-            console.log('🔍 DEBUG - saturatieSlider exists:', !!saturatieSlider);
-            console.log('🔍 DEBUG - afSlider exists:', !!afSlider);
+            console.log(`🎛️ Updating temperature slider monitoring level to: ${level}`);
+            console.log('🔍 DEBUG - tempSlider exists:', !!tempSlider);
             
-            if (saturatieSlider) {
-                console.log('🔍 DEBUG - saturatieSlider type:', typeof saturatieSlider);
-                console.log('🔍 DEBUG - saturatieSlider.updateMonitoringLevel exists:', typeof saturatieSlider.updateMonitoringLevel);
+            if (tempSlider) {
+                console.log('🔍 DEBUG - tempSlider type:', typeof tempSlider);
+                console.log('🔍 DEBUG - tempSlider.updateMonitoringLevel exists:', typeof tempSlider.updateMonitoringLevel);
             }
             
-            // Update Saturatie slider if it exists
-            if (saturatieSlider && typeof saturatieSlider.updateMonitoringLevel === 'function') {
-                console.log('🎛️ Calling saturatieSlider.updateMonitoringLevel with:', level);
-                saturatieSlider.updateMonitoringLevel(level);
-                console.log('✅ Saturatie slider monitoring level updated to:', level);
+            // Update Temperature slider if it exists
+            if (tempSlider && typeof tempSlider.updateMonitoringLevel === 'function') {
+                console.log('🎛️ Calling tempSlider.updateMonitoringLevel with:', level);
+                tempSlider.updateMonitoringLevel(level);
+                console.log('✅ Temperature slider monitoring level updated to:', level);
             } else {
-                console.warn('❌ Saturatie slider not found or updateMonitoringLevel method not available');
-                console.warn('❌ saturatieSlider:', saturatieSlider);
-                if (saturatieSlider) {
-                    console.warn('❌ Available methods:', Object.getOwnPropertyNames(saturatieSlider));
-                }
-            }
-            
-            // Update AF slider if it exists - allow monitoring level changes for visual updates
-            if (afSlider && typeof afSlider.updateMonitoringLevel === 'function') {
-                console.log('🎛️ Calling afSlider.updateMonitoringLevel with:', level);
-                afSlider.updateMonitoringLevel(level);
-                console.log('✅ AF slider monitoring level updated to:', level);
-            } else {
-                console.warn('❌ AF slider not found or updateMonitoringLevel method not available');
-                console.warn('❌ afSlider:', afSlider);
-                if (afSlider) {
-                    console.warn('❌ Available methods:', Object.getOwnPropertyNames(afSlider));
+                console.warn('❌ Temperature slider not found or updateMonitoringLevel method not available');
+                console.warn('❌ tempSlider:', tempSlider);
+                if (tempSlider) {
+                    console.warn('❌ Available methods:', Object.getOwnPropertyNames(tempSlider));
                 }
             }
         }
@@ -1593,7 +1585,7 @@
         
 
         function loadCurrentSettings() {
-            console.log('📊 Loading current circulatoir settings...');
+            console.log('📊 Loading current temperature settings...');
             
             if (currentPatientId && window.sharedDataManager) {
                 // Load patient-specific target ranges first
@@ -1601,253 +1593,121 @@
                 console.log('🎯 Loaded target ranges for patient:', currentPatientId, targetRanges);
                 
                 // Update currentSettings to use target ranges
-                if (targetRanges) {
+                if (targetRanges && targetRanges.Temperature) {
                     currentSettings = {
-                        hr: {
-                            min: targetRanges.HR?.min || 70,
-                            max: targetRanges.HR?.max || 110
-                        },
-                        bp: {
-                            min: targetRanges.BP_Mean?.min || 65,
-                            max: targetRanges.BP_Mean?.max || 85
-                        },
-                        // Load respiratory settings from target ranges (these include pneumonie-specific ranges)
-                        saturatie: {
-                            min: targetRanges.Saturatie?.min || 90,
-                            max: targetRanges.Saturatie?.max || 100
-                        },
-                        af: {
-                            min: targetRanges.AF?.min || 10,
-                            max: targetRanges.AF?.max || 25
+                        temperature: {
+                            min: targetRanges.Temperature.min || 36.5,
+                            max: targetRanges.Temperature.max || 39.0
                         }
                     };
-                    console.log('✅ Loaded respiratory settings from target ranges:', {
-                        saturatie: currentSettings.saturatie,
-                        af: currentSettings.af
-                    });
+                    console.log('✅ Loaded temperature settings from target ranges:', currentSettings.temperature);
                 } else {
-                    // Load default respiratory settings if no target ranges exist
-                    currentSettings.saturatie = currentSettings.saturatie || { min: 90, max: 100 };
-                    currentSettings.af = currentSettings.af || { min: 10, max: 25 };
+                    // Load default temperature settings if no target ranges exist
+                    currentSettings.temperature = currentSettings.temperature || { min: 36.5, max: 39.0 };
+                    console.log('📊 Using default temperature settings:', currentSettings.temperature);
                 }
                 
                 // Try to load existing patient-specific fine-tuned settings
-                const savedSettings = window.sharedDataManager.getPatientCirculatoirSettings(currentPatientId);
-                const savedRespiratorySettings = window.sharedDataManager.getPatientRespiratorySettings(currentPatientId);
+                const savedSettings = window.sharedDataManager.getPatientOtherSettings(currentPatientId);
                 
-                if (savedSettings) {
-                    console.log('✅ Found saved fine-tuned circulatory settings:', savedSettings);
-                    
-                    // Check if current target ranges are sepsis ranges (90-130)
-                    const isSepsisActive = targetRanges && targetRanges.HR && 
-                                          targetRanges.HR.min === 90 && targetRanges.HR.max === 130;
-                    
-                    // Check if current target ranges are pneumonie AF ranges (10-30)
-                    const isPneumonieActive = targetRanges && targetRanges.AF && 
-                                             targetRanges.AF.min === 10 && targetRanges.AF.max === 30;
-                    
-                    if (isSepsisActive) {
-                        // Sepsis is active - target ranges take priority over saved settings for HR/BP
-                        console.log('🦠 Sepsis is active - using target ranges for HR/BP instead of saved settings');
-                        // Keep currentSettings HR/BP as is (target ranges)
-                    } else {
-                        // Normal case - merge saved circulatory settings with target ranges (saved settings take priority for fine-tuning)
-                        currentSettings.hr = savedSettings.hr || currentSettings.hr;
-                        currentSettings.bp = savedSettings.bp || currentSettings.bp;
-                        console.log('✅ Using saved fine-tuned circulatory settings');
-                    }
-                    
-                    // Handle respiratory settings separately - pneumonie always takes priority
-                    if (isPneumonieActive) {
-                        // Pneumonie is active - target ranges take priority for AF
-                        console.log('🫁 Pneumonie is active - using target ranges for AF instead of saved settings');
-                        // Keep currentSettings AF as is (target ranges from pneumonie)
-                    } else if (savedRespiratorySettings) {
-                        // Normal case - use saved respiratory settings if no pneumonie
-                        currentSettings.saturatie = savedRespiratorySettings.saturatie || currentSettings.saturatie;
-                        currentSettings.af = savedRespiratorySettings.af || currentSettings.af;
-                        console.log('✅ Using saved respiratory settings:', {
-                            saturatie: currentSettings.saturatie,
-                            af: currentSettings.af
-                        });
-                    }
+                if (savedSettings && savedSettings.temperature) {
+                    console.log('✅ Found saved fine-tuned temperature settings:', savedSettings.temperature);
+                    // Use manually adjusted settings if they exist
+                    currentSettings.temperature = savedSettings.temperature;
                 } else {
-                    // If no fine-tuned settings, check if we need to load from medical info
-                    const medicalInfo = window.sharedDataManager.getPatientMedicalInfo(currentPatientId);
-                    if (medicalInfo && medicalInfo.selectedTags && !targetRanges) {
-                        // Only apply condition-based thresholds if no target ranges exist
-                        const thresholds = window.sharedDataManager.getThresholdsByTags(medicalInfo.selectedTags);
-                        if (thresholds && thresholds.circulatoir) {
-                            currentSettings = {
-                                hr: thresholds.circulatoir.HR || { min: 70, max: 110 },
-                                bp: thresholds.circulatoir.BP_Mean || { min: 65, max: 85 }
-                            };
-                            console.log('✅ Applied condition-based thresholds:', currentSettings);
-                        }
-                    }
+                    console.log('ℹ️ No saved temperature settings found, using defaults');
                 }
                 
-                console.log('✅ Final current settings loaded:', currentSettings);
+                console.log('✅ Final current temperature settings loaded:', currentSettings);
+            } else {
+                console.log('⚠️ No patient ID or SharedDataManager available');
             }
         }
 
         function initializeSliders() {
-            console.log('🎛️ Initializing respiratory sliders...');
+            console.log('🎛️ Initializing temperature slider...');
             
-            // Debug: Check if containers exist
-            const saturatieContainer = document.getElementById('saturatie-slider-container');
-            const afContainer = document.getElementById('af-slider-container');
-            console.log('Saturatie Container found:', !!saturatieContainer);
-            console.log('AF Container found:', !!afContainer);
+            // Debug: Check if container exists
+            const tempContainer = document.getElementById('temp-slider-container');
+            console.log('Temperature Container found:', !!tempContainer);
             
             // Check if slider components are loaded
             console.log('VitalParameterSlider available:', !!window.VitalParameterSlider);
-            console.log('PatientConfigurationHelper available:', !!window.PatientConfigurationHelper);
             console.log('SharedDataManager available:', !!window.sharedDataManager);
             
             if (!window.VitalParameterSlider) {
                 console.error('❌ VitalParameterSlider class not found');
-                if (saturatieContainer) saturatieContainer.innerHTML = '<p style="color: red;">Slider component not loaded - VitalParameterSlider missing</p>';
-                return;
-            }
-            
-            if (!window.PatientConfigurationHelper) {
-                console.error('❌ PatientConfigurationHelper class not found');
-                if (afContainer) afContainer.innerHTML = '<p style="color: red;">Slider component not loaded - PatientConfigurationHelper missing</p>';
+                if (tempContainer) tempContainer.innerHTML = '<p style="color: red;">Slider component not loaded - VitalParameterSlider missing</p>';
                 return;
             }
             
             if (!currentPatientId) {
-                console.error('❌ No patient ID available for sliders');
-                if (saturatieContainer) saturatieContainer.innerHTML = '<p style="color: orange;">No patient ID available</p>';
-                if (afContainer) afContainer.innerHTML = '<p style="color: orange;">No patient ID available</p>';
+                console.error('❌ No patient ID available for slider');
+                if (tempContainer) tempContainer.innerHTML = '<p style="color: orange;">No patient ID available</p>';
                 return;
             }
             
-            console.log('✅ All prerequisites met, creating respiratory sliders for patient:', currentPatientId);
+            console.log('✅ All prerequisites met, creating temperature slider for patient:', currentPatientId);
             
             try {
                 // Debug: Check what data we have
                 console.log('Current patient ID:', currentPatientId);
                 const patientInfo = window.sharedDataManager ? window.sharedDataManager.getPatientInfo(currentPatientId) : null;
-                const patientSettings = window.sharedDataManager ? window.sharedDataManager.getPatientRespiratorySettings(currentPatientId) : null;
+                const patientSettings = window.sharedDataManager ? window.sharedDataManager.getPatientOtherSettings(currentPatientId) : null;
                 console.log('Patient info:', patientInfo);
-                console.log('Patient respiratory settings:', patientSettings);
+                console.log('Patient other settings:', patientSettings);
                 
-                // Initialize Saturatie Slider
-                const saturatieContainer = document.getElementById('saturatie-slider-container');
-                if (saturatieContainer) {
-                    console.log('� Creating Saturatie slider...');
-                    saturatieContainer.innerHTML = '<p style="color: blue;">Loading Saturatie slider...</p>';
+                // Initialize Temperature Slider
+                if (tempContainer) {
+                    console.log('🌡️ Creating Temperature slider...');
+                    tempContainer.innerHTML = '<p style="color: blue;">Loading Temperature slider...</p>';
                     
                     try {
-                        saturatieSlider = new window.VitalParameterSlider(saturatieContainer, {
-                            parameter: 'Saturatie',
-                            name: 'Saturatie',
-                            unit: '%',
-                            targetRange: currentSettings.saturatie || { min: 90, max: 100 },
-                            yAxis: { min: 80, max: 100, step: 5 },
+                        tempSlider = new window.VitalParameterSlider(tempContainer, {
+                            parameter: 'Temperature',
+                            name: 'Temperatuur',
+                            unit: '°C',
+                            targetRange: currentSettings.temperature || { min: 36.5, max: 39.0 },
+                            yAxis: { min: 35, max: 42, step: 0.5 },
                             monitoringLevel: 'mid',
                             patientId: currentPatientId,
                             patientName: patientInfo?.name || `Patiënt ${currentPatientId}`,
                             onChange: (data) => {
-                                console.log('Saturatie Slider changed:', data);
+                                console.log('Temperature Slider changed:', data);
                                 if (window.sharedDataManager && data.type === 'save') {
-                                    const newSettings = { saturatie: { min: data.min, max: data.max }, af: currentSettings.af };
-                                    window.sharedDataManager.savePatientRespiratorySettings(currentPatientId, newSettings);
+                                    const newSettings = { temperature: { min: data.min, max: data.max } };
+                                    window.sharedDataManager.savePatientOtherSettings(currentPatientId, newSettings);
                                     currentSettings = newSettings;
                                     const updatedTargetRanges = {
-                                        Saturatie: { min: Math.round(data.min), max: Math.round(data.max), unit: '%' },
-                                        AF: { 
-                                            min: Math.round(currentSettings.af?.min || 12), 
-                                            max: Math.round(currentSettings.af?.max || 20), 
-                                            unit: '/min' 
-                                        }
+                                        Temperature: { min: Math.round(data.min * 10) / 10, max: Math.round(data.max * 10) / 10, unit: '°C' }
                                     };
                                     window.sharedDataManager.updateGlobalTargetRanges(currentPatientId, updatedTargetRanges);
-                                    console.log('🎯 Updated target ranges after Saturatie slider change:', updatedTargetRanges);
+                                    console.log('🎯 Updated target ranges after Temperature slider change:', updatedTargetRanges);
                                 }
                             }
                         });
                         
-                        if (saturatieSlider) {
-                            console.log('✅ Saturatie Slider initialized successfully');
+                        if (tempSlider) {
+                            console.log('✅ Temperature Slider initialized successfully');
                         } else {
-                            console.error('❌ Saturatie Slider initialization returned null');
-                            saturatieContainer.innerHTML = '<p style="color: red;">Saturatie Slider initialization returned null</p>';
+                            console.error('❌ Temperature Slider initialization returned null');
+                            tempContainer.innerHTML = '<p style="color: red;">Temperature Slider initialization returned null</p>';
                         }
                     } catch (error) {
-                        console.error('❌ Saturatie Slider creation error:', error);
-                        saturatieContainer.innerHTML = `<p style="color: red;">Saturatie Slider error: ${error.message}</p>`;
+                        console.error('❌ Temperature Slider creation error:', error);
+                        tempContainer.innerHTML = `<p style="color: red;">Temperature Slider error: ${error.message}</p>`;
                     }
+                } else {
+                    console.error('❌ Temperature container not found');
                 }
                 
-                // Initialize AF Slider
-                const afContainer = document.getElementById('af-slider-container');
-                if (afContainer) {
-                    console.log('🌬️ Creating AF slider...');
-                    console.log('🔍 DEBUG: currentSettings.af before AF slider creation:', currentSettings.af);
-                    
-                    // Double-check target ranges right before slider creation
-                    const targetRanges = window.sharedDataManager.getPatientTargetRanges(currentPatientId);
-                    console.log('🔍 DEBUG: Target ranges right before AF slider creation:', targetRanges?.AF);
-                    
-                    // If pneumonie is active, ensure we use the correct pneumonie AF ranges
-                    if (currentPatientId && window.sharedDataManager) {
-                        const pneumonieState = window.sharedDataManager.getPatientConditionState('pneumonie', currentPatientId);
-                        if (pneumonieState && pneumonieState.isActive) {
-                            console.log('🫁 Pneumonie is active - forcing AF range to 10-30 for slider initialization');
-                            currentSettings.af = { min: 10, max: 30 };
-                        }
-                    }
-                    
-                    console.log('🔍 DEBUG: Final currentSettings.af for AF slider creation:', currentSettings.af);
-                    afContainer.innerHTML = '<p style="color: blue;">Loading AF slider...</p>';
-                    
-                    try {
-                        afSlider = new window.VitalParameterSlider(afContainer, {
-                            parameter: 'AF',
-                            name: 'Ademfrequentie',
-                            unit: '/min',
-                            targetRange: currentSettings.af || { min: 12, max: 20 },
-                            yAxis: { min: 5, max: 35, step: 5 },
-                            monitoringLevel: 'mid',
-                            patientId: currentPatientId,
-                            patientName: patientInfo?.name || `Patiënt ${currentPatientId}`,
-                            onChange: (data) => {
-                                console.log('AF Slider changed:', data);
-                                if (window.sharedDataManager && data.type === 'save') {
-                                    // Check if pneumonie is currently active (similar to sepsis logic)
-                                    const targetRanges = window.sharedDataManager.getPatientTargetRanges(currentPatientId);
-                                    const isPneumonieActive = targetRanges && targetRanges.AF && 
-                                                             targetRanges.AF.min === 10 && targetRanges.AF.max === 30;
-                                    
-                                    if (isPneumonieActive) {
-                                        console.log('🫁 Pneumonie is active - ignoring manual AF adjustments');
-                                        // Don't save manual adjustments when pneumonie is active
-                                        return;
-                                    }
-                                    
-                                    // Normal case - save manual adjustments
-                                    const newSettings = { saturatie: currentSettings.saturatie, af: { min: data.min, max: data.max } };
-                                    window.sharedDataManager.savePatientRespiratorySettings(currentPatientId, newSettings);
-                                    currentSettings = newSettings;
-                                    const updatedTargetRanges = {
-                                        Saturatie: { 
-                                            min: Math.round(currentSettings.saturatie?.min || 90), 
-                                            max: Math.round(currentSettings.saturatie?.max || 100), 
-                                            unit: '%' 
-                                        },
-                                        AF: { min: Math.round(data.min), max: Math.round(data.max), unit: '/min' }
-                                    };
-                                    window.sharedDataManager.updateGlobalTargetRanges(currentPatientId, updatedTargetRanges);
-                                    console.log('🎯 Updated target ranges after AF slider change:', updatedTargetRanges);
-                                }
-                            }
-                        });
-                        
-                        if (afSlider) {
-                            console.log('✅ AF Slider initialized successfully');
+            } catch (error) {
+                console.error('❌ Error during slider initialization:', error);
+                if (tempContainer) {
+                    tempContainer.innerHTML = `<p style="color: red;">Error: ${error.message}</p>`;
+                }
+            }
+        }
                             
                             // Check if pneumonie is currently active and force AF slider to use pneumonie ranges
                             if (currentPatientId && window.sharedDataManager) {
@@ -1872,23 +1732,6 @@
                                     }
                                 }
                             }
-                        } else {
-                            console.error('❌ AF Slider initialization returned null');
-                            afContainer.innerHTML = '<p style="color: red;">AF Slider initialization returned null</p>';
-                        }
-                    } catch (error) {
-                        console.error('❌ AF Slider creation error:', error);
-                        afContainer.innerHTML = `<p style="color: red;">AF Slider error: ${error.message}</p>`;
-                    }
-                }
-                
-            } catch (error) {
-                console.error('❌ Error initializing respiratory sliders:', error);
-                document.getElementById('saturatie-slider-container').innerHTML = `<p style="color: red;">Error: ${error.message}</p>`;
-                document.getElementById('af-slider-container').innerHTML = `<p style="color: red;">Error: ${error.message}</p>`;
-            }
-        }
-
         // Legacy functions removed - functionality now handled by slider components
 
         function goBackToAlarmOverview() {
@@ -1953,6 +1796,10 @@
             }
             
             // Navigate to bed overview
+            window.location.href = 'bed-overview.html';
+        }
+
+        function goToBedOverview() {
             window.location.href = 'bed-overview.html';
         }
     </script>

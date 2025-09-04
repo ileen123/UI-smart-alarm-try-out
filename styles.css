@@ -29,6 +29,24 @@ body {
     padding: 20px 200px 20px 200px; /* top right bottom left - reduced top padding */
 }
 
+/* Setup page specific styling - prevent scrolling and adjust layout */
+.setup-page {
+    height: 100vh; /* Full viewport height */
+    overflow: hidden; /* Prevent scrolling */
+    padding: 20px 200px 20px 200px;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Alarm overview page specific styling - prevent scrolling and adjust layout */
+.alarm-overview-page {
+    height: 100vh; /* Full viewport height */
+    overflow: hidden; /* Prevent scrolling */
+    padding: 20px 200px 20px 200px;
+    display: flex;
+    flex-direction: column;
+}
+
 /* =============================================================================
    2. HEADER SECTION - Patient Information Display
 ============================================================================= */
@@ -39,12 +57,41 @@ body {
     padding: 10px 20px; /* Internal spacing */
     border-radius: 8px; /* Rounded corners for modern look */
     margin-bottom: 30px; /* Space below header */
-    display: flex; /* Horizontal layout */
-    align-items: center; /* Vertically center content */
-    gap: 20px; /* Space between user icon and text */
-    font-size: 14px; /* Smaller font for patient details */
-    font-weight: 400; /* Regular weight */
-    color: #000000; /* Medium gray text color */
+    display: flex; /* Horizontal layout for icon and text */
+    align-items: center; /* Vertically center items */
+    gap: 10px; /* Space between icon and text */
+}
+
+/* Title and Patient Info Layout - Horizontal arrangement */
+.title-patient-layout {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 30px;
+    gap: 30px;
+}
+
+/* Title in title-patient layout takes left side */
+.title-patient-layout .main-title {
+    margin-bottom: 0; /* Remove bottom margin since layout handles spacing */
+    flex-shrink: 0; /* Prevent title from shrinking */
+}
+
+/* Header in title-patient layout takes right side */
+.title-patient-layout .header {
+    margin-bottom: 0; /* Remove bottom margin since layout handles spacing */
+    flex-shrink: 0; /* Prevent header from shrinking */
+    min-width: 300px; /* Ensure adequate space for patient info */
+}
+
+/* Alarm overview page specific header adjustments */
+.alarm-overview-page .header {
+    margin-bottom: 15px; /* Slightly reduced spacing to balance with breadcrumb */
+}
+
+/* Alarm overview page specific title-patient layout adjustments */
+.alarm-overview-page .title-patient-layout {
+    margin-bottom: 20px; /* Reduced spacing for alarm overview */
 }
 
 /* User icon styling within header */
@@ -70,6 +117,34 @@ body {
     display: inline-block; /* Makes element only as wide as its content */
 }
 
+/* Alarm overview page specific main title adjustments */
+.alarm-overview-page .main-title {
+    margin-bottom: 20px; /* Reduced spacing for alarm overview */
+    padding-bottom: 10px; /* Ensure consistent padding */
+    display: inline-block !important; /* Force inline-block to match content width */
+    position: relative; /* For pseudo-element positioning */
+    width: auto !important; /* Force auto width */
+    max-width: fit-content !important; /* Force fit-content */
+}
+
+/* Hide the default underline for alarm overview page */
+.alarm-overview-page .main-title::after {
+    display: none !important; /* Hide the full-width underline */
+}
+
+/* Create a new, properly sized underline for alarm overview page */
+.alarm-overview-page .main-title::before {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%; /* This will match the actual text width */
+    height: 3px;
+    background-color: #ff6b35;
+    border-radius: 1.5px;
+    display: block;
+}
+
 /* Orange accent line that matches title width */
 .main-title::after {
     content: ''; /* Empty content for pseudo-element */
@@ -89,6 +164,11 @@ body {
     margin-bottom: 40px; /* Space below progress bar */
     width: 100%; /* Full width to match form sections */
     justify-content: space-between; /* Distribute steps evenly */
+}
+
+/* Reduce progress bar spacing on setup page */
+.setup-page .progress-bar {
+    margin-bottom: 20px; /* Reduced spacing for setup page */
 }
 
 /* Individual step container in progress bar */
@@ -125,8 +205,8 @@ body {
 
 /* Checkmark ready state - when steps 1 and 2 are done */
 .step-number.checkmark-ready {
-    background-color: #28a745; /* Green background for ready checkmark */
-    color: white; /* White checkmark */
+    background-color: #ffc107; /* Yellow background for ready checkmark */
+    color: #856404; /* Dark yellow checkmark */
     font-weight: bold; /* Bold checkmark */
 }
 
@@ -154,7 +234,7 @@ body {
 
 /* General section container for each form section */
 .section {
-    margin-bottom: 40px; /* Consistent spacing between sections */
+    margin-bottom: 20px; /* Consistent spacing between sections */
 }
 
 /* Container for the three main form sections - horizontal layout */
@@ -163,6 +243,11 @@ body {
     gap: 30px; /* Space between sections */
     margin-bottom: 40px; /* Space below the container */
     align-items: flex-start; /* Align sections to top */
+}
+
+/* Alarm overview page specific form sections adjustments */
+.alarm-overview-page .form-sections-container {
+    margin-bottom: 25px; /* Reduced spacing for alarm overview */
 }
 
 /* Individual form section within the horizontal container */
@@ -183,6 +268,11 @@ body {
     font-weight: 600; /* Semibold weight */
     color: #1961AB; /* Blue color to match theme */
     margin-bottom: 15px; /* Space below title */
+}
+
+/* Reduce section title spacing on setup page */
+.setup-page .section-title {
+    margin-bottom: 10px; /* Reduced spacing for setup page */
 }
 
 /* Container for groups of buttons */
@@ -231,6 +321,12 @@ body {
             display: flex;
             align-items: center;
             line-height: 1.2;
+        }
+
+        /* Alarm overview page specific breadcrumb adjustments */
+        .alarm-overview-page .breadcrumb-nav {
+            margin-bottom: 25px; /* Restored spacing for better visibility */
+            padding-top: 10px; /* Restored top padding for breathing room */
         }
 
         .breadcrumb-link {
@@ -309,20 +405,29 @@ body {
 }
 
 .btn.risk-mid { 
-    border-color: #FC6039; /* Blue border for medium risk */
-    color: #FC6039; /* Blue text */
+    border-color: #FC6039; /* Orange border for medium risk */
+    color: #FC6039; /* Orange text */
 }
 
 .btn.risk-high { 
-    border-color: #FC6039; /* Red border for high risk */
-    color: #FC6039; /* Red text */
+    border-color: #FC6039; /* Orange border for high risk */
+    color: #FC6039; /* Orange text */
+}
+
+/* Ensure risk-med class also uses orange like other risk buttons */
+.btn.risk-med { 
+    border-color: #FC6039; /* Orange border for medium risk */
+    color: #FC6039; /* Orange text */
 }
 
 /* Selected state for specific risk buttons - overrides unselected colors */
 .btn.risk-low.selected,
 .btn.risk-mid.selected,
+.btn.risk-med.selected,
 .btn.risk-high.selected {
     color: white !important; /* Force white text for all selected risk buttons */
+    background-color: #FC6039 !important; /* Orange background for selected risk buttons */
+    border-color: #FC6039 !important;
 }
 
 /* Sepsis icon styling */
@@ -377,12 +482,12 @@ body {
 
 /* Selected state for dropdown - when option is chosen */
 .problem-dropdown.selected {
-    background-color: #e3f2fd; /* Light blue background */
-    border-color: #FC6039; /* Blue border */
+    background-color: #fff3cd; /* Light yellow background */
+    border-color: #ffc107; /* Yellow border */
     border-width: 3px; /* Thicker border for emphasis */
     font-weight: 600; /* Slightly bolder text */
-    color: #0056b3; /* Darker blue text color */
-    box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.25); /* Blue glow effect */
+    color: #856404; /* Dark yellow text color */
+    box-shadow: 0 0 0 3px rgba(255, 193, 7, 0.25); /* Yellow glow effect */
 }
 
 .problem-dropdown option {
@@ -410,7 +515,7 @@ body {
     background-color: #e3f2fd; /* Light blue background */
     padding: 12px; /* Reduced padding for better alignment */
     border-radius: 10px; /* Slightly smaller border radius */
-    margin-top: 10px; /* Reduced space above tags section */
+    margin: 0px -20px; /* Reduced space above tags section */
     flex: 1; /* Take remaining space in form section */
     display: flex;
     align-items: flex-start;
@@ -456,6 +561,20 @@ body {
     align-items: stretch;
 }
 
+/* Alarm overview page specific monitoring section adjustments */
+.alarm-overview-page .monitoring-section {
+    margin-top: 20px; /* Increased spacing to move section lower */
+    flex: 1; /* Take remaining space */
+    overflow: hidden; /* Prevent content overflow */
+}
+
+/* Reduce monitoring section spacing on setup page */
+.setup-page .monitoring-section {
+    margin-top: 10px; /* Even less spacing for setup page */
+    flex: 1; /* Take remaining space */
+    overflow: hidden; /* Prevent content overflow */
+}
+
 /* Grid layout for organ monitoring circles */
 .monitoring-grid {
     display: flex;
@@ -469,6 +588,12 @@ body {
     margin-bottom: 40px;
     gap: 30px;
     min-height: auto; /* Allow automatic height adjustment */
+}
+
+/* Alarm overview page specific monitoring grid adjustments */
+.alarm-overview-page .monitoring-grid {
+    padding: 25px 30px 15px 30px; /* Reduced vertical padding */
+    margin-bottom: 25px; /* Reduced bottom margin */
 }
 
 /* Individual organ monitoring item */
@@ -506,7 +631,7 @@ body {
     width: 80px; /* Fixed width for consistency */
     height: 80px; /* Fixed height for consistency */
     border-radius: 50%; /* Perfect circle */
-    margin: 0 auto 10px; /* Center horizontally, space below */
+    margin: 0; /* Center horizontally, space below */
     position: relative; /* For positioning inner circle */
     display: flex; /* Center the inner content */
     align-items: center; /* Vertically center */
@@ -544,16 +669,16 @@ body {
 
 /* Labels for each organ system */
 .monitor-label {
-    font-size: 14px; /* Standard font size */
+    font-size: 16px; /* Standard font size */
     font-weight: 600; /* Semi-bold weight */
-    margin-bottom: 5px; /* Space below label */
+    margin-bottom: 0px; /* Space below label */
 }
 
 /* Status text below each monitoring circle */
 .monitor-status {
     font-size: 12px; /* Small font */
     color: #000000; /* Medium gray */
-    margin-top: 10px;
+    margin-top: 0px;
     font-style: italic; /* Italicized for emphasis */
 }
 
@@ -580,27 +705,41 @@ body {
     display: flex; /* Use flexbox layout */
     flex-direction: column; /* Stack items vertically */
     min-height: 200px; /* Reduced minimum height for compact display */
-    justify-content: space-between; /* Distribute space evenly */
+    justify-content: flex-start; /* Start from top, allow natural spacing */
     min-width: 300px; /* Take full width of monitor-item */
     max-width: 300px; /* Maximum width to prevent cards from being too wide */
 }
 
 /* Parameter group - groups parameter name with its value */
 .parameter-group {
-    margin-bottom: 20px; /* Default space between different parameters */
+    margin-bottom: 0px; /* Default space between different parameters */
 }
 
 .parameter-group:last-child {
-    margin-bottom: 0; /* No bottom margin for last parameter */
+    margin-bottom: 10px; /* No bottom margin for last parameter */
 }
 
 /* Page-specific parameter spacing adjustments */
 .setup-page .parameter-group {
-    margin-bottom: 15px; /* Tighter spacing for setup page */
+    margin-bottom: 22px; /* Tighter spacing for setup page */
+}
+
+/* Reduce height of parameter cards on setup page only */
+.setup-page .value-card {
+    min-height: 110px; /* Smaller height for setup page */
 }
 
 .alarm-overview-page .parameter-group {
     margin-bottom: 20px; /* Standard spacing for alarm overview page */
+}
+
+/* Add spacing between parameters in alarm overview value cards */
+.alarm-overview-page .value-number {
+    margin-bottom: 22px; /* Add space after each parameter value */
+}
+
+.alarm-overview-page .value-number:last-of-type {
+    margin-bottom: 0; /* Remove margin from last parameter value */
 }
 
 .value-card.active {
@@ -612,7 +751,7 @@ body {
     font-size: 12px; /* Small font */
     font-weight: 600; /* Semibold for parameter labels */
     color: #666; /* Medium gray */
-    margin-bottom: 2px; /* Reduced space below label - closer to value */
+    margin-bottom: 4px; /* Reduced space below label - closer to value */
     transition: color 0.5s ease-in-out;
 }
 
@@ -654,14 +793,14 @@ body {
     box-shadow: none;
 }
 
-/* Blue highlight variant for pneumonie */
+/* Yellow highlight variant for pneumonie */
 .value-number.highlight-blue {
-    background-color: #e1f5fe; /* Light blue background */
-    color: #01579b; /* Dark blue text */
+    background-color: #fff3cd; /* Light yellow background */
+    color: #856404; /* Dark yellow text */
     padding: 4px 8px; /* Add padding when highlighted */
     border-radius: 20px; /* Rounded corners */
-    border: 2px solid #29b6f6; /* Blue border */
-    animation: pulse-blue 0.6s ease-in-out; /* Blue pulse animation */
+    border: 2px solid #ffc107; /* Yellow border */
+    animation: pulse-yellow 0.6s ease-in-out; /* Yellow pulse animation */
     transition: all 0.3s ease-out; /* Smooth transition for fade-out */
 }
 
@@ -675,14 +814,14 @@ body {
     box-shadow: none;
 }
 
-/* Green highlight variant for restored/positive changes */
+/* Yellow highlight variant for restored/positive changes */
 .value-number.highlight-green {
-    background-color: #e8f5e8; /* Light green background */
-    color: #155724; /* Dark green text */
+    background-color: #fff3cd; /* Light yellow background */
+    color: #856404; /* Dark yellow text */
     padding: 4px 8px; /* Add padding when highlighted */
     border-radius: 20px; /* Rounded corners */
-    border: 2px solid #28a745; /* Green border */
-    animation: pulse-green 0.6s ease-in-out; /* Green pulse animation */
+    border: 2px solid #ffc107; /* Yellow border */
+    animation: pulse-yellow 0.6s ease-in-out; /* Yellow pulse animation */
     transition: all 0.3s ease-out; /* Smooth transition for fade-out */
 }
 
@@ -781,6 +920,22 @@ body {
     }
 }
 
+/* Yellow pulse animation for unified highlighting */
+@keyframes pulse-yellow {
+    0% {
+        transform: scale(1);
+        box-shadow: 0 0 0 0 rgba(255, 193, 7, 0.7);
+    }
+    70% {
+        transform: scale(1.05);
+        box-shadow: 0 0 0 10px rgba(255, 193, 7, 0);
+    }
+    100% {
+        transform: scale(1);
+        box-shadow: 0 0 0 0 rgba(255, 193, 7, 0);
+    }
+}
+
 /* =============================================================================
    10. NAVIGATION SECTION - Bottom Controls
 ============================================================================= */
@@ -792,6 +947,32 @@ body {
     margin-top: 60px; /* Increased spacing above navigation */
     padding-top: 20px; /* Additional padding for visual separation */
     gap: 15px; /* Add space between buttons */
+}
+
+/* Alarm overview page specific navigation adjustments */
+.alarm-overview-page .navigation {
+    position: fixed;
+    bottom: 63px;
+    left: 200px;
+    right: 200px;
+    background: white;
+    padding: 20px;
+    border-top: 1px solid #eee;
+    margin-top: 0;
+    z-index: 1000;
+}
+
+/* Fixed navigation for setup page */
+.setup-page .navigation {
+    position: fixed;
+    bottom: 20px;
+    left: 200px;
+    right: 200px;
+    background: white;
+    padding: 20px;
+    border-top: 1px solid #eee;
+    margin-top: 0;
+    z-index: 1000;
 }
 
 /* Base styling for navigation buttons */
@@ -838,7 +1019,7 @@ body {
 .problem-section {
     flex: 1;
     background: white;
-    padding: 20px;
+    padding: 0px;
     border-radius: 12px;
     box-shadow: 0 2px 8px rgba(0,0,0,0.1);
 }

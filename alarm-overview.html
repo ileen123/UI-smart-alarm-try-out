@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     
     <!-- Page title that appears in browser tab -->
-    <title>Alarm Overzicht</title>
+    <title>Alarm Instellingen</title>
     
     <!-- Google Fonts - Open Sans with multiple weights -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -32,15 +32,17 @@
         <span class="breadcrumb-current">Alarm Instellingen - S. Groen</span>
     </nav>
 
-
-    <!-- Patient information header section -->
-    <div class="header">
-        <img src="svg's/patient_icon.svg" alt="Patient" class="user-icon" />
-        <span id="patient-header-info">Loading patient info...</span>
+    <!-- Title and Patient Info Layout -->
+    <div class="title-patient-layout">
+        <!-- Main page title -->
+        <h1 class="main-title" id="main-page-title">Alarm Instellingen</h1>
+        
+        <!-- Patient information header section -->
+        <div class="header">
+            <img src="svg's/patient_icon.svg" alt="Patient" class="user-icon" />
+            <span id="patient-header-info">Loading patient info...</span>
+        </div>
     </div>
-    
-    <!-- Main page title -->
-    <h1 class="main-title">Alarm Overzicht</h1>
     
     <!-- Top section with three columns matching the setup page design -->
         <!-- Container for the three main form sections - horizontal layout -->
@@ -655,6 +657,15 @@
             if (breadcrumbCurrent) {
                 breadcrumbCurrent.textContent = `Alarm Instellingen - ${patient.name}`;
             }
+            
+            // Update main page title with patient name
+            const mainTitle = document.getElementById('main-page-title');
+            if (mainTitle) {
+                mainTitle.textContent = `Alarm Instellingen ${patient.name}`;
+            }
+            
+            // Update browser tab title with patient name
+            document.title = `Alarm Instellingen ${patient.name}`;
         }
 
         function loadExistingSettings() {
@@ -852,41 +863,53 @@
             
             // If we have target ranges, use them; otherwise fall back to condition-based logic
             if (targetRanges) {
-                // Update HR display with target ranges
-                const circulatoryCard = document.querySelector('.value-card');
-                const hrRange = circulatoryCard?.querySelector('.value-number');
+                // Check which conditions are currently active
+                const hasSepsis = selectedTags.some(tag => tag.toLowerCase().includes('sepsis'));
+                const hasPneumonie = selectedTags.some(tag => tag.toLowerCase().includes('pneumonie'));
                 
-                if (hrRange && targetRanges.HR) {
-                    const hr = targetRanges.HR;
-                    hrRange.textContent = Math.round(hr.min) + ' - ' + Math.round(hr.max) + ' ' + (hr.unit || 'bpm');
-                    console.log('🎯 Updated HR range from target ranges:', Math.round(hr.min) + ' - ' + Math.round(hr.max) + ' ' + (hr.unit || 'bpm'));
+                // Always update HR display if target ranges exist (for manual adjustments)
+                if (targetRanges.HR) {
+                    const circulatoryCard = document.querySelector('.value-card');
+                    const hrRange = circulatoryCard?.querySelector('.value-number');
                     
-                    // Apply target range styling
-                    window.sharedDataManager.highlightElement(hrRange, 'highlight-beige', 1500);
-                    console.log('✅ Applied target range highlighting to HR display');
-                }
-                
-                // Update BP display if available
-                const bpCards = document.querySelectorAll('.value-card');
-                if (bpCards.length > 0 && targetRanges.BP_Mean) {
-                    // Get the BP range from the circulatory card (1st card, 2nd value-number)
-                    const bpRange = bpCards[0]?.querySelectorAll('.value-number')[1];
-                    if (bpRange) {
-                        const bp = targetRanges.BP_Mean;
-                        bpRange.textContent = Math.round(bp.min) + ' - ' + Math.round(bp.max) + ' ' + (bp.unit || 'mmHg');
-                        console.log('🎯 Updated BP range from target ranges:', Math.round(bp.min) + ' - ' + Math.round(bp.max) + ' ' + (bp.unit || 'mmHg'));
+                    if (hrRange) {
+                        const hr = targetRanges.HR;
+                        hrRange.textContent = Math.round(hr.min) + ' - ' + Math.round(hr.max) + ' ' + (hr.unit || 'bpm');
+                        console.log('🎯 Updated HR range from target ranges:', Math.round(hr.min) + ' - ' + Math.round(hr.max) + ' ' + (hr.unit || 'bpm'));
                         
-                        // Apply target range styling
-                        window.sharedDataManager.highlightElement(bpRange, 'highlight-beige', 1500);
-                        console.log('✅ Applied target range highlighting to BP display');
-                    } else {
-                        console.warn('❌ BP range element not found');
+                        // Apply highlighting only if sepsis is active
+                        if (hasSepsis) {
+                            window.sharedDataManager.highlightElement(hrRange, 'highlight-beige', 1500);
+                            console.log('✅ Applied sepsis highlighting to HR display');
+                        }
                     }
-                } else {
-                    console.warn('❌ BP cards not found or no BP_Mean in target ranges');
                 }
                 
-                // Update AF display if available
+                // Always update BP display if target ranges exist (for manual adjustments)
+                if (targetRanges.BP_Mean) {
+                    const bpCards = document.querySelectorAll('.value-card');
+                    if (bpCards.length > 0) {
+                        // Get the BP range from the circulatory card (1st card, 2nd value-number)
+                        const bpRange = bpCards[0]?.querySelectorAll('.value-number')[1];
+                        if (bpRange) {
+                            const bp = targetRanges.BP_Mean;
+                            bpRange.textContent = Math.round(bp.min) + ' - ' + Math.round(bp.max) + ' ' + (bp.unit || 'mmHg');
+                            console.log('🎯 Updated BP range from target ranges:', Math.round(bp.min) + ' - ' + Math.round(bp.max) + ' ' + (bp.unit || 'mmHg'));
+                            
+                            // Apply highlighting only if sepsis is active
+                            if (hasSepsis) {
+                                window.sharedDataManager.highlightElement(bpRange, 'highlight-beige', 1500);
+                                console.log('✅ Applied sepsis highlighting to BP display');
+                            }
+                        } else {
+                            console.warn('❌ BP range element not found');
+                        }
+                    } else {
+                        console.warn('❌ BP cards not found');
+                    }
+                }
+                
+                // Always update AF display if target ranges exist (for manual adjustments)
                 if (targetRanges.AF) {
                     const afRangeDisplay = document.getElementById('af-range-display-overview');
                     if (afRangeDisplay) {
@@ -894,12 +917,11 @@
                         afRangeDisplay.textContent = Math.round(af.min) + ' - ' + Math.round(af.max) + ' ' + (af.unit || '/min');
                         console.log('🎯 Updated AF range from target ranges:', Math.round(af.min) + ' - ' + Math.round(af.max) + ' ' + (af.unit || '/min'));
                         
-                        // Apply target range styling
-                        afRangeDisplay.style.backgroundColor = '#FDEAB3'; // Light green highlight
-                        afRangeDisplay.style.border = '2px solid #ffc107'; // Green border
-                        afRangeDisplay.style.borderRadius = '20px';
-                        afRangeDisplay.style.padding = '2px 4px';
-                        console.log('✅ Applied target range styling to AF display');
+                        // Apply highlighting only if pneumonie is active
+                        if (hasPneumonie) {
+                            window.sharedDataManager.highlightElement(afRangeDisplay, 'highlight-blue', 1500);
+                            console.log('✅ Applied pneumonie highlighting to AF display');
+                        }
                         
                         // Remove inactive-text class if present
                         afRangeDisplay.classList.remove('inactive-text');
@@ -908,6 +930,52 @@
                     }
                 } else {
                     console.warn('❌ No AF data in target ranges');
+                }
+                
+                // Always update Saturatie display if target ranges exist (for manual adjustments)
+                if (targetRanges.Saturatie) {
+                    const respiratoryCards = document.querySelectorAll('.value-card');
+                    if (respiratoryCards.length > 1) {
+                        // Get the Saturatie range from the respiratory card (2nd card, 1st value-number)
+                        const saturatieRange = respiratoryCards[1]?.querySelector('.value-number');
+                        if (saturatieRange) {
+                            const saturatie = targetRanges.Saturatie;
+                            saturatieRange.textContent = Math.round(saturatie.min) + ' - ' + Math.round(saturatie.max) + ' ' + (saturatie.unit || '%');
+                            console.log('🎯 Updated Saturatie range from target ranges:', Math.round(saturatie.min) + ' - ' + Math.round(saturatie.max) + ' ' + (saturatie.unit || '%'));
+                            
+                            // Remove inactive-text class if present to make the text visible
+                            saturatieRange.classList.remove('inactive-text');
+                        } else {
+                            console.warn('❌ Saturatie range element not found');
+                        }
+                    } else {
+                        console.warn('❌ Respiratory card not found');
+                    }
+                } else {
+                    console.log('ℹ️ No Saturatie data in target ranges');
+                }
+                
+                // Always update Temperature display if target ranges exist (for manual adjustments)
+                if (targetRanges.Temperature) {
+                    const temperatureCards = document.querySelectorAll('.value-card');
+                    if (temperatureCards.length > 2) {
+                        // Get the Temperature range from the other card (3rd card, 1st value-number)
+                        const temperatureRange = temperatureCards[2]?.querySelector('.value-number');
+                        if (temperatureRange) {
+                            const temperature = targetRanges.Temperature;
+                            temperatureRange.textContent = temperature.min + ' - ' + temperature.max + ' ' + (temperature.unit || '°C');
+                            console.log('🎯 Updated Temperature range from target ranges:', temperature.min + ' - ' + temperature.max + ' ' + (temperature.unit || '°C'));
+                            
+                            // Remove inactive-text class if present to make the text visible
+                            temperatureRange.classList.remove('inactive-text');
+                        } else {
+                            console.warn('❌ Temperature range element not found');
+                        }
+                    } else {
+                        console.warn('❌ Temperature card not found');
+                    }
+                } else {
+                    console.log('ℹ️ No Temperature data in target ranges');
                 }
             } else {
                 // Fall back to original condition-based logic
@@ -936,30 +1004,22 @@
                 
                 console.log('🔍 DEBUG: Using thresholds:', currentThresholds);
                 
-                // Update circulatory parameters (HR) - find the heart rate display
-                const circulatoryCard = document.querySelector('.value-card');
-                const hrRange = circulatoryCard?.querySelector('.value-number');
-                
-                if (hrRange && currentThresholds.circulatoir && currentThresholds.circulatoir.HR) {
-                    const hr = currentThresholds.circulatoir.HR;
-                    hrRange.textContent = Math.round(hr.min) + ' - ' + Math.round(hr.max) + ' ' + hr.unit;
+                // Update circulatory parameters (HR) - find the heart rate display (ONLY if sepsis is active)
+                if (hasSepsis) {
+                    const circulatoryCard = document.querySelector('.value-card');
+                    const hrRange = circulatoryCard?.querySelector('.value-number');
                     
-                    console.log('🔍 DEBUG: Updated HR range to:', Math.round(hr.min) + ' - ' + Math.round(hr.max) + ' ' + hr.unit);
-                    
-                    // Highlight if using sepsis thresholds
-                    if (hasSepsis && sepsisThresholds) {
-                        hrRange.style.backgroundColor = '#FDEAB3'; // Light yellow highlight
-                        hrRange.style.border = '2px solid #ffc107'; // Yellow border
-                        hrRange.style.borderRadius = '20px';
-                        hrRange.style.padding = '2px 4px';
-                        console.log('🔍 DEBUG: Applied sepsis highlighting to HR range');
-                    } else {
-                        // Reset to normal styling
-                        hrRange.style.backgroundColor = '';
-                        hrRange.style.border = '';
-                        hrRange.style.borderRadius = '';
-                        hrRange.style.padding = '';
-                        console.log('🔍 DEBUG: Reset HR range to normal styling');
+                    if (hrRange && currentThresholds.circulatoir && currentThresholds.circulatoir.HR) {
+                        const hr = currentThresholds.circulatoir.HR;
+                        hrRange.textContent = Math.round(hr.min) + ' - ' + Math.round(hr.max) + ' ' + hr.unit;
+                        
+                        console.log('🔍 DEBUG: Updated HR range to (sepsis):', Math.round(hr.min) + ' - ' + Math.round(hr.max) + ' ' + hr.unit);
+                        
+                        // Highlight if using sepsis thresholds
+                        if (hasSepsis && sepsisThresholds) {
+                            window.sharedDataManager.highlightElement(hrRange, 'highlight-beige', 1500);
+                            console.log('🔍 DEBUG: Applied sepsis highlighting to HR range');
+                        }
                     }
                 }
             }
@@ -978,17 +1038,13 @@
                 
                 // Apply styling based on source
                 if (isSepsis) {
-                    hrRange.style.backgroundColor = '#FDEAB3'; // Light yellow highlight for sepsis
-                    hrRange.style.border = '2px solid #ffc107'; // Yellow border
-                    hrRange.style.borderRadius = '20px';
-                    hrRange.style.padding = '2px 4px';
-                    console.log('🦠 Applied sepsis styling to HR display');
+                    // Use the shared highlighting function with timeout for sepsis
+                    window.sharedDataManager.highlightElement(hrRange, 'highlight-beige', 1500);
+                    console.log('🦠 Applied sepsis highlighting to HR display with 1.5s timeout');
                 } else {
-                    hrRange.style.backgroundColor = '#e8f5e8'; // Light green for restored
-                    hrRange.style.border = '2px solid #28a745'; // Green border
-                    hrRange.style.borderRadius = '4px';
-                    hrRange.style.padding = '2px 4px';
-                    console.log('🔙 Applied restored styling to HR display');
+                    // Use the shared highlighting function with timeout for restored values
+                    window.sharedDataManager.highlightElement(hrRange, 'highlight-beige', 1500);
+                    console.log('🔙 Applied restored highlighting to HR display with 1.5s timeout');
                 }
             }
         }
@@ -1006,17 +1062,13 @@
                 
                 // Apply styling based on source
                 if (isSepsis) {
-                    bpRange.style.backgroundColor = '#FDEAB3'; // Light yellow highlight for sepsis
-                    bpRange.style.border = '2px solid #ffc107'; // Yellow border
-                    bpRange.style.borderRadius = '20px';
-                    bpRange.style.padding = '2px 4px';
-                    console.log('🦠 Applied sepsis styling to BP display');
+                    // Use the shared highlighting function with timeout for sepsis
+                    window.sharedDataManager.highlightElement(bpRange, 'highlight-beige', 1500);
+                    console.log('🦠 Applied sepsis highlighting to BP display with 1.5s timeout');
                 } else {
-                    bpRange.style.backgroundColor = '#e8f5e8'; // Light green for restored
-                    bpRange.style.border = '2px solid #28a745'; // Green border
-                    bpRange.style.borderRadius = '4px';
-                    bpRange.style.padding = '2px 4px';
-                    console.log('🔙 Applied restored styling to BP display');
+                    // Use the shared highlighting function with timeout for restored values
+                    window.sharedDataManager.highlightElement(bpRange, 'highlight-beige', 1500);
+                    console.log('🔙 Applied restored highlighting to BP display with 1.5s timeout');
                 }
                 
                 // Remove inactive-text class if present
@@ -1036,17 +1088,13 @@
                 
                 // Apply styling based on source
                 if (isPneumonie) {
-                    afRangeDisplay.style.backgroundColor = '#FDEAB3'; // Light blue highlight for pneumonie
-                    afRangeDisplay.style.border = '2px solid #ffc107'; // Blue border
-                    afRangeDisplay.style.borderRadius = '20px';
-                    afRangeDisplay.style.padding = '2px 4px';
-                    console.log('🫁 Applied pneumonie styling to AF display');
+                    // Use the shared highlighting function with timeout for pneumonie (same as setup.html)
+                    window.sharedDataManager.highlightElement(afRangeDisplay, 'highlight-blue', 1500);
+                    console.log('🫁 Applied pneumonie highlighting to AF display with 1.5s timeout');
                 } else {
-                    afRangeDisplay.style.backgroundColor = '#e8f5e8'; // Light green for restored
-                    afRangeDisplay.style.border = '2px solid #28a745'; // Green border
-                    afRangeDisplay.style.borderRadius = '20px';
-                    afRangeDisplay.style.padding = '2px 4px';
-                    console.log('🔙 Applied restored styling to AF display');
+                    // Use the shared highlighting function with timeout for restored values
+                    window.sharedDataManager.highlightElement(afRangeDisplay, 'highlight-blue', 1500);
+                    console.log('🔙 Applied restored highlighting to AF display with 1.5s timeout');
                 }
                 
                 // Remove inactive-text class if present

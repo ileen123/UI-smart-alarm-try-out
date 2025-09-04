@@ -630,13 +630,8 @@
                                     window.sharedDataManager.highlightElement(bpRange, 'highlight', 1500);
                                     console.log('✅ Applied sepsis highlighting to BP display');
                                 } else {
-                                    // Remove any existing highlighting
-                                    bpRange.classList.remove('highlight', 'fade-out');
-                                    bpRange.style.backgroundColor = '';
-                                    bpRange.style.border = '';
-                                    bpRange.style.borderRadius = '';
-                                    bpRange.style.padding = '';
-                                    console.log('✅ Removed sepsis styling from BP display');
+                                    window.sharedDataManager.highlightElement(bpRange, 'highlight-green', 1500);
+                                    console.log('🔙 Applied restored highlighting to BP display');
                                 }
                                 
                                 console.log(`✅ BP display updated directly: ${bpLow} - ${bpHigh} mmHg`);
@@ -1007,6 +1002,30 @@
                         // Navigation functions
                         function goBack() {
                             if (confirm('Weet je zeker dat je terug wilt gaan? Alle wijzigingen gaan verloren.')) {
+                                // Clear the bed data when canceling setup
+                                const sessionData = window.sharedDataManager.getSessionData();
+                                const currentBed = sessionData.currentBed;
+                                
+                                if (currentBed) {
+                                    // Get current bed states
+                                    const bedStates = window.sharedDataManager.getBedStates() || {};
+                                    
+                                    // Clear the specific bed being configured
+                                    if (bedStates[currentBed]) {
+                                        bedStates[currentBed] = {
+                                            bedNumber: currentBed,
+                                            occupied: false,
+                                            patientId: null,
+                                            vpkCode: null,
+                                            riskLevel: null
+                                        };
+                                        
+                                        // Save the updated bed states
+                                        window.sharedDataManager.saveBedStates(bedStates);
+                                        console.log(`🗑️ Cleared bed ${currentBed} data when canceling setup`);
+                                    }
+                                }
+                                
                                 // Reset all selections and data manager
                                 selectedProblem = '';
                                 selectedRiskLevel = '';
@@ -1021,7 +1040,8 @@
                                 document.getElementById('problemDropdown').value = '';
                                 updateProgressBar();
                                 
-                                alert('Terug naar vorige stap...');
+                                // Navigate back to patient overview
+                                window.location.href = 'bed-overview.html';
                             }
                         }
 
