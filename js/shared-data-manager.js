@@ -1247,10 +1247,14 @@ class SharedDataManager {
         window.HR_low = 90;
         window.HR_high = 130;
         
-        // Save to target ranges for consistency and apply sepsis BP ranges
-        const targetRanges = this.getPatientTargetRanges(patientId) || this.getDefaultTargetRanges();
+        // Get existing target ranges, preserving ALL existing values
+        let targetRanges = this.getPatientTargetRanges(patientId);
+        if (!targetRanges) {
+            // Only use defaults if no existing data exists
+            targetRanges = this.getDefaultTargetRanges();
+        }
         
-        // Apply sepsis HR ranges
+        // Only modify HR and BP ranges, preserve everything else (AF, Saturatie, Temperature, etc.)
         targetRanges.HR = {
             min: 90,
             max: 130,
@@ -1293,8 +1297,14 @@ class SharedDataManager {
             window.HR_low = backup.HR_low;
             window.HR_high = backup.HR_high;
             
-            // Update target ranges with backed up values
-            const targetRanges = this.getPatientTargetRanges(patientId) || this.getDefaultTargetRanges();
+            // Get existing target ranges, preserving ALL existing values
+            let targetRanges = this.getPatientTargetRanges(patientId);
+            if (!targetRanges) {
+                // Only use defaults if no existing data exists
+                targetRanges = this.getDefaultTargetRanges();
+            }
+            
+            // Only modify HR and BP ranges, preserve everything else (AF, Saturatie, Temperature, etc.)
             targetRanges.HR = {
                 min: backup.HR_low,
                 max: backup.HR_high,
@@ -1323,8 +1333,14 @@ class SharedDataManager {
                 window.HR_low = normalThresholds.circulatoir.HR.min;
                 window.HR_high = normalThresholds.circulatoir.HR.max;
                 
-                // Update target ranges
-                const targetRanges = this.getPatientTargetRanges(patientId) || this.getDefaultTargetRanges();
+                // Get existing target ranges, preserving ALL existing values
+                let targetRanges = this.getPatientTargetRanges(patientId);
+                if (!targetRanges) {
+                    // Only use defaults if no existing data exists
+                    targetRanges = this.getDefaultTargetRanges();
+                }
+                
+                // Only modify HR ranges, preserve everything else
                 targetRanges.HR = {
                     min: window.HR_low,
                     max: window.HR_high,
@@ -1374,8 +1390,12 @@ class SharedDataManager {
      * Apply pneumonie-specific AF ranges (10-30 instead of 10-25)
      */
     applyPneumonieAFRanges(patientId) {
-        // Save current AF ranges for restoration later
-        const targetRanges = this.getPatientTargetRanges(patientId) || this.getDefaultTargetRanges();
+        // Get existing target ranges, preserving ALL existing values
+        let targetRanges = this.getPatientTargetRanges(patientId);
+        if (!targetRanges) {
+            // Only use defaults if no existing data exists
+            targetRanges = this.getDefaultTargetRanges();
+        }
         
         // Backup current AF ranges if not already backed up
         const afBackupKey = `${this.storageKeys.PATIENT_PREFIX}${patientId}_af_backup`;
@@ -1385,7 +1405,7 @@ class SharedDataManager {
             console.log('💾 Backed up current AF ranges:', currentAF);
         }
         
-        // Apply pneumonie-specific AF ranges
+        // Only modify AF ranges, preserve everything else (HR, BP, Saturatie, Temperature, etc.)
         targetRanges.AF = {
             min: 10,
             max: 30,
@@ -1416,8 +1436,14 @@ class SharedDataManager {
         const backup = JSON.parse(localStorage.getItem(afBackupKey));
         
         if (backup) {
-            // Update target ranges
-            const targetRanges = this.getPatientTargetRanges(patientId) || this.getDefaultTargetRanges();
+            // Get existing target ranges, preserving ALL existing values
+            let targetRanges = this.getPatientTargetRanges(patientId);
+            if (!targetRanges) {
+                // Only use defaults if no existing data exists
+                targetRanges = this.getDefaultTargetRanges();
+            }
+            
+            // Only modify AF ranges, preserve everything else (HR, BP, Saturatie, Temperature, etc.)
             targetRanges.AF = {
                 min: backup.min,
                 max: backup.max,
@@ -1429,7 +1455,13 @@ class SharedDataManager {
             console.log('🔙 Restored previous AF ranges:', backup.min, '-', backup.max, backup.unit);
         } else {
             // Fallback to default AF ranges
-            const targetRanges = this.getPatientTargetRanges(patientId) || this.getDefaultTargetRanges();
+            let targetRanges = this.getPatientTargetRanges(patientId);
+            if (!targetRanges) {
+                // Only use defaults if no existing data exists
+                targetRanges = this.getDefaultTargetRanges();
+            }
+            
+            // Only modify AF ranges, preserve everything else
             targetRanges.AF = {
                 min: 10,
                 max: 25,

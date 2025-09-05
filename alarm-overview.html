@@ -233,9 +233,13 @@
             
             // Get current heart monitoring level from SharedDataManager
             let heartLevel = 'low';
+            let lungLevel = 'low';
+            let tempLevel = 'low';
             if (currentPatientId && window.sharedDataManager) {
                 heartLevel = window.sharedDataManager.getHeartMonitoringLevel(currentPatientId);
-                console.log(`Loading heart monitoring level for patient ${currentPatientId}:`, heartLevel);
+                lungLevel = window.sharedDataManager.getLungMonitoringLevel(currentPatientId);
+                tempLevel = window.sharedDataManager.getTempMonitoringLevel(currentPatientId);
+                console.log(`Loading monitoring levels for patient ${currentPatientId}:`, { heartLevel, lungLevel, tempLevel });
             }
             
             // Store references to the components for later control
@@ -246,15 +250,18 @@
             window.organComponents.heart = new HeartCircleComponent('heart-circle-container', { size: circleSize, initialState: heartLevel });
             setTimeout(() => injectSVG('heart-circle-container', 'heart'), 100);
             
-            // Lung (respiratoir) - start active since patient is already assigned
+            // Lung (respiratoir) - use saved monitoring level
             console.log('Creating lung component...');
-            window.organComponents.lung = new HeartCircleComponent('lung-circle-container', { size: circleSize, initialState: 'low' });
+            window.organComponents.lung = new HeartCircleComponent('lung-circle-container', { size: circleSize, initialState: lungLevel });
             setTimeout(() => injectSVG('lung-circle-container', 'lung'), 100);
             
-            // Temp (overig) - start active since patient is already assigned
+            // Temp (overig) - use saved monitoring level
             console.log('Creating temp component...');
-            window.organComponents.temp = new HeartCircleComponent('temp-circle-container', { size: circleSize, initialState: 'low' });
+            window.organComponents.temp = new HeartCircleComponent('temp-circle-container', { size: circleSize, initialState: tempLevel });
             setTimeout(() => injectSVG('temp-circle-container', 'temp'), 100);
+            
+            // Update monitoring status labels after all components are initialized
+            setTimeout(() => updateMonitoringStatus(), 200);
             
             // Listen for global heart monitoring level changes
             document.addEventListener('heartMonitoringLevelChanged', function(event) {
@@ -463,6 +470,7 @@
                     return 'los';
                 case 'med':
                 case 'medium':
+                case 'mid':
                     return 'mid';
                 case 'high':
                     return 'strak';
