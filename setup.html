@@ -55,7 +55,23 @@
         <div class="form-section">
             <h2 class="section-title">Wat is het hoofdprobleem?</h2>
             <div class="dropdown-container">
-                <select class="problem-dropdown" id="problemDropdown">
+                <!-- Custom Dropdown -->
+                <div class="custom-dropdown-container">
+                    <div class="custom-dropdown" id="problemDropdown" onclick="toggleDropdown()">
+                        <span class="dropdown-text placeholder">Selecteer een probleem...</span>
+                        <span class="dropdown-arrow">▼</span>
+                    </div>
+                    <div class="dropdown-options" id="dropdownOptions">
+                        <div class="dropdown-option" onclick="selectOption('respiratoire-insufficientie', 'Respiratoire Insufficiëntie')">Respiratoire Insufficiëntie</div>
+                        <div class="dropdown-option" onclick="selectOption('hart-falen', 'Hart Falen')">Hart Falen</div>
+                        <div class="dropdown-option" onclick="selectOption('sepsis', 'Sepsis')">Sepsis</div>
+                        <div class="dropdown-option" onclick="selectOption('neurologische-aandoening', 'Neurologische Aandoening')">Neurologische Aandoening</div>
+                        <div class="dropdown-option" onclick="selectOption('nierinsuffcientie', 'Nierinsufficiëntie')">Nierinsufficiëntie</div>
+                        <div class="dropdown-option" onclick="selectOption('leverfalen', 'Leverfalen')">Leverfalen</div>
+                    </div>
+                </div>
+                <!-- Legacy select for backward compatibility -->
+                <select class="problem-dropdown" id="problemDropdownLegacy" style="display: none;">
                     <option value="">Selecteer een probleem...</option>
                     <option value="respiratoire-insufficientie">Respiratoire Insufficiëntie</option>
                     <option value="hart-falen">Hart Falen</option>
@@ -1182,6 +1198,78 @@
                                 console.error('❌ Error synchronizing data managers:', error);
                             }
                         }
+
+        // =============================================================================
+        // CUSTOM DROPDOWN FUNCTIONALITY
+        // =============================================================================
+
+        function toggleDropdown() {
+            const dropdown = document.getElementById('problemDropdown');
+            const options = document.getElementById('dropdownOptions');
+            
+            dropdown.classList.toggle('open');
+            options.classList.toggle('show');
+        }
+
+        function selectOption(value, text) {
+            const dropdown = document.getElementById('problemDropdown');
+            const dropdownText = dropdown.querySelector('.dropdown-text');
+            const options = document.getElementById('dropdownOptions');
+            const legacySelect = document.getElementById('problemDropdownLegacy');
+            
+            // Update the GLOBAL selectedProblem variable (not custom one)
+            selectedProblem = value;
+            dropdownText.textContent = text;
+            
+            // Update legacy select for backward compatibility
+            if (legacySelect) {
+                legacySelect.value = value;
+                // Trigger change event for existing listeners
+                const changeEvent = new Event('change', { bubbles: true });
+                legacySelect.dispatchEvent(changeEvent);
+            }
+            
+            // Update visual state
+            if (value) {
+                dropdownText.classList.remove('placeholder');
+            } else {
+                dropdownText.classList.add('placeholder');
+            }
+            
+            // Close dropdown
+            dropdown.classList.remove('open');
+            options.classList.remove('show');
+            
+            // Trigger all the necessary updates that the original dropdown would trigger
+            if (value) {
+                window.dataManager?.setSelectedProblem(selectedProblem);
+                updateOrganCirclesBasedOnProblem(selectedProblem);
+                updateProgressBar(); // Update progress when problem is selected
+            }
+        }
+
+        // Close dropdown when clicking outside
+        document.addEventListener('click', function(event) {
+            const container = document.querySelector('.custom-dropdown-container');
+            if (container && !container.contains(event.target)) {
+                const dropdown = document.getElementById('problemDropdown');
+                const options = document.getElementById('dropdownOptions');
+                if (dropdown && options) {
+                    dropdown.classList.remove('open');
+                    options.classList.remove('show');
+                }
+            }
+        });
+
+        // Initialize dropdown state on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            // Set initial state
+            const dropdown = document.getElementById('problemDropdown');
+            const dropdownText = dropdown?.querySelector('.dropdown-text');
+            if (dropdownText) {
+                dropdownText.classList.add('placeholder');
+            }
+        });
             </script>
 </body>
 </html>

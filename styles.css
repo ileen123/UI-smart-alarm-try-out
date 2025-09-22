@@ -214,7 +214,7 @@ body {
 .step-line {
     flex: 1; /* Take up available space between steps */
     height: 2px; /* Thin line */
-    background-color: #ccc; /* Gray color */
+    background-color: #1961AB; /* Gray color */
     margin: 0 20px; /* Horizontal margins for spacing */
 }
 
@@ -459,39 +459,113 @@ body {
     filter: brightness(0) saturate(100%) invert(1);
 }
 
-/* Dropdown styling for problem selection */
+/* =============================================================================
+   5. CUSTOM DROPDOWN STYLING
+============================================================================= */
+
+/* Custom Dropdown Container */
+.custom-dropdown-container {
+    position: relative;
+    width: 100%;
+    margin-bottom: 20px;
+}
+
+/* Custom Dropdown Button */
+.custom-dropdown {
+    width: 100%;
+    padding: 12px 16px;
+    border: 2px solid #FC6039;
+    border-radius: 20px;
+    background: white;
+    font-size: 14px;
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: all 0.3s ease;
+    font-family: 'Open Sans', sans-serif;
+}
+
+.custom-dropdown:hover {
+    border-color: #FC6039;
+}
+
+.custom-dropdown.open {
+    border-color: #FC6039;
+}
+
+/* Dropdown Text */
+.dropdown-text {
+    color: #333;
+    flex: 1;
+    text-align: left;
+}
+
+.dropdown-text.placeholder {
+    color: #999;
+}
+
+/* Dropdown Arrow */
+.dropdown-arrow {
+    color: #FC6039;
+    font-size: 12px;
+    transition: transform 0.3s ease;
+}
+
+.custom-dropdown.open .dropdown-arrow {
+    transform: rotate(180deg);
+}
+
+/* Dropdown Options Container */
+.dropdown-options {
+    position: absolute;
+    top: 60px;
+    left: 0;
+    right: 0;
+    background: white;
+    border: 2px solid #FC6039;
+    border-radius: 20px;
+    max-height: 300px;
+    overflow-y: auto;
+    z-index: 1000;
+    display: none;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+.dropdown-options.show {
+    display: block;
+}
+
+/* Individual Dropdown Option */
+.dropdown-option {
+    padding: 12px 16px;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+    font-size: 14px;
+    color: #333;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.dropdown-option:last-child {
+    border-bottom: none;
+}
+
+.dropdown-option:hover {
+    background-color: #F1D9D3;
+}
+
+.dropdown-option.selected {
+    background-color: #FC6039;
+    color: white;
+}
+
+/* Legacy dropdown styles for backward compatibility */
 .dropdown-container {
-    margin-bottom: 20px; /* Space below dropdown */
+    margin-bottom: 20px;
 }
 
 .problem-dropdown {
-    width: 100%; /* Full width of container */
-    padding: 12px 16px; /* Internal spacing */
-    border: 2px solid #FC6039; /* Gray border */
-    border-radius: 20px; /* Rounded corners */
-    background: white; /* White background */
-    font-size: 14px; /* Standard font size */
-    cursor: pointer; /* Hand cursor */
-    transition: all 0.3s ease; /* Smooth transition for all properties */
-}
-
-.problem-dropdown:focus {
-    outline: none; /* Remove default outline */
-    border-color: #FC6039; /* Blue border when focused */
-}
-
-/* Selected state for dropdown - when option is chosen */
-.problem-dropdown.selected {
-    background-color: #fff3cd; /* Light yellow background */
-    border-color: #ffc107; /* Yellow border */
-    border-width: 3px; /* Thicker border for emphasis */
-    font-weight: 600; /* Slightly bolder text */
-    color: #856404; /* Dark yellow text color */
-    box-shadow: 0 0 0 3px rgba(255, 193, 7, 0.25); /* Yellow glow effect */
-}
-
-.problem-dropdown option {
-    padding: 8px; /* Internal spacing for options */
+    display: none; /* Hide the old select element */
 }
 
 /* =============================================================================
@@ -957,7 +1031,6 @@ body {
     right: 200px;
     background: white;
     padding: 20px;
-    border-top: 1px solid #eee;
     margin-top: 0;
     z-index: 1000;
 }
@@ -970,7 +1043,6 @@ body {
     right: 200px;
     background: white;
     padding: 20px;
-    border-top: 1px solid #eee;
     margin-top: 0;
     z-index: 1000;
 }
