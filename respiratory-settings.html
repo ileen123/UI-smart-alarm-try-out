@@ -910,7 +910,7 @@
         let currentBed = null;
         let currentSettings = {
             saturatie: { min: 90, max: 100 },
-            af: { min: 12, max: 20 }
+            af: { min: 12, max: 25 }
         };
         
         // Store slider references for monitoring level changes
@@ -1511,7 +1511,7 @@
                 } else {
                     // Load default respiratory settings if no target ranges exist
                     currentSettings.saturatie = currentSettings.saturatie || { min: 90, max: 100 };
-                    currentSettings.af = currentSettings.af || { min: 10, max: 25 };
+                    currentSettings.af = currentSettings.af || { min: 12, max: 25 };
                 }
                 
                 // Try to load existing patient-specific fine-tuned settings
@@ -1639,11 +1639,16 @@
                                     const newSettings = { saturatie: { min: data.min, max: data.max }, af: currentSettings.af };
                                     window.sharedDataManager.savePatientRespiratorySettings(currentPatientId, newSettings);
                                     currentSettings = newSettings;
+                                    
+                                    // Get existing target ranges and merge with respiratory changes
+                                    const existingTargetRanges = window.sharedDataManager.getPatientTargetRanges(currentPatientId) || {};
                                     const updatedTargetRanges = {
+                                        ...existingTargetRanges, // Preserve existing HR, BP_Mean, etc.
                                         Saturatie: { min: Math.round(data.min), max: Math.round(data.max), unit: '%' },
-                                        AF: { 
+                                        // Preserve existing AF target ranges instead of using defaults
+                                        AF: existingTargetRanges.AF || { 
                                             min: Math.round(currentSettings.af?.min || 12), 
-                                            max: Math.round(currentSettings.af?.max || 20), 
+                                            max: Math.round(currentSettings.af?.max || 25), 
                                             unit: '/min' 
                                         }
                                     };
@@ -1692,7 +1697,7 @@
                             parameter: 'AF',
                             name: 'Ademfrequentie',
                             unit: '/min',
-                            targetRange: currentSettings.af || { min: 12, max: 20 },
+                            targetRange: currentSettings.af || { min: 12, max: 25 },
                             yAxis: { min: 5, max: 35, step: 5 },
                             monitoringLevel: 'mid',
                             patientId: currentPatientId,
@@ -1715,8 +1720,13 @@
                                     const newSettings = { saturatie: currentSettings.saturatie, af: { min: data.min, max: data.max } };
                                     window.sharedDataManager.savePatientRespiratorySettings(currentPatientId, newSettings);
                                     currentSettings = newSettings;
+                                    
+                                    // Get existing target ranges and merge with respiratory changes
+                                    const existingTargetRanges = window.sharedDataManager.getPatientTargetRanges(currentPatientId) || {};
                                     const updatedTargetRanges = {
-                                        Saturatie: { 
+                                        ...existingTargetRanges, // Preserve existing HR, BP_Mean, etc.
+                                        // Preserve existing Saturatie target ranges instead of using currentSettings
+                                        Saturatie: existingTargetRanges.Saturatie || { 
                                             min: Math.round(currentSettings.saturatie?.min || 90), 
                                             max: Math.round(currentSettings.saturatie?.max || 100), 
                                             unit: '%' 

@@ -58,6 +58,40 @@ class VitalParameterSlider {
         };
     }
 
+    /**
+     * Round value to appropriate step size based on parameter type
+     */
+    roundToStep(value) {
+        if (this.config.parameter === 'Temperature') {
+            // Round to nearest 0.5 for temperature
+            return Math.round(value * 2) / 2;
+        }
+        // Default rounding to nearest integer
+        return Math.round(value);
+    }
+
+    /**
+     * Get minimum step between min and max values
+     */
+    getMinimumStep() {
+        if (this.config.parameter === 'Temperature') {
+            return 0.5; // Minimum 0.5°C difference
+        }
+        return 1; // Default minimum difference of 1
+    }
+
+    /**
+     * Format value for display based on parameter type
+     */
+    formatValue(value) {
+        if (this.config.parameter === 'Temperature') {
+            // Show one decimal place for temperature
+            return (Math.round(value * 2) / 2).toFixed(1);
+        }
+        // Default integer display
+        return Math.round(value).toString();
+    }
+
     valueToPixel(value) {
         const chartHeight = 270; // Chart area height (300 - 30 for x-axis)
         const percentage = (this.scale.max - value) / this.scale.range;
@@ -442,9 +476,9 @@ class VitalParameterSlider {
         
         // Update sliding values position and content
         maxValueElement.style.top = `${upperPos}px`;
-        maxValueElement.textContent = Math.round(this.currentMax);
+        maxValueElement.textContent = this.formatValue(this.currentMax);
         minValueElement.style.top = `${lowerPos}px`;
-        minValueElement.textContent = Math.round(this.currentMin);
+        minValueElement.textContent = this.formatValue(this.currentMin);
         
         // Update graph lines position
         this.updateGraphPosition();
@@ -499,9 +533,9 @@ class VitalParameterSlider {
         const handleType = this.currentHandle.dataset.handle;
         
         if (handleType === 'max') {
-            this.currentMax = Math.max(this.currentMin + 1, Math.round(newValue));
+            this.currentMax = Math.max(this.currentMin + this.getMinimumStep(), this.roundToStep(newValue));
         } else {
-            this.currentMin = Math.min(this.currentMax - 1, Math.round(newValue));
+            this.currentMin = Math.min(this.currentMax - this.getMinimumStep(), this.roundToStep(newValue));
         }
         
         // Check if manual adjustments have been made
@@ -693,10 +727,10 @@ class VitalParameterSlider {
         const minValueElement = this.container.querySelector('.sliding-value-outside.min-value');
         
         if (maxValueElement) {
-            maxValueElement.textContent = Math.round(this.currentMax);
+            maxValueElement.textContent = this.formatValue(this.currentMax);
         }
         if (minValueElement) {
-            minValueElement.textContent = Math.round(this.currentMin);
+            minValueElement.textContent = this.formatValue(this.currentMin);
         }
     }
 
@@ -751,21 +785,19 @@ class VitalParameterSlider {
                 // Save updated medical info
                 window.sharedDataManager.savePatientMedicalInfo(this.config.patientId, medicalInfo);
                 
-                // For circulatoir parameters, also save to specific circulatoir settings
-                if (organSystem === 'circulatoir') {
-                    const circulatoirSettings = window.sharedDataManager.getPatientCirculatoirSettings(this.config.patientId) || {
-                        hr: { min: 70, max: 110 },
-                        bp: { min: 65, max: 85 }
-                    };
-                    
-                    if (this.config.parameter === 'HR') {
-                        circulatoirSettings.hr = { min: this.currentMin, max: this.currentMax };
-                    } else if (this.config.parameter === 'BP_Mean') {
-                        circulatoirSettings.bp = { min: this.currentMin, max: this.currentMax };
-                    }
-                    
-                    window.sharedDataManager.savePatientCirculatoirSettings(this.config.patientId, circulatoirSettings);
-                }
+                // CRITICAL: Update the target ranges that alarm overview reads from
+                let currentTargetRanges = window.sharedDataManager.getPatientTargetRanges(this.config.patientId) || {};
+                console.log(`📊 Before updating target ranges for ${this.config.parameter}:`, JSON.stringify(currentTargetRanges));
+                
+                // Only update the specific parameter being changed
+                currentTargetRanges[this.config.parameter] = {
+                    min: this.currentMin,
+                    max: this.currentMax,
+                    unit: this.config.unit
+                };
+                
+                console.log(`📊 After updating target ranges for ${this.config.parameter}:`, JSON.stringify(currentTargetRanges));
+                window.sharedDataManager.savePatientTargetRanges(this.config.patientId, currentTargetRanges);
                 
                 console.log(`✅ Saved ${this.config.parameter} settings to SharedDataManager for patient ${this.config.patientId}`);
                 
@@ -956,7 +988,7 @@ class PatientConfigurationHelper {
             name: 'Temperature',
             unit: '°C',
             targetRange: targetRange,
-            yAxis: { min: 35, max: 42, step: 1 }
+            yAxis: { min: 35, max: 42, step: 0.5 }
         };
     }
     

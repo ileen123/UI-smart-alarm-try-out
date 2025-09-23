@@ -1678,7 +1678,11 @@
                                     const newSettings = { temperature: { min: data.min, max: data.max } };
                                     window.sharedDataManager.savePatientOtherSettings(currentPatientId, newSettings);
                                     currentSettings = newSettings;
+                                    
+                                    // Get existing target ranges and merge with temperature changes
+                                    const existingTargetRanges = window.sharedDataManager.getPatientTargetRanges(currentPatientId) || {};
                                     const updatedTargetRanges = {
+                                        ...existingTargetRanges, // Preserve existing HR, BP_Mean, Saturatie, AF, etc.
                                         Temperature: { min: Math.round(data.min * 10) / 10, max: Math.round(data.max * 10) / 10, unit: '°C' }
                                     };
                                     window.sharedDataManager.updateGlobalTargetRanges(currentPatientId, updatedTargetRanges);

@@ -1628,9 +1628,14 @@
                                     window.sharedDataManager.savePatientCirculatoirSettings(currentPatientId, newSettings);
                                     currentSettings = newSettings;
                                     // Also update target ranges to reflect the slider changes
+                                    
+                                    // Get existing target ranges and merge with circulatory changes
+                                    const existingTargetRanges = window.sharedDataManager.getPatientTargetRanges(currentPatientId) || {};
                                     const updatedTargetRanges = {
+                                        ...existingTargetRanges, // Preserve existing Saturatie, AF, etc.
                                         HR: { min: Math.round(data.min), max: Math.round(data.max), unit: 'bpm' },
-                                        BP_Mean: { 
+                                        // Preserve existing BP_Mean target ranges instead of using currentSettings
+                                        BP_Mean: existingTargetRanges.BP_Mean || { 
                                             min: Math.round(currentSettings.bp?.min || 65), 
                                             max: Math.round(currentSettings.bp?.max || 85), 
                                             unit: 'mmHg' 
@@ -1692,8 +1697,13 @@
                                     window.sharedDataManager.savePatientCirculatoirSettings(currentPatientId, newSettings);
                                     currentSettings = newSettings;
                                     // Also update target ranges to reflect the slider changes
+                                    
+                                    // Get existing target ranges and merge with circulatory changes
+                                    const existingTargetRanges = window.sharedDataManager.getPatientTargetRanges(currentPatientId) || {};
                                     const updatedTargetRanges = {
-                                        HR: { 
+                                        ...existingTargetRanges, // Preserve existing Saturatie, AF, etc.
+                                        // Preserve existing HR target ranges instead of using currentSettings
+                                        HR: existingTargetRanges.HR || { 
                                             min: Math.round(currentSettings.hr?.min || 70), 
                                             max: Math.round(currentSettings.hr?.max || 110), 
                                             unit: 'bpm' 
