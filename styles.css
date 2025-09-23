@@ -21,12 +21,18 @@
     box-sizing: border-box; /* Ensures padding/border are included in element width */
 }
 
+/* Additional reset for headings to prevent browser defaults */
+h1, h2, h3, h4, h5, h6 {
+    margin: 0;
+    padding: 0;
+}
+
 /* Main body styling - sets the overall look of the page */
 body {
     font-family: 'Open Sans', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; /* Open Sans as primary font */
     font-weight: 400; /* Regular weight for body text */
     background-color: #ffffff; /* Light gray background for clinical feel */
-    padding: 20px 200px 20px 200px; /* top right bottom left - reduced top padding */
+    padding: 20px 50px 20px 50px; /* top right bottom left - reduced top padding */
 }
 
 /* Setup page specific styling - prevent scrolling and adjust layout */
@@ -237,12 +243,17 @@ body {
     margin-bottom: 20px; /* Consistent spacing between sections */
 }
 
-/* Container for the three main form sections - horizontal layout */
+/* Container for the three main form sections - matches monitoring grid structure */
 .form-sections-container {
-    display: flex; /* Horizontal layout */
-    gap: 30px; /* Space between sections */
-    margin-bottom: 40px; /* Space below the container */
-    align-items: flex-start; /* Align sections to top */
+    display: flex !important;
+    flex-direction: row !important;
+    justify-content: space-between !important;
+    align-items: flex-start !important;
+    padding: 0 !important; /* Remove all padding to align with edges */
+    margin: 0 !important; /* Remove all margins */
+    width: 100% !important;
+    margin-bottom: 40px !important;
+    gap: 30px !important; /* Match monitoring grid gap */
 }
 
 /* Alarm overview page specific form sections adjustments */
@@ -252,14 +263,31 @@ body {
 
 /* Individual form section within the horizontal container */
 .form-section {
-    flex: 1; /* Equal width for all sections */
     background: white; /* White background for each section */
-    padding: 20px 20px 25px 20px; /* More padding at bottom for better spacing */
+    padding: 20px 20px 25px 20px; /* Internal padding for content */
     border-radius: 10px; /* Rounded corners */
     min-height: 180px; /* Reduced minimum height for better alignment */
     max-height: 180px; /* Maximum height to keep sections aligned */
     display: flex;
     flex-direction: column;
+    margin: 0; /* Explicit reset to prevent any browser defaults */
+}
+
+/* Problem container (left) - aligned with monitoring grid left edge */
+.form-section:first-child {
+    flex: 0 0 25% !important; /* Fixed 25% width, no grow/shrink */
+    margin-left: 0 !important; /* Ensure no left margin */
+    padding-left: 0 !important; /* Ensure no left padding */
+}
+
+/* Risk level container (middle) - centered */
+.form-section:nth-child(2) {
+    flex: 0 0 30% !important; /* Fixed 30% width for middle section */
+}
+
+/* Additional information container (right) - aligned with monitoring grid right edge */
+.form-section:last-child {
+    flex: 0 0 33.33% !important; /* Original equal width restored */
 }
 
 /* Section titles (questions) */
@@ -268,6 +296,12 @@ body {
     font-weight: 600; /* Semibold weight */
     color: #1961AB; /* Blue color to match theme */
     margin-bottom: 15px; /* Space below title */
+}
+
+/* Special alignment for section title in the third form section (with tags) */
+.form-section:last-child .section-title {
+    margin-left: -20px; /* Align title with the left edge of tags section */
+    margin-right: -20px; /* Extend title area to match tags section width */
 }
 
 /* Reduce section title spacing on setup page */
@@ -589,7 +623,7 @@ body {
     background-color: #e3f2fd; /* Light blue background */
     padding: 12px; /* Reduced padding for better alignment */
     border-radius: 10px; /* Slightly smaller border radius */
-    margin: 0px -20px; /* Reduced space above tags section */
+    margin: 0px -20px; /* Negative margins to extend to page edges */
     flex: 1; /* Take remaining space in form section */
     display: flex;
     align-items: flex-start;
@@ -666,7 +700,7 @@ body {
 
 /* Alarm overview page specific monitoring grid adjustments */
 .alarm-overview-page .monitoring-grid {
-    padding: 25px 30px 15px 30px; /* Reduced vertical padding */
+    padding: 25px 0 15px 0; /* Remove left/right padding for alarm overview too */
     margin-bottom: 25px; /* Reduced bottom margin */
 }
 
@@ -1027,8 +1061,8 @@ body {
 .alarm-overview-page .navigation {
     position: fixed;
     bottom: 63px;
-    left: 200px;
-    right: 200px;
+    left: 180px;
+    right: 180px;
     background: white;
     padding: 20px;
     margin-top: 0;
