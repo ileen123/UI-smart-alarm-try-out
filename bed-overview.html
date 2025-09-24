@@ -10,40 +10,50 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Open+Sans:ital,wght@0,300;0,400;0,600;0,700;1,400;1,600&display=swap" rel="stylesheet">
     
+    <!-- Link to external CSS file for styling -->
+    <link rel="stylesheet" href="styles.css">
+    
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            font-family: 'Open Sans', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            font-weight: 400;
-            background-color: #ffffff;
-            padding: 20px 200px;
-        }
-
-        .header {
-            background-color: #ffffff;
-            padding: 10px 20px;
-            border-radius: 8px;
-            margin-bottom: 0px;
+        /* Title and header buttons layout */
+        .title-header-layout {
             display: flex;
-            align-items: center;
             justify-content: space-between;
-            font-size: 14px;
-            font-weight: 400;
-            color: #666;
+            align-items: flex-start;
+            margin: 0 auto 30px auto;
+            max-width: 1200px;
+            gap: 30px;
         }
 
-        .header h1 {
-            font-size: 24px;
+        .title-header-layout .main-title {
+            margin-bottom: 0;
+            flex-shrink: 0;
+        }
+
+        .title-header-layout .header-buttons {
+            margin-bottom: 0;
+            flex-shrink: 0;
+        }
+
+        .header-buttons {
+            display: flex;
+            gap: 10px;
+        }
+
+        .header-btn {
+            background-color: #ffffff;
+            border: 2px solid #FF6B35;
+            color: #FF6B35;
+            padding: 8px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
             font-weight: 600;
-            color: #333;
-            border-bottom: 3px solid #ff6b35;
-            padding-bottom: 10px;
-            margin: 0;
+            transition: all 0.3s ease;
+        }
+
+        .header-btn:hover {
+            background-color: #FF6B35;
+            color: white;
         }
 
         .header-buttons {
@@ -85,39 +95,56 @@
 
         .beds-grid {
             display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 30px;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 20px;
             align-items: start;
-            max-width: 1400px;
-            margin: 150px auto;
+            max-width: 1200px;
+            margin: 80px auto 40px auto;
         }
 
-        /* Left column - 2 beds */
-        .left-column {
-            display: flex;
-            flex-direction: column;
-            gap: 30px;
+        /* Center beds vertically when patient selection is not visible */
+        body:not(.patient-selection-active) .beds-grid {
+            margin: 25vh auto 25vh auto;
         }
 
-        /* Middle column - patient selection area */
-        .middle-column {
-            display: flex;
-            justify-content: center;
-            align-items: center;
+        /* Responsive design for smaller screens */
+        @media (max-width: 1024px) {
+            .beds-grid {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 20px;
+                max-width: 800px;
+            }
         }
 
-        /* Right column - 2 beds */
+        @media (max-width: 768px) {
+            body {
+                padding: 20px 20px;
+            }
+            
+            .beds-grid {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 15px;
+            }
+        }
+
+        /* Remove old column classes as we now have 4 beds in one row */
+        .left-column,
         .right-column {
-            display: flex;
-            flex-direction: column;
-            gap: 30px;
+            display: contents;
+        }
+
+        /* Patient selection area - now positioned below beds */
+        .patient-selection-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0;
         }
 
         .bed-card {
             background: #bdc3c7;
             border-radius: 15px;
             padding: 20px;
-            min-height: 240px;
+            min-height: 260px;
             display: flex;
             flex-direction: column;
             justify-content: space-between;
@@ -161,6 +188,12 @@
             background: linear-gradient(135deg, #e74c3c, #c0392b);
             color: white;
             animation: pulse 2s infinite;
+        }
+
+        /* Selected bed styling - orange border when selecting patient */
+        .bed-card.selected {
+            border: 3px solid #FC6039;
+            box-shadow: 0 4px 15px rgba(252, 96, 57, 0.3);
         }
 
         @keyframes pulse {
@@ -279,11 +312,12 @@
             background: #ecf0f1;
             border-radius: 15px;
             padding: 30px;
-            min-height: 350px;
-            width: 280px;
+            min-height: 250px;
+            width: 100%;
             text-align: center;
             display: none;
             box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            margin-top: 20px;
         }
 
         .patient-selection.active {
@@ -299,6 +333,8 @@
         .patient-list {
             list-style: none;
             padding: 0;
+            max-width: 400px;
+            margin: 0 auto;
         }
 
         .patient-item {
@@ -312,14 +348,13 @@
         }
 
         .patient-item:hover {
-            background: #3498db;
-            color: white;
+            background: #F1D9D3;
             transform: translateX(5px);
         }
 
         .patient-item.selected {
-            border-color: #2980b9;
-            background: #3498db;
+            border-color: #FC6039;
+            background: #FC6039;
             color: white;
         }
 
@@ -332,55 +367,72 @@
             font-style: italic;
         }
 
-        .patient-id {
-            font-weight: bold;
+        .patient-info {
+            text-align: left;
             font-size: 16px;
         }
 
+        .patient-id {
+            font-weight: normal;
+        }
+
+        .patient-name {
+            font-weight: bold;
+        }
+
         .patient-details {
-            font-size: 12px;
-            margin-top: 5px;
+            font-weight: normal;
             opacity: 0.8;
         }
 
         .selection-buttons {
             margin-top: 20px;
             display: flex;
-            gap: 10px;
-            justify-content: center;
+            gap: 15px;
+            justify-content: space-between;
+            max-width: 400px;
+            margin-left: auto;
+            margin-right: auto;
         }
 
-        .btn {
+        /* Base styling for navigation buttons (matching setup page) */
+        .nav-btn {
             padding: 10px 20px;
-            border: none;
-            border-radius: 8px;
+            border: 2px solid #ff6b35;
+            border-radius: 20px;
+            background: white;
+            color: #ff6b35;
             cursor: pointer;
             font-size: 14px;
-            font-weight: bold;
+            font-weight: 600;
+            font-family: 'Open Sans', sans-serif;
             transition: all 0.3s ease;
         }
 
-        .btn-confirm {
-            background: #27ae60;
+        /* Primary action button (Bevestigen) styling */
+        .nav-btn.primary {
+            background-color: #1961AB;
+            border-color: #1961AB;
             color: white;
         }
 
-        .btn-confirm:hover {
-            background: #2ecc71;
-        }
-
-        .btn-confirm:disabled {
-            background: #bdc3c7;
+        /* Disabled state for primary button */
+        .nav-btn.primary.disabled {
+            background-color: #ccc;
+            border-color: #ccc;
+            color: #666;
             cursor: not-allowed;
         }
 
-        .btn-cancel {
-            background: #FC6039;
+        /* Hover effects */
+        .nav-btn:hover:not(.disabled) {
+            background-color: #ff6b35;
             color: white;
         }
 
-        .btn-cancel:hover {
-            background: #fc5126;
+        .nav-btn.primary:hover:not(.disabled) {
+            background-color: #144a8a;
+            border-color: #144a8a;
         }
     </style>
     
@@ -388,8 +440,12 @@
     <script src="js/shared-data-manager.js"></script>
 </head>
 <body>
-    <div class="header">
-        <h1>Patiënten Overzicht</h1>
+    <!-- Title and header buttons layout -->
+    <div class="title-header-layout">
+        <!-- Main page title -->
+        <h1 class="main-title">Bedden Overzicht</h1>
+        
+        <!-- Header buttons for plattegrond and unit selection -->
         <div class="header-buttons">
             <button class="header-btn">Plattegrond</button>
             <button class="header-btn">Unit 1</button>
@@ -401,56 +457,50 @@
     </div>
 
     <div class="beds-grid">
-            <!-- Left Column - Beds 1 & 2 -->
-            <div class="left-column">
-                <div class="bed-card" id="bed-1" onclick="handleBedClick(1)">
-                    <div class="bed-number">1</div>
-                    <div class="bed-icon">
-                        <button class="add-patient-btn">+</button>
-                    </div>
-                    <div class="bed-status">Nieuwe Patiënt</div>
-                </div>
-
-                <div class="bed-card" id="bed-2" onclick="handleBedClick(2)">
-                    <div class="bed-number">2</div>
-                    <div class="bed-icon">
-                        <button class="add-patient-btn">+</button>
-                    </div>
-                    <div class="bed-status">Nieuwe Patiënt</div>
-                </div>
+        <!-- All 4 beds in one row -->
+        <div class="bed-card" id="bed-1" onclick="handleBedClick(1)">
+            <div class="bed-number">1</div>
+            <div class="bed-icon">
+                <button class="add-patient-btn">+</button>
             </div>
+            <div class="bed-status">Nieuwe Patiënt</div>
+        </div>
 
-            <!-- Middle Column - Patient Selection -->
-            <div class="middle-column">
-                <div class="patient-selection" id="patient-selection">
-                    <h3>Selecteer een patiënt voor bed <span id="selected-bed-number"></span></h3>
-                    <ul class="patient-list" id="patient-list">
-                        <!-- Patients will be populated here -->
-                    </ul>
-                    <div class="selection-buttons">
-                        <button class="btn btn-confirm" id="confirm-btn" onclick="confirmPatientSelection()" disabled>Bevestigen</button>
-                        <button class="btn btn-cancel" onclick="cancelSelection()">Annuleren</button>
-                    </div>
-                </div>
+        <div class="bed-card" id="bed-2" onclick="handleBedClick(2)">
+            <div class="bed-number">2</div>
+            <div class="bed-icon">
+                <button class="add-patient-btn">+</button>
             </div>
+            <div class="bed-status">Nieuwe Patiënt</div>
+        </div>
 
-            <!-- Right Column - Beds 3 & 4 -->
-            <div class="right-column">
-                <div class="bed-card" id="bed-3" onclick="handleBedClick(3)">
-                    <div class="bed-number">3</div>
-                    <div class="bed-icon">
-                        <button class="add-patient-btn">+</button>
-                    </div>
-                    <div class="bed-status">Nieuwe Patiënt</div>
-                </div>
+        <div class="bed-card" id="bed-3" onclick="handleBedClick(3)">
+            <div class="bed-number">3</div>
+            <div class="bed-icon">
+                <button class="add-patient-btn">+</button>
+            </div>
+            <div class="bed-status">Nieuwe Patiënt</div>
+        </div>
 
-                <div class="bed-card" id="bed-4" onclick="handleBedClick(4)">
-                    <div class="bed-number">4</div>
-                    <div class="bed-icon">
-                        <button class="add-patient-btn">+</button>
-                    </div>
-                    <div class="bed-status">Nieuwe Patiënt</div>
-                </div>
+        <div class="bed-card" id="bed-4" onclick="handleBedClick(4)">
+            <div class="bed-number">4</div>
+            <div class="bed-icon">
+                <button class="add-patient-btn">+</button>
+            </div>
+            <div class="bed-status">Nieuwe Patiënt</div>
+        </div>
+    </div>
+
+    <!-- Patient Selection Area - Now Below Beds -->
+    <div class="patient-selection-container">
+        <div class="patient-selection" id="patient-selection">
+            <h3>Selecteer een patiënt voor bed <span id="selected-bed-number"></span></h3>
+            <ul class="patient-list" id="patient-list">
+                <!-- Patients will be populated here -->
+            </ul>
+            <div class="selection-buttons">
+                <button class="nav-btn" onclick="cancelSelection()">Annuleren</button>
+                <button class="nav-btn primary disabled" id="confirm-btn" onclick="confirmPatientSelection()" disabled>Bevestigen</button>
             </div>
         </div>
     </div>
@@ -731,9 +781,16 @@
             selectedBed = bedNumber;
             selectedPatient = null;
             
+            // Remove selected class from all beds and add to current bed
+            document.querySelectorAll('.bed-card').forEach(bed => bed.classList.remove('selected'));
+            document.getElementById('bed-' + bedNumber).classList.add('selected');
+            
             document.getElementById('selected-bed-number').textContent = bedNumber;
             document.getElementById('instruction-text').classList.add('hidden');
             document.getElementById('patient-selection').classList.add('active');
+            
+            // Add class to body to indicate patient selection is active
+            document.body.classList.add('patient-selection-active');
             
             console.log('🔄 Calling updatePatientList...');
             updatePatientList();
@@ -758,12 +815,17 @@
                 li.className = 'patient-item';
                 li.onclick = () => selectPatient(patient.id);
                 li.innerHTML = 
-                    '<div class="patient-id">' + patient.id + ' - ' + patient.name + '</div>' +
-                    '<div class="patient-details">' + patient.gender + ' - ' + patient.age + ' jaar - ' + patient.weight + ' kg</div>';
+                    '<div class="patient-info">' + 
+                    '<span class="patient-id">' + patient.id + ' - </span>' +
+                    '<span class="patient-name">' + patient.name + '</span>' +
+                    '<span class="patient-details"> - ' + patient.gender + ' - ' + patient.age + ' jaar - ' + patient.weight + ' kg</span>' +
+                    '</div>';
                 patientList.appendChild(li);
             });
             
-            document.getElementById('confirm-btn').disabled = true;
+            const confirmBtn = document.getElementById('confirm-btn');
+            confirmBtn.disabled = true;
+            confirmBtn.classList.add('disabled');
         }
 
         function selectPatient(patientId) {
@@ -776,7 +838,9 @@
             });
             
             event.target.closest('.patient-item').classList.add('selected');
-            document.getElementById('confirm-btn').disabled = false;
+            const confirmBtn = document.getElementById('confirm-btn');
+            confirmBtn.disabled = false;
+            confirmBtn.classList.remove('disabled');
             console.log('✅ Confirm button enabled for patient:', patientId);
         }
 
@@ -827,8 +891,19 @@
             selectedBed = null;
             selectedPatient = null;
             
+            // Remove selected class from all beds
+            document.querySelectorAll('.bed-card').forEach(bed => bed.classList.remove('selected'));
+            
+            // Reset button state
+            const confirmBtn = document.getElementById('confirm-btn');
+            confirmBtn.disabled = true;
+            confirmBtn.classList.add('disabled');
+            
             document.getElementById('patient-selection').classList.remove('active');
             document.getElementById('instruction-text').classList.remove('hidden');
+            
+            // Remove class from body to center beds vertically
+            document.body.classList.remove('patient-selection-active');
         }
 
         function navigateToPatientSetup(bedNumber, patientId) {
