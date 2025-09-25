@@ -1394,7 +1394,14 @@
                                 timestamp: Date.now(),
                                 source: 'respiratory-settings'
                             });
-                            console.log('🫁 Pneumonie deselected in respiratory settings');
+                            
+                            // Restore previous AF ranges from shared data manager
+                            if (window.sharedDataManager.restorePreviousAFRanges) {
+                                window.sharedDataManager.restorePreviousAFRanges(currentPatientId);
+                                console.log('🫁 Pneumonie deselected and previous AF ranges restored');
+                            } else {
+                                console.log('🫁 Pneumonie deselected in respiratory settings');
+                            }
                         }
                     } else {
                         // Select tag
@@ -1408,7 +1415,27 @@
                                 timestamp: Date.now(),
                                 source: 'respiratory-settings'
                             });
-                            console.log('🫁 Pneumonie selected in respiratory settings');
+                            
+                            // Automatically save the pneumonie AF ranges (10-30) 
+                            const pneumonieAFRanges = { min: 10, max: 30 };
+                            const existingRespiratorySettings = window.sharedDataManager.getPatientRespiratorySettings(currentPatientId) || {};
+                            const newRespiratorySettings = {
+                                ...existingRespiratorySettings,
+                                af: pneumonieAFRanges
+                            };
+                            
+                            // Save the AF ranges automatically
+                            window.sharedDataManager.savePatientRespiratorySettings(currentPatientId, newRespiratorySettings);
+                            
+                            // Update target ranges as well
+                            const existingTargetRanges = window.sharedDataManager.getPatientTargetRanges(currentPatientId) || {};
+                            const updatedTargetRanges = {
+                                ...existingTargetRanges,
+                                AF: { min: 10, max: 30, unit: '/min' }
+                            };
+                            window.sharedDataManager.setPatientTargetRanges(currentPatientId, updatedTargetRanges);
+                            
+                            console.log('🫁 Pneumonie selected and AF ranges (10-30) automatically saved');
                         }
                     }
                 });

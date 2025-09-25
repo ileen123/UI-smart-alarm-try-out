@@ -624,6 +624,8 @@
                                 
                                 if (window.sharedDataManager.applyPneumonieAFRanges) {
                                     window.sharedDataManager.applyPneumonieAFRanges(currentPatientId);
+                                    // Apply highlighting since pneumonie was just selected via button click
+                                    updateParameterRanges(true);
                                 } else {
                                     console.error('❌ applyPneumonieAFRanges method not found!');
                                 }
@@ -642,6 +644,8 @@
                                 
                                 if (window.sharedDataManager.applySepsisHRRanges) {
                                     window.sharedDataManager.applySepsisHRRanges(currentPatientId);
+                                    // Apply highlighting since sepsis was just selected via button click
+                                    updateParameterRanges(true);
                                 } else {
                                     console.error('❌ applySepsisHRRanges method not found!');
                                 }
@@ -875,8 +879,8 @@
             }
         }
 
-        function updateParameterRanges() {
-            console.log('🔍 DEBUG: Updating parameter ranges for selected tags:', selectedTags);
+        function updateParameterRanges(shouldHighlight = false) {
+            console.log('🔍 DEBUG: Updating parameter ranges for selected tags:', selectedTags, 'shouldHighlight:', shouldHighlight);
             
             // Get patient-specific target ranges first
             let targetRanges = null;
@@ -901,8 +905,8 @@
                         hrRange.textContent = Math.round(hr.min) + ' - ' + Math.round(hr.max) + ' ' + (hr.unit || 'bpm');
                         console.log('🎯 Updated HR range from target ranges:', Math.round(hr.min) + ' - ' + Math.round(hr.max) + ' ' + (hr.unit || 'bpm'));
                         
-                        // Apply highlighting only if sepsis is active
-                        if (hasSepsis) {
+                        // Apply highlighting only if sepsis is active AND we should highlight (tag button clicked)
+                        if (hasSepsis && shouldHighlight) {
                             window.sharedDataManager.highlightElement(hrRange, 'highlight-beige', 1500);
                             console.log('✅ Applied sepsis highlighting to HR display');
                         }
@@ -920,8 +924,8 @@
                             bpRange.textContent = Math.round(bp.min) + ' - ' + Math.round(bp.max) + ' ' + (bp.unit || 'mmHg');
                             console.log('🎯 Updated BP range from target ranges:', Math.round(bp.min) + ' - ' + Math.round(bp.max) + ' ' + (bp.unit || 'mmHg'));
                             
-                            // Apply highlighting only if sepsis is active
-                            if (hasSepsis) {
+                            // Apply highlighting only if sepsis is active AND we should highlight (tag button clicked)
+                            if (hasSepsis && shouldHighlight) {
                                 window.sharedDataManager.highlightElement(bpRange, 'highlight-beige', 1500);
                                 console.log('✅ Applied sepsis highlighting to BP display');
                             }
@@ -941,8 +945,8 @@
                         afRangeDisplay.textContent = Math.round(af.min) + ' - ' + Math.round(af.max) + ' ' + (af.unit || '/min');
                         console.log('🎯 Updated AF range from target ranges:', Math.round(af.min) + ' - ' + Math.round(af.max) + ' ' + (af.unit || '/min'));
                         
-                        // Apply highlighting only if pneumonie is active
-                        if (hasPneumonie) {
+                        // Apply highlighting only if pneumonie is active AND we should highlight (tag button clicked)
+                        if (hasPneumonie && shouldHighlight) {
                             window.sharedDataManager.highlightElement(afRangeDisplay, 'highlight-blue', 1500);
                             console.log('✅ Applied pneumonie highlighting to AF display');
                         }
