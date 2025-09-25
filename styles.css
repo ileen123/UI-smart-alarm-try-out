@@ -593,6 +593,18 @@ body {
     color: white;
 }
 
+/* Disabled dropdown options */
+.dropdown-option.disabled {
+    color: #bbb;
+    cursor: not-allowed;
+    background-color: #f8f8f8;
+}
+
+.dropdown-option.disabled:hover {
+    background-color: #f8f8f8;
+    cursor: not-allowed;
+}
+
 /* Legacy dropdown styles for backward compatibility */
 .dropdown-container {
     margin-bottom: 20px;
