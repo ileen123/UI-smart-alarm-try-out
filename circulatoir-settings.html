@@ -1425,7 +1425,15 @@
                                 timestamp: Date.now(),
                                 source: 'circulatory-settings'
                             });
-                            console.log('🦠 Sepsis deselected in circulatory settings');
+                            
+                            // Restore previous HR and BP ranges from shared data manager
+                            if (window.sharedDataManager.restorePreviousHRRanges) {
+                                window.sharedDataManager.restorePreviousHRRanges(currentPatientId);
+                            }
+                            if (window.sharedDataManager.restorePreviousBPRanges) {
+                                window.sharedDataManager.restorePreviousBPRanges(currentPatientId);
+                            }
+                            console.log('🦠 Sepsis deselected and previous HR & BP ranges restored');
                         }
                     } else {
                         // Select tag
@@ -1439,7 +1447,30 @@
                                 timestamp: Date.now(),
                                 source: 'circulatory-settings'
                             });
-                            console.log('🦠 Sepsis selected in circulatory settings');
+                            
+                            // Automatically save the sepsis HR and BP ranges
+                            const sepsisHRRanges = { min: 90, max: 130 };
+                            const sepsisBPRanges = { min: 65, max: 85 };
+                            const existingCirculatorySettings = window.sharedDataManager.getPatientCirculatoirSettings(currentPatientId) || {};
+                            const newCirculatorySettings = {
+                                ...existingCirculatorySettings,
+                                hr: sepsisHRRanges,
+                                bp: sepsisBPRanges
+                            };
+                            
+                            // Save the HR and BP ranges automatically
+                            window.sharedDataManager.savePatientCirculatoirSettings(currentPatientId, newCirculatorySettings);
+                            
+                            // Update target ranges as well
+                            const existingTargetRanges = window.sharedDataManager.getPatientTargetRanges(currentPatientId) || {};
+                            const updatedTargetRanges = {
+                                ...existingTargetRanges,
+                                HR: { min: 90, max: 130, unit: 'bpm' },
+                                BP_Mean: { min: 65, max: 85, unit: 'mmHg' }
+                            };
+                            window.sharedDataManager.setPatientTargetRanges(currentPatientId, updatedTargetRanges);
+                            
+                            console.log('🦠 Sepsis selected and HR (90-130) & BP (65-85) ranges automatically saved');
                         }
                     }
                 });
