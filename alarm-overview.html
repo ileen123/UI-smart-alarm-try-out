@@ -208,6 +208,9 @@
             setupEventListeners();
             initializeCircleComponents();
             
+            // Initialize condition states first (source of truth)
+            initializeSepsisTagState();
+            
             // Load existing settings after components are initialized
             loadExistingSettings();
             
@@ -572,6 +575,34 @@
                                 console.log('🔍 DEBUG: restorePreviousAFRanges method available:', typeof window.sharedDataManager.restorePreviousAFRanges);
                                 if (window.sharedDataManager.restorePreviousAFRanges) {
                                     window.sharedDataManager.restorePreviousAFRanges(currentPatientId);
+                                    
+                                    // Get the restored AF ranges and save them to respiratory settings
+                                    setTimeout(() => {
+                                        const restoredTargetRanges = window.sharedDataManager.getPatientTargetRanges(currentPatientId);
+                                        if (restoredTargetRanges && restoredTargetRanges.AF) {
+                                            const existingRespiratorySettings = window.sharedDataManager.getPatientRespiratorySettings(currentPatientId) || {};
+                                            const newRespiratorySettings = {
+                                                ...existingRespiratorySettings,
+                                                af: { min: restoredTargetRanges.AF.min, max: restoredTargetRanges.AF.max }
+                                            };
+                                            
+                                            // Save the restored AF ranges automatically
+                                            window.sharedDataManager.savePatientRespiratorySettings(currentPatientId, newRespiratorySettings);
+                                            console.log('🫁 Pneumonie deselected on alarm overview - restored AF ranges automatically saved:', newRespiratorySettings);
+                                            
+                                            // Dispatch event to update sliders on respiratory page
+                                            const afRangesEvent = new CustomEvent('afRangesChanged', {
+                                                detail: {
+                                                    patientId: currentPatientId,
+                                                    AF_min: restoredTargetRanges.AF.min,
+                                                    AF_max: restoredTargetRanges.AF.max,
+                                                    source: 'alarm-overview-pneumonie-deselection'
+                                                }
+                                            });
+                                            window.dispatchEvent(afRangesEvent);
+                                            console.log('📡 Dispatched afRangesChanged event from pneumonie deselection');
+                                        }
+                                    }, 100); // Small delay to ensure restoration is complete
                                 } else {
                                     console.error('❌ restorePreviousAFRanges method not found!');
                                 }
@@ -589,6 +620,37 @@
                                 console.log('🔍 DEBUG: restorePreviousHRRanges method available:', typeof window.sharedDataManager.restorePreviousHRRanges);
                                 if (window.sharedDataManager.restorePreviousHRRanges) {
                                     window.sharedDataManager.restorePreviousHRRanges(currentPatientId);
+                                    
+                                    // Get the restored HR and BP ranges and save them to circulatory settings
+                                    setTimeout(() => {
+                                        const restoredTargetRanges = window.sharedDataManager.getPatientTargetRanges(currentPatientId);
+                                        if (restoredTargetRanges && restoredTargetRanges.HR && restoredTargetRanges.BP_Mean) {
+                                            const existingCirculatorySettings = window.sharedDataManager.getPatientCirculatoirSettings(currentPatientId) || {};
+                                            const newCirculatorySettings = {
+                                                ...existingCirculatorySettings,
+                                                hr: { min: restoredTargetRanges.HR.min, max: restoredTargetRanges.HR.max },
+                                                bp: { min: restoredTargetRanges.BP_Mean.min, max: restoredTargetRanges.BP_Mean.max }
+                                            };
+                                            
+                                            // Save the restored HR and BP ranges automatically
+                                            window.sharedDataManager.savePatientCirculatoirSettings(currentPatientId, newCirculatorySettings);
+                                            console.log('🦠 Sepsis deselected on alarm overview - restored HR & BP ranges automatically saved:', newCirculatorySettings);
+                                            
+                                            // Dispatch event to update sliders on circulatory page
+                                            const hrRangesEvent = new CustomEvent('hrRangesChanged', {
+                                                detail: {
+                                                    patientId: currentPatientId,
+                                                    HR_low: restoredTargetRanges.HR.min,
+                                                    HR_high: restoredTargetRanges.HR.max,
+                                                    BP_low: restoredTargetRanges.BP_Mean.min,
+                                                    BP_high: restoredTargetRanges.BP_Mean.max,
+                                                    source: 'alarm-overview-sepsis-deselection'
+                                                }
+                                            });
+                                            window.dispatchEvent(hrRangesEvent);
+                                            console.log('📡 Dispatched hrRangesChanged event from sepsis deselection');
+                                        }
+                                    }, 100); // Small delay to ensure restoration is complete
                                 } else {
                                     console.error('❌ restorePreviousHRRanges method not found!');
                                 }
@@ -624,8 +686,21 @@
                                 
                                 if (window.sharedDataManager.applyPneumonieAFRanges) {
                                     window.sharedDataManager.applyPneumonieAFRanges(currentPatientId);
+                                    
+                                    // Automatically save the pneumonie AF ranges to respiratory settings
+                                    const pneumonieAFRanges = { min: 10, max: 30 };
+                                    const existingRespiratorySettings = window.sharedDataManager.getPatientRespiratorySettings(currentPatientId) || {};
+                                    const newRespiratorySettings = {
+                                        ...existingRespiratorySettings,
+                                        af: pneumonieAFRanges
+                                    };
+                                    
+                                    // Save the AF ranges automatically
+                                    window.sharedDataManager.savePatientRespiratorySettings(currentPatientId, newRespiratorySettings);
+                                    console.log('🫁 Pneumonie selected on alarm overview - AF (10-30) ranges automatically saved');
+                                    
                                     // Apply highlighting since pneumonie was just selected via button click
-                                    updateParameterRanges(true);
+                                    updateParameterRanges(true, 'pneumonie');
                                 } else {
                                     console.error('❌ applyPneumonieAFRanges method not found!');
                                 }
@@ -644,8 +719,23 @@
                                 
                                 if (window.sharedDataManager.applySepsisHRRanges) {
                                     window.sharedDataManager.applySepsisHRRanges(currentPatientId);
+                                    
+                                    // Automatically save the sepsis HR and BP ranges to circulatory settings
+                                    const sepsisHRRanges = { min: 90, max: 130 };
+                                    const sepsisBPRanges = { min: 65, max: 85 };
+                                    const existingCirculatorySettings = window.sharedDataManager.getPatientCirculatoirSettings(currentPatientId) || {};
+                                    const newCirculatorySettings = {
+                                        ...existingCirculatorySettings,
+                                        hr: sepsisHRRanges,
+                                        bp: sepsisBPRanges
+                                    };
+                                    
+                                    // Save the HR and BP ranges automatically
+                                    window.sharedDataManager.savePatientCirculatoirSettings(currentPatientId, newCirculatorySettings);
+                                    console.log('🦠 Sepsis selected on alarm overview - HR (90-130) & BP (65-85) ranges automatically saved');
+                                    
                                     // Apply highlighting since sepsis was just selected via button click
-                                    updateParameterRanges(true);
+                                    updateParameterRanges(true, 'sepsis');
                                 } else {
                                     console.error('❌ applySepsisHRRanges method not found!');
                                 }
@@ -750,10 +840,10 @@
                     selectRiskLevel(selectedRiskLevel);
                 }
                 
-                // Load tags - but verify sepsis state against SharedDataManager
+                // Load tags - but verify condition states against SharedDataManager
                 if (savedMedicalInfo.selectedTags && Array.isArray(savedMedicalInfo.selectedTags)) {
-                    selectedTags = savedMedicalInfo.selectedTags.filter(tag => tag !== 'sepsis'); // Remove sepsis, we'll check it separately
-                    console.log('✅ DEBUG: Loading non-sepsis tags:', selectedTags);
+                    selectedTags = savedMedicalInfo.selectedTags.filter(tag => tag !== 'sepsis' && tag !== 'pneumonie'); // Remove condition tags, we'll check them separately
+                    console.log('✅ DEBUG: Loading non-condition tags:', selectedTags);
                     selectedTags.forEach(tag => {
                         selectTag(tag);
                     });
@@ -773,9 +863,6 @@
                 console.log('🔍 DEBUG: All patients data:', window.sharedDataManager.getAllPatients());
                 window.sharedDataManager.debugLocalStorage();
             }
-            
-            // Initialize sepsis tag state based on current SharedDataManager state (source of truth)
-            initializeSepsisTagState();
         }
 
         // Load and apply saved heart monitoring level from circulatoir settings
@@ -852,18 +939,22 @@
                     const conditionState = window.sharedDataManager.getPatientConditionState(condition, currentPatientId);
                     const conditionButton = document.querySelector(`.tag-btn[data-condition="${condition}"]`);
                     
+                    console.log(`🔍 DEBUG: Condition ${condition} - State:`, conditionState, 'Button found:', !!conditionButton);
+                    
                     if (conditionButton) {
                         if (conditionState && conditionState.isActive) {
                             conditionButton.classList.add('selected');
                             if (!selectedTags.includes(condition)) {
                                 selectedTags.push(condition);
                             }
-                            console.log(`✅ Initialized ${condition} button as selected`);
+                            console.log(`✅ Initialized ${condition} button as SELECTED (isActive: ${conditionState.isActive})`);
                         } else {
                             conditionButton.classList.remove('selected');
                             selectedTags = selectedTags.filter(t => t !== condition);
-                            console.log(`✅ Initialized ${condition} button as deselected`);
+                            console.log(`✅ Initialized ${condition} button as DESELECTED (isActive: ${conditionState?.isActive || 'undefined'})`);
                         }
+                    } else {
+                        console.warn(`❌ Button not found for condition: ${condition}`);
                     }
                 });
                 
@@ -879,8 +970,8 @@
             }
         }
 
-        function updateParameterRanges(shouldHighlight = false) {
-            console.log('🔍 DEBUG: Updating parameter ranges for selected tags:', selectedTags, 'shouldHighlight:', shouldHighlight);
+        function updateParameterRanges(shouldHighlight = false, highlightCondition = null) {
+            console.log('🔍 DEBUG: Updating parameter ranges for selected tags:', selectedTags, 'shouldHighlight:', shouldHighlight, 'highlightCondition:', highlightCondition);
             
             // Get patient-specific target ranges first
             let targetRanges = null;
@@ -905,8 +996,8 @@
                         hrRange.textContent = Math.round(hr.min) + ' - ' + Math.round(hr.max) + ' ' + (hr.unit || 'bpm');
                         console.log('🎯 Updated HR range from target ranges:', Math.round(hr.min) + ' - ' + Math.round(hr.max) + ' ' + (hr.unit || 'bpm'));
                         
-                        // Apply highlighting only if sepsis is active AND we should highlight (tag button clicked)
-                        if (hasSepsis && shouldHighlight) {
+                        // Apply highlighting only if sepsis is active AND we should highlight (tag button clicked) AND it's sepsis-specific
+                        if (hasSepsis && shouldHighlight && (highlightCondition === 'sepsis' || highlightCondition === null)) {
                             window.sharedDataManager.highlightElement(hrRange, 'highlight-beige', 1500);
                             console.log('✅ Applied sepsis highlighting to HR display');
                         }
@@ -924,8 +1015,8 @@
                             bpRange.textContent = Math.round(bp.min) + ' - ' + Math.round(bp.max) + ' ' + (bp.unit || 'mmHg');
                             console.log('🎯 Updated BP range from target ranges:', Math.round(bp.min) + ' - ' + Math.round(bp.max) + ' ' + (bp.unit || 'mmHg'));
                             
-                            // Apply highlighting only if sepsis is active AND we should highlight (tag button clicked)
-                            if (hasSepsis && shouldHighlight) {
+                            // Apply highlighting only if sepsis is active AND we should highlight (tag button clicked) AND it's sepsis-specific
+                            if (hasSepsis && shouldHighlight && (highlightCondition === 'sepsis' || highlightCondition === null)) {
                                 window.sharedDataManager.highlightElement(bpRange, 'highlight-beige', 1500);
                                 console.log('✅ Applied sepsis highlighting to BP display');
                             }
@@ -945,8 +1036,8 @@
                         afRangeDisplay.textContent = Math.round(af.min) + ' - ' + Math.round(af.max) + ' ' + (af.unit || '/min');
                         console.log('🎯 Updated AF range from target ranges:', Math.round(af.min) + ' - ' + Math.round(af.max) + ' ' + (af.unit || '/min'));
                         
-                        // Apply highlighting only if pneumonie is active AND we should highlight (tag button clicked)
-                        if (hasPneumonie && shouldHighlight) {
+                        // Apply highlighting only if pneumonie is active AND we should highlight (tag button clicked) AND it's pneumonie-specific
+                        if (hasPneumonie && shouldHighlight && (highlightCondition === 'pneumonie' || highlightCondition === null)) {
                             window.sharedDataManager.highlightElement(afRangeDisplay, 'highlight-blue', 1500);
                             console.log('✅ Applied pneumonie highlighting to AF display');
                         }

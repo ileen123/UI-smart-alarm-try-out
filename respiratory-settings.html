@@ -929,11 +929,32 @@
                 initializeHeartCircleComponent();
                 initializeSliders();
                 
-                // Check if sepsis is active and force slider update after everything is loaded
+                // Always update sliders from current target ranges on page load
                 setTimeout(() => {
                     if (currentPatientId && window.sharedDataManager) {
                         const targetRanges = window.sharedDataManager.getPatientTargetRanges(currentPatientId);
-                        console.log('🔍 Checking target ranges on page load:', targetRanges);
+                        console.log('🔍 Loading target ranges on page load:', targetRanges);
+                        
+                        // Update AF slider if target ranges exist
+                        if (targetRanges && targetRanges.AF && afSlider) {
+                            console.log('🔄 Updating AF slider to current target ranges:', targetRanges.AF.min, '-', targetRanges.AF.max);
+                            // Set global values and update sliders
+                            window.AF_low = targetRanges.AF.min;
+                            window.AF_high = targetRanges.AF.max;
+                            
+                            // Update slider configuration
+                            afSlider.config.targetRange.min = window.AF_low;
+                            afSlider.config.targetRange.max = window.AF_high;
+                            afSlider.currentMin = window.AF_low;
+                            afSlider.currentMax = window.AF_high;
+                            
+                            if (afSlider.updateSliderPosition) {
+                                afSlider.updateSliderPosition();
+                                console.log('✅ AF slider updated to target ranges:', window.AF_low, '-', window.AF_high);
+                            }
+                        }
+                        
+                        // Also check for HR ranges if this page has HR elements
                         if (targetRanges && targetRanges.HR && targetRanges.HR.min === 90 && targetRanges.HR.max === 130) {
                             console.log('🦠 SEPSIS DETECTED ON PAGE LOAD - forcing slider to 90-130');
                             testSepsisRange();
@@ -1232,15 +1253,21 @@
                 // Check if pneumonie is currently selected using the new condition state method
                 const pneumonieState = window.sharedDataManager.getPatientConditionState('pneumonie', currentPatientId);
                 
+                console.log('🔍 DEBUG RESPIRATORY: Pneumonie state:', pneumonieState);
+                
                 const pneumonieButton = document.querySelector('.circulatory-tag[data-condition="pneumonie"]');
+                console.log('🔍 DEBUG RESPIRATORY: Button found:', !!pneumonieButton);
+                
                 if (pneumonieButton) {
                     if (pneumonieState && pneumonieState.isActive) {
                         pneumonieButton.classList.add('selected');
-                        console.log('✅ Initialized pneumonie button as selected');
+                        console.log('✅ RESPIRATORY: Initialized pneumonie button as SELECTED (isActive: true)');
                     } else {
                         pneumonieButton.classList.remove('selected');
-                        console.log('✅ Initialized pneumonie button as deselected');
+                        console.log('✅ RESPIRATORY: Initialized pneumonie button as DESELECTED (isActive: ' + (pneumonieState?.isActive || 'undefined') + ')');
                     }
+                } else {
+                    console.warn('❌ RESPIRATORY: Pneumonie button not found!');
                 }
             }
         }
@@ -1334,6 +1361,39 @@
             // Make test function available globally for debugging
             window.testSepsisRange = testSepsisRange;
             
+            // Function to refresh sliders from current target ranges
+            function refreshSlidersFromTargetRanges() {
+                if (currentPatientId && window.sharedDataManager) {
+                    const targetRanges = window.sharedDataManager.getPatientTargetRanges(currentPatientId);
+                    console.log('🔄 Refreshing AF sliders from target ranges:', targetRanges);
+                    
+                    if (targetRanges && targetRanges.AF && afSlider && afSlider.container) {
+                        // Update global values for AF
+                        window.AF_low = targetRanges.AF.min;
+                        window.AF_high = targetRanges.AF.max;
+                        
+                        // Update slider configuration and position
+                        if (typeof afSlider.updateConfig === 'function') {
+                            afSlider.updateConfig({
+                                targetRange: {
+                                    min: window.AF_low,
+                                    max: window.AF_high
+                                }
+                            });
+                            console.log('✅ AF slider updated from target ranges:', window.AF_low, '-', window.AF_high);
+                        } else {
+                            // Fallback method
+                            afSlider.config.targetRange.min = window.AF_low;
+                            afSlider.config.targetRange.max = window.AF_high;
+                            afSlider.currentMin = window.AF_low;
+                            afSlider.currentMax = window.AF_high;
+                            console.log('✅ AF slider updated via fallback method:', window.AF_low, '-', window.AF_high);
+                        }
+                        
+                        console.log('✅ AF sliders refreshed from target ranges');
+                    }
+                }
+            }
             
             // Listen for HR range changes from sepsis selection/deselection
             window.addEventListener('hrRangesChanged', function(event) {
@@ -1398,6 +1458,28 @@
                             // Restore previous AF ranges from shared data manager
                             if (window.sharedDataManager.restorePreviousAFRanges) {
                                 window.sharedDataManager.restorePreviousAFRanges(currentPatientId);
+                                
+                                // Get the restored AF ranges and save them to respiratory settings
+                                setTimeout(() => {
+                                    const restoredTargetRanges = window.sharedDataManager.getPatientTargetRanges(currentPatientId);
+                                    if (restoredTargetRanges && restoredTargetRanges.AF) {
+                                        const existingRespiratorySettings = window.sharedDataManager.getPatientRespiratorySettings(currentPatientId) || {};
+                                        const newRespiratorySettings = {
+                                            ...existingRespiratorySettings,
+                                            af: { min: restoredTargetRanges.AF.min, max: restoredTargetRanges.AF.max }
+                                        };
+                                        
+                                        // Save the restored AF ranges automatically
+                                        window.sharedDataManager.savePatientRespiratorySettings(currentPatientId, newRespiratorySettings);
+                                        console.log('🫁 Pneumonie deselected on respiratory page - restored AF ranges automatically saved:', newRespiratorySettings);
+                                        
+                                        // Refresh sliders to show the restored ranges
+                                        setTimeout(() => {
+                                            refreshSlidersFromTargetRanges();
+                                        }, 50);
+                                    }
+                                }, 100); // Small delay to ensure restoration is complete
+                                
                                 console.log('🫁 Pneumonie deselected and previous AF ranges restored');
                             } else {
                                 console.log('🫁 Pneumonie deselected in respiratory settings');
@@ -1556,30 +1638,32 @@
                     const isPneumonieActive = targetRanges && targetRanges.AF && 
                                              targetRanges.AF.min === 10 && targetRanges.AF.max === 30;
                     
-                    if (isSepsisActive) {
-                        // Sepsis is active - target ranges take priority over saved settings for HR/BP
-                        console.log('🦠 Sepsis is active - using target ranges for HR/BP instead of saved settings');
-                        // Keep currentSettings HR/BP as is (target ranges)
+                    // ALWAYS prioritize target ranges when they exist (they reflect current condition state)
+                    if (targetRanges && (targetRanges.HR || targetRanges.BP_Mean)) {
+                        console.log('🎯 Target ranges exist for HR/BP - using target ranges instead of saved settings');
+                        // Keep currentSettings HR/BP as is (target ranges take priority)
                     } else {
-                        // Normal case - merge saved circulatory settings with target ranges (saved settings take priority for fine-tuning)
+                        // Only use saved HR/BP settings if no target ranges exist
                         currentSettings.hr = savedSettings.hr || currentSettings.hr;
                         currentSettings.bp = savedSettings.bp || currentSettings.bp;
-                        console.log('✅ Using saved fine-tuned circulatory settings');
+                        console.log('✅ No HR/BP target ranges - using saved fine-tuned circulatory settings');
                     }
                     
-                    // Handle respiratory settings separately - pneumonie always takes priority
-                    if (isPneumonieActive) {
-                        // Pneumonie is active - target ranges take priority for AF
-                        console.log('🫁 Pneumonie is active - using target ranges for AF instead of saved settings');
-                        // Keep currentSettings AF as is (target ranges from pneumonie)
+                    // Handle respiratory settings - target ranges always take priority
+                    if (targetRanges && targetRanges.AF) {
+                        console.log('🎯 Target ranges exist for AF - using target ranges instead of saved settings');
+                        // Keep currentSettings AF as is (target ranges take priority)
                     } else if (savedRespiratorySettings) {
-                        // Normal case - use saved respiratory settings if no pneumonie
-                        currentSettings.saturatie = savedRespiratorySettings.saturatie || currentSettings.saturatie;
-                        currentSettings.af = savedRespiratorySettings.af || currentSettings.af;
-                        console.log('✅ Using saved respiratory settings:', {
-                            saturatie: currentSettings.saturatie,
-                            af: currentSettings.af
-                        });
+                        // Only use saved respiratory settings if no AF target ranges exist
+                        if (!targetRanges || !targetRanges.AF) {
+                            currentSettings.af = savedRespiratorySettings.af || currentSettings.af;
+                            console.log('✅ No AF target ranges - using saved AF settings:', currentSettings.af);
+                        }
+                        // For saturatie, use saved settings if no target ranges exist
+                        if (!targetRanges || !targetRanges.Saturatie) {
+                            currentSettings.saturatie = savedRespiratorySettings.saturatie || currentSettings.saturatie;
+                            console.log('✅ Using saved saturatie settings:', currentSettings.saturatie);
+                        }
                     }
                 } else {
                     // If no fine-tuned settings, check if we need to load from medical info
@@ -1769,26 +1853,26 @@
                         if (afSlider) {
                             console.log('✅ AF Slider initialized successfully');
                             
-                            // Check if pneumonie is currently active and force AF slider to use pneumonie ranges
+                            // Always update AF slider from current target ranges
                             if (currentPatientId && window.sharedDataManager) {
-                                const pneumonieState = window.sharedDataManager.getPatientConditionState('pneumonie', currentPatientId);
-                                console.log('🫁 Checking pneumonie state after AF slider creation:', pneumonieState);
+                                const targetRanges = window.sharedDataManager.getPatientTargetRanges(currentPatientId);
+                                console.log('🔄 Loading AF target ranges after slider creation:', targetRanges);
                                 
-                                if (pneumonieState && pneumonieState.isActive) {
-                                    console.log('🫁 Pneumonie is active - forcing AF slider to use 10-30 range');
+                                if (targetRanges && targetRanges.AF) {
+                                    console.log('🔄 Updating AF slider to current target ranges:', targetRanges.AF.min, '-', targetRanges.AF.max);
                                     
-                                    // Force the slider to use pneumonie ranges
-                                    afSlider.config.targetRange.min = 10;
-                                    afSlider.config.targetRange.max = 30;
-                                    afSlider.currentMin = 10;
-                                    afSlider.currentMax = 30;
-                                    afSlider.originalMin = 10;
-                                    afSlider.originalMax = 30;
+                                    // Update the slider to use current target ranges
+                                    afSlider.config.targetRange.min = targetRanges.AF.min;
+                                    afSlider.config.targetRange.max = targetRanges.AF.max;
+                                    afSlider.currentMin = targetRanges.AF.min;
+                                    afSlider.currentMax = targetRanges.AF.max;
+                                    afSlider.originalMin = targetRanges.AF.min;
+                                    afSlider.originalMax = targetRanges.AF.max;
                                     
-                                    // Force re-render the slider to show pneumonie range
+                                    // Force re-render the slider to show current ranges
                                     if (afSlider.updateSliderPosition) {
                                         afSlider.updateSliderPosition();
-                                        console.log('✅ AF slider forced to pneumonie range: 10-30 /min');
+                                        console.log('✅ AF slider updated to current target ranges:', targetRanges.AF.min, '-', targetRanges.AF.max, targetRanges.AF.unit);
                                     }
                                 }
                             }

@@ -811,7 +811,14 @@
                 return;
             }
             
-            availablePatients.forEach(patient => {
+            // Sort patients by ID (1-4) with lowest number on top
+            const sortedPatients = [...availablePatients].sort((a, b) => {
+                const idA = parseInt(a.id) || 0;
+                const idB = parseInt(b.id) || 0;
+                return idA - idB;
+            });
+            
+            sortedPatients.forEach(patient => {
                 console.log('Adding patient to list:', patient);
                 const li = document.createElement('li');
                 li.className = 'patient-item';
