@@ -216,7 +216,7 @@
             
             // Load saved heart monitoring level and apply it
             setTimeout(() => {
-                loadSavedHeartMonitoringLevel();
+                // loadSavedHeartMonitoringLevel(); // Disabled - let matrix control organ levels
                 // Update monitoring status after everything is loaded
                 setTimeout(() => updateMonitoringStatus(), 200);
             }, 1000); // Increased delay to ensure it runs after loadExistingSettings
@@ -520,7 +520,7 @@
                     
                     // Get risk level and update circles
                     const riskLevel = this.classList.contains('risk-low') ? 'low' : 
-                                     this.classList.contains('risk-high') ? 'high' : 'med';
+                                     this.classList.contains('risk-high') ? 'high' : 'mid';
                     selectedRiskLevel = riskLevel;
                     console.log('Risk button clicked, detected risk level:', selectedRiskLevel);
                     updateOrganCirclesWithRisk(riskLevel);
@@ -1348,104 +1348,82 @@
         
         // Function to update organ circles based on risk level
         function updateOrganCirclesWithRisk(riskLevel) {
-            console.log('Risk level selected:', riskLevel);
+            console.log('🔄 updateOrganCirclesWithRisk called with:', riskLevel);
+            console.log('🔄 Current selectedProblem:', selectedProblem);
+            console.log('🔄 Setting selectedRiskLevel to:', riskLevel);
             selectedRiskLevel = riskLevel;
+            console.log('🔄 Calling updateOrganCircles...');
             updateOrganCircles();
         }
 
         // Main function to update organ circles based on current problem and risk
         function updateOrganCircles() {
-            console.log('Updating organ circles for problem:', selectedProblem, 'risk:', selectedRiskLevel);
+            console.log('🚀 updateOrganCircles called with selectedProblem:', selectedProblem);
             
             if (!window.sharedDataManager) {
-                console.warn('SharedDataManager not available');
+                console.error('❌ SharedDataManager not available');
                 return;
             }
             
-            // Use SharedDataManager to calculate organ states
-            console.log('🔍 DEBUG: Calculating organ states with problem:', selectedProblem, 'riskLevel:', selectedRiskLevel);
-            const finalOrganStates = window.sharedDataManager.calculateOrganStates(selectedProblem, selectedRiskLevel);
-            console.log('🔍 DEBUG: Final organ states:', finalOrganStates);
-            console.log('🔍 DEBUG: Final organ states type:', typeof finalOrganStates);
-            console.log('🔍 DEBUG: Final organ states keys:', finalOrganStates ? Object.keys(finalOrganStates) : 'null');
-            console.log('🔍 DEBUG: Heart property:', finalOrganStates?.heart);
-            
-            if (!finalOrganStates || !finalOrganStates.heart) {
-                console.error('❌ DEBUG: Invalid organ states returned:', finalOrganStates);
+            if (!window.organComponents) {
+                console.error('❌ Organ components not available');
                 return;
             }
             
+            // Use the centralized function from SharedDataManager that handles both monitoring levels and target ranges
+            console.log('� Calling applyProblemSpecificMonitoring with:');
+            console.log('   - Problem:', selectedProblem);
+            console.log('   - Risk Level:', selectedRiskLevel);
+            console.log('   - Organ Components:', window.organComponents);
+            
+            // If no problem is selected, use default but still apply risk level logic
+            const effectiveProblem = selectedProblem || 'none';
+            // If a problem is selected but no risk level chosen, default to 'mid' for visualization
+            const effectiveRiskLevel = selectedProblem && !selectedRiskLevel ? 'mid' : selectedRiskLevel;
+            console.log('   - Effective Problem:', effectiveProblem);
+            console.log('   - Effective Risk Level:', effectiveRiskLevel);
+            
+            const result = window.sharedDataManager.applyProblemSpecificMonitoring(
+                effectiveProblem, 
+                window.organComponents,
+                window.sharedDataManager.getCurrentPatientId(), // Pass patient ID to save target ranges
+                effectiveRiskLevel // Use 'mid' as default when problem selected but no risk chosen
+            );
+            
+            const finalOrganStates = result.organStates;
+            const targetRanges = result.targetRanges;
             const isActivated = selectedProblem !== '';
             
-            // Debug organ components
-            console.log('🔍 DEBUG: window.organComponents:', window.organComponents);
-            console.log('🔍 DEBUG: window.organComponents type:', typeof window.organComponents);
+            console.log('🎯 Applied organ states:', finalOrganStates);
+            console.log('🎯 Applied target ranges:', targetRanges);
+            console.log('🎯 Current selectedProblem:', selectedProblem);
+            console.log('🎯 Current selectedRiskLevel:', selectedRiskLevel);
+            console.log('🎯 isActivated:', isActivated);
             
-            // Update each organ component
-            if (window.organComponents && window.organComponents.heart) {
-                console.log('🔍 DEBUG: Heart component found, checking for manual override...');
-                
-                // Check if there's a manually set heart monitoring level that should take precedence
-                const currentSavedLevel = window.sharedDataManager.getHeartMonitoringLevel(currentPatientId);
-                const calculatedLevel = finalOrganStates.heart;
-                
-                console.log('🔍 DEBUG: Current saved heart level:', currentSavedLevel);
-                console.log('🔍 DEBUG: Calculated heart level:', calculatedLevel);
-                
-                // Use manually set level if it exists and is different from default 'mid'
-                // OR if it was recently changed (within last 1 second) to prioritize manual changes
-                let levelToUse = calculatedLevel;
-                const recentManualChange = sessionStorage.getItem('recentHeartLevelChange');
-                
-                if (recentManualChange) {
-                    const changeTime = parseInt(recentManualChange);
-                    const timeDiff = Date.now() - changeTime;
-                    if (timeDiff < 1000) { // Within last 1 second
-                        levelToUse = currentSavedLevel;
-                        console.log('🫀 Using recently manually set heart level:', levelToUse);
-                    } else {
-                        sessionStorage.removeItem('recentHeartLevelChange');
-                    }
-                } else if (currentSavedLevel !== 'mid' && currentSavedLevel !== calculatedLevel) {
-                    // Manual level exists and differs from calculated - ask user or use manual
-                    levelToUse = currentSavedLevel;
-                    console.log('🫀 Using existing manual heart level:', levelToUse);
-                }
-                
-                window.organComponents.heart.setRiskLevel(levelToUse);
-                
-                // Only save if we're using the calculated level (not overriding manual setting)
-                if (levelToUse === calculatedLevel) {
-                    window.sharedDataManager.updateGlobalHeartMonitoringLevel(currentPatientId, levelToUse);
-                    console.log('✅ Heart monitoring level saved globally:', levelToUse);
-                }
-                
+            // Update organ settings (organ components already updated by centralized function)
+            if (finalOrganStates.heart) {
                 window.sharedDataManager.setOrganSettings('circulatoir', { 
                     active: isActivated, 
                     severity: isActivated ? 'active' : 'los', 
-                    riskLevel: levelToUse 
+                    riskLevel: finalOrganStates.heart 
                 });
-                console.log('Heart set to:', levelToUse);
-            } else {
-                console.error('❌ DEBUG: Heart component not found in window.organComponents');
+                console.log('Heart settings saved:', finalOrganStates.heart);
             }
-            if (window.organComponents.lung) {
-                window.organComponents.lung.setRiskLevel(finalOrganStates.lung);
+            if (finalOrganStates.lung) {
                 window.sharedDataManager.setOrganSettings('respiratoir', { 
                     active: isActivated, 
                     severity: isActivated ? 'active' : 'los', 
                     riskLevel: finalOrganStates.lung 
                 });
-                console.log('Lung set to:', finalOrganStates.lung);
+                console.log('Lung settings saved:', finalOrganStates.lung);
             }
-            if (window.organComponents.temp) {
-                window.organComponents.temp.setRiskLevel(finalOrganStates.temp);
+            if (finalOrganStates.temp) {
                 window.sharedDataManager.setOrganSettings('overig', { 
                     active: isActivated, 
                     severity: isActivated ? 'active' : 'los', 
                     riskLevel: finalOrganStates.temp 
                 });
-                console.log('Temp set to:', finalOrganStates.temp);
+                console.log('Temp settings saved:', finalOrganStates.temp);
             }
             
             // Update monitoring status after all circles are updated

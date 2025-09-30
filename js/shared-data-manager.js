@@ -680,6 +680,482 @@ class SharedDataManager {
     }
 
     /**
+     * Advanced Risk Management System
+     * Explicit lookup table for all problem + risk level combinations
+     * @param {string} problemValue - The medical problem ('respiratoire-insufficientie', 'hart-falen', 'sepsis', etc.)
+     * @param {string} overallRiskLevel - The patient's overall risk level ('low', 'mid', 'high')
+     * @returns {Object} - Calculated organ states and reasoning
+     */
+    calculateAdvancedOrganStates(problemValue, overallRiskLevel = 'low') {
+        console.log(`🎯 Advanced Risk Calculation: Problem=${problemValue}, Overall Risk=${overallRiskLevel}`);
+        
+        // EXPLICIT LOOKUP TABLE - Define exact states for each combination
+        const riskMatrix = {
+            'respiratoire-insufficientie': {
+                'low': {
+                    heart: 'low',
+                    lung: 'low',
+                    temp: 'low',
+                    reasoning: 'Respiratory problem with low risk - focus on lung monitoring only'
+                },
+                'mid': {
+                    heart: 'low',
+                    lung: 'mid', 
+                    temp: 'low',
+                    reasoning: 'Respiratory problem with medium risk - enhance cardiac monitoring as precaution'
+                },
+                'high': {
+                    heart: 'mid',
+                    lung: 'high',
+                    temp: 'mid',
+                    reasoning: 'Respiratory problem with high risk - intensive monitoring across systems'
+                }
+            },
+            'hart-falen': {
+                'low': {
+                    heart: 'low',
+                    lung: 'low',
+                    temp: 'low',
+                    reasoning: 'Heart failure with low risk - focus on cardiac monitoring only'
+                },
+                'mid': {
+                    heart: 'mid',
+                    lung: 'low',
+                    temp: 'low',
+                    reasoning: 'Heart failure with medium risk - monitor respiratory as secondary concern'
+                },
+                'high': {
+                    heart: 'high',
+                    lung: 'mid',
+                    temp: 'mid',
+                    reasoning: 'Heart failure with high risk - comprehensive monitoring due to systemic impact'
+                }
+            },
+            'sepsis': {
+                'low': {
+                    heart: 'low',
+                    lung: 'low',
+                    temp: 'low',
+                    reasoning: 'Sepsis with low risk - temperature priority with moderate systemic monitoring'
+                },
+                'mid': {
+                    heart: 'mid',
+                    lung: 'low',
+                    temp: 'mid',
+                    reasoning: 'Sepsis with medium risk - intensive cardiac and temperature monitoring'
+                },
+                'high': {
+                    heart: 'high',
+                    lung: 'mid', 
+                    temp: 'high',
+                    reasoning: 'Sepsis with high risk - maximum monitoring across all systems'
+                }
+            }
+        };
+        
+        // Default states for unknown problems or no problem selected
+        const defaultStates = {
+            'low': { heart: 'low', lung: 'low', temp: 'low', reasoning: 'No specific problem - standard monitoring' },
+            'mid': { heart: 'mid', lung: 'mid', temp: 'mid', reasoning: 'No specific problem - standard monitoring' },
+            'high': { heart: 'high', lung: 'high', temp: 'high', reasoning: 'No specific problem but high risk - enhanced monitoring' }
+        };
+        
+        // Get the exact combination or fall back to defaults
+        const problemConfig = riskMatrix[problemValue];
+        const config = problemConfig ? problemConfig[overallRiskLevel] : defaultStates[overallRiskLevel];
+        
+        if (!config) {
+            console.warn(`⚠️ No configuration found for ${problemValue} + ${overallRiskLevel}, using safe defaults`);
+            return {
+                organStates: { heart: 'low', lung: 'low', temp: 'low' },
+                reasoning: { approach: 'Safe defaults', details: 'Unknown configuration - using conservative monitoring' },
+                riskLevel: overallRiskLevel
+            };
+        }
+        
+        const organStates = {
+            heart: config.heart,
+            lung: config.lung,
+            temp: config.temp
+        };
+        
+        const reasoning = {
+            approach: `${problemValue} + ${overallRiskLevel} risk protocol`,
+            details: config.reasoning
+        };
+        
+        console.log(`✅ Explicit states for ${problemValue} + ${overallRiskLevel}:`, organStates);
+        console.log(`📋 Reasoning:`, reasoning);
+        
+        return {
+            organStates,
+            reasoning,
+            riskLevel: overallRiskLevel
+        };
+    }
+
+    /**
+     * Apply problem-specific monitoring levels and target ranges
+     * This function is used by both setup.html and alarm-overview.html for consistency
+     * @param {string} problemValue - The selected problem ('respiratoire-insufficientie', 'hart-falen', 'sepsis')
+     * @param {Object} organComponents - The organ circle components from the page (optional)
+     * @param {string} patientId - The current patient ID for saving target ranges (optional)
+     * @param {string} overallRiskLevel - The patient's overall risk level ('low', 'mid', 'high') (optional)
+     * @returns {Object} - Object containing organStates, targetRanges, and reasoning
+     */
+    applyProblemSpecificMonitoring(problemValue, organComponents = null, patientId = null, overallRiskLevel = null) {
+        console.log('🎯 Applying problem-specific monitoring for:', problemValue);
+        
+        // Get current risk level from localStorage if not provided
+        if (!overallRiskLevel) {
+            overallRiskLevel = localStorage.getItem(this.storageKeys.SELECTED_RISK_LEVEL) || 'low';
+        }
+        
+        // Use advanced risk calculation system
+        const riskCalculation = this.calculateAdvancedOrganStates(problemValue, overallRiskLevel);
+        let organStates = riskCalculation.organStates;
+        let targetRanges = {};
+        
+        // Define target ranges for each problem (organ states now come from the matrix!)
+        switch(problemValue) {
+            case 'respiratoire-insufficientie':
+                targetRanges = {
+                    HR: { min: 70, max: 100, unit: 'bpm' },
+                    BP_Systolic: { min: 100, max: 140, unit: 'mmHg' },
+                    BP_Diastolic: { min: 60, max: 90, unit: 'mmHg' },
+                    BP_Mean: { min: 60, max: 90, unit: 'mmHg' },
+                    AF: { min: 12, max: 20, unit: '/min' },
+                    Saturatie: { min: 92, max: 100, unit: '%' },
+                    Temperature: { min: 36.0, max: 38.5, unit: '°C' }
+                };
+                break;
+                
+            case 'hart-falen':
+                targetRanges = {
+                    HR: { min: 80, max: 120, unit: 'bpm' },
+                    BP_Systolic: { min: 90, max: 130, unit: 'mmHg' },
+                    BP_Diastolic: { min: 50, max: 80, unit: 'mmHg' },
+                    BP_Mean: { min: 55, max: 75, unit: 'mmHg' },
+                    AF: { min: 12, max: 18, unit: '/min' },
+                    Saturatie: { min: 92, max: 100, unit: '%' },
+                    Temperature: { min: 36.0, max: 38.5, unit: '°C' }
+                };
+                break;
+                
+            case 'sepsis':
+                targetRanges = {
+                    HR: { min: 70, max: 120, unit: 'bpm' },
+                    BP_Systolic: { min: 90, max: 140, unit: 'mmHg' },
+                    BP_Diastolic: { min: 60, max: 90, unit: 'mmHg' },
+                    BP_Mean: { min: 50, max: 80, unit: 'mmHg' },
+                    AF: { min: 12, max: 18, unit: '/min' },
+                    Saturatie: { min: 92, max: 100, unit: '%' },
+                    Temperature: { min: 36.0, max: 38.5, unit: '°C' }
+                };
+                break;
+                
+            default:
+                // Use default/normal target ranges (matching original HTML values)
+                targetRanges = {
+                    HR: { min: 70, max: 110, unit: 'bpm' },
+                    BP_Systolic: { min: 100, max: 140, unit: 'mmHg' },
+                    BP_Diastolic: { min: 60, max: 90, unit: 'mmHg' },
+                    BP_Mean: { min: 65, max: 85, unit: 'mmHg' },
+                    AF: { min: 10, max: 25, unit: '/min' },
+                    Saturatie: { min: 90, max: 100, unit: '%' },
+                    Temperature: { min: 36.5, max: 39, unit: '°C' }
+                };
+                break;
+        }
+        
+        console.log(`🎯 Using MATRIX states for ${problemValue} + ${overallRiskLevel}:`, organStates);
+        
+        // Apply the states to organ components if provided
+        if (organComponents) {
+            console.log('🔧 Organ components received, applying states:', organStates);
+            
+            if (organComponents.heart) {
+                console.log('🔧 Setting heart level from', organComponents.heart.getRiskLevel?.(), 'to', organStates.heart);
+                organComponents.heart.setRiskLevel(organStates.heart);
+                // Force a visual refresh
+                setTimeout(() => organComponents.heart.setRiskLevel(organStates.heart), 10);
+                console.log('✅ Applied heart level:', organStates.heart, '- New level:', organComponents.heart.getRiskLevel?.());
+            } else {
+                console.warn('❌ Heart component not found in organComponents');
+            }
+            
+            if (organComponents.lung) {
+                console.log('🔧 Setting lung level from', organComponents.lung.getRiskLevel?.(), 'to', organStates.lung);
+                organComponents.lung.setRiskLevel(organStates.lung);
+                // Force a visual refresh
+                setTimeout(() => organComponents.lung.setRiskLevel(organStates.lung), 10);
+                console.log('✅ Applied lung level:', organStates.lung, '- New level:', organComponents.lung.getRiskLevel?.());
+            } else {
+                console.warn('❌ Lung component not found in organComponents');
+            }
+            
+            if (organComponents.temp) {
+                console.log('🔧 Setting temp level from', organComponents.temp.getRiskLevel?.(), 'to', organStates.temp);
+                organComponents.temp.setRiskLevel(organStates.temp);
+                // Force a visual refresh
+                setTimeout(() => organComponents.temp.setRiskLevel(organStates.temp), 10);
+                console.log('✅ Applied temp level:', organStates.temp, '- New level:', organComponents.temp.getRiskLevel?.());
+            } else {
+                console.warn('❌ Temp component not found in organComponents');
+            }
+        } else {
+            console.log('ℹ️ No organ components provided - calculating states only (normal for alarm-overview page)');
+        }
+        
+        // Save target ranges for the patient if patientId is provided
+        if (patientId && targetRanges) {
+            this.savePatientTargetRanges(patientId, targetRanges);
+            console.log('✅ Saved target ranges for patient:', patientId);
+        }
+        
+        // Store the applied states for other pages to access
+        const appData = this.getAppData();
+        if (appData) {
+            appData.currentOrganStates = organStates;
+            appData.currentTargetRanges = targetRanges;
+            this.saveAppData(appData);
+        }
+        
+        console.log('🎯 Problem-specific monitoring applied:', { organStates, targetRanges, reasoning: riskCalculation.reasoning });
+        return { 
+            organStates, 
+            targetRanges, 
+            reasoning: riskCalculation.reasoning,
+            riskLevel: overallRiskLevel
+        };
+    }
+
+    /**
+     * DEBUG: Test Risk Matrix Function
+     * Call this from browser console to test if the matrix is working
+     * Example: dataManager.testRiskMatrix('hart-falen', 'high')
+     */
+    testRiskMatrix(problemValue, riskLevel) {
+        console.log('\n🧪 === TESTING RISK MATRIX ===');
+        console.log(`Testing: ${problemValue} + ${riskLevel}`);
+        
+        // Test the matrix calculation
+        const result = this.calculateAdvancedOrganStates(problemValue, riskLevel);
+        console.log('Matrix result:', result);
+        
+        // Test with organ components if available
+        if (window.organComponents) {
+            console.log('\n🔧 Testing with actual organ components...');
+            const fullResult = this.applyProblemSpecificMonitoring(
+                problemValue, 
+                window.organComponents, 
+                null, 
+                riskLevel
+            );
+            console.log('Full result with components:', fullResult);
+        } else {
+            console.log('❌ No window.organComponents available for testing');
+        }
+        
+        console.log('=== END TEST ===\n');
+        return result;
+    }
+
+    /**
+     * DEBUG: Test Visual Changes
+     * Call this to test if visual changes are working
+     * Example: dataManager.testVisualChanges()
+     */
+    testVisualChanges() {
+        console.log('\n🎨 === TESTING VISUAL CHANGES ===');
+        
+        if (!window.organComponents) {
+            console.log('❌ No organ components available');
+            return;
+        }
+        
+        console.log('🔄 Cycling through all risk levels every 2 seconds...');
+        console.log('Watch the circles carefully for size changes!');
+        
+        const levels = ['low', 'mid', 'high'];
+        let currentIndex = 0;
+        
+        const interval = setInterval(() => {
+            const level = levels[currentIndex];
+            console.log(`\n🎯 Setting all components to: ${level.toUpperCase()}`);
+            
+            // Set all components to the same level for easy comparison
+            window.organComponents.heart?.setRiskLevel(level);
+            window.organComponents.lung?.setRiskLevel(level);
+            window.organComponents.temp?.setRiskLevel(level);
+            
+            console.log('Current states:');
+            console.log('  Heart:', window.organComponents.heart?.getRiskLevel());
+            console.log('  Lung:', window.organComponents.lung?.getRiskLevel()); 
+            console.log('  Temp:', window.organComponents.temp?.getRiskLevel());
+            
+            currentIndex++;
+            if (currentIndex >= levels.length) {
+                clearInterval(interval);
+                console.log('\n🏁 Visual test complete!');
+                console.log('Did you see the circles change size? If not, there may be a CSS or DOM issue.');
+            }
+        }, 2000);
+        
+        return 'Visual test started - watch the circles!';
+    }
+
+    /**
+     * Get Risk Management Overview
+     * Provides a comprehensive overview of current risk settings and their impact
+     * @param {string} problemValue - Current medical problem (optional)
+     * @param {string} overallRiskLevel - Current overall risk level (optional)
+     * @returns {Object} - Complete risk management overview
+     */
+    getRiskManagementOverview(problemValue = null, overallRiskLevel = null) {
+        // Get current values from localStorage if not provided
+        if (!problemValue) {
+            const appData = this.getAppData();
+            problemValue = appData?.currentProblem || 'none';
+        }
+        
+        if (!overallRiskLevel) {
+            overallRiskLevel = localStorage.getItem(this.storageKeys.SELECTED_RISK_LEVEL) || 'low';
+        }
+        
+        // Get the advanced calculation
+        const calculation = this.calculateAdvancedOrganStates(problemValue, overallRiskLevel);
+        
+        // Create human-readable summary
+        const summary = {
+            currentSettings: {
+                medicalProblem: problemValue,
+                overallRiskLevel: overallRiskLevel,
+                timestamp: new Date().toLocaleString()
+            },
+            organMonitoring: {
+                heart: {
+                    level: calculation.organStates.heart,
+                    description: this.getOrganLevelDescription('heart', calculation.organStates.heart)
+                },
+                lung: {
+                    level: calculation.organStates.lung,
+                    description: this.getOrganLevelDescription('lung', calculation.organStates.lung)
+                },
+                temperature: {
+                    level: calculation.organStates.temp,
+                    description: this.getOrganLevelDescription('temp', calculation.organStates.temp)
+                }
+            },
+            riskReasoning: calculation.reasoning,
+            recommendations: this.generateRiskRecommendations(calculation)
+        };
+        
+        return summary;
+    }
+    
+    /**
+     * Generate human-readable descriptions for organ monitoring levels
+     */
+    getOrganLevelDescription(organ, level) {
+        const descriptions = {
+            heart: {
+                low: 'Basic cardiac monitoring - standard parameters',
+                mid: 'Enhanced cardiac monitoring - closer observation',
+                high: 'Intensive cardiac monitoring - continuous attention'
+            },
+            lung: {
+                low: 'Basic respiratory monitoring - standard parameters', 
+                mid: 'Enhanced respiratory monitoring - closer observation',
+                high: 'Intensive respiratory monitoring - continuous attention'
+            },
+            temp: {
+                low: 'Basic temperature monitoring - routine checks',
+                mid: 'Enhanced temperature monitoring - frequent checks', 
+                high: 'Intensive temperature monitoring - continuous monitoring'
+            }
+        };
+        
+        return descriptions[organ]?.[level] || `${level} level monitoring`;
+    }
+    
+    /**
+     * Generate recommendations based on current risk calculation
+     */
+    generateRiskRecommendations(calculation) {
+        const recommendations = [];
+        
+        // Problem-specific recommendations
+        if (calculation.problemBaseline.primary === 'lung') {
+            recommendations.push('Focus on respiratory parameters - this is the primary concern');
+        }
+        if (calculation.problemBaseline.primary === 'heart') {
+            recommendations.push('Prioritize cardiovascular monitoring - this is the primary concern');
+        }
+        if (calculation.problemBaseline.primary === 'multi') {
+            recommendations.push('Multi-system monitoring required - sepsis affects multiple organs');
+        }
+        
+        // Risk level recommendations
+        if (calculation.riskLevel === 'low') {
+            recommendations.push('Standard monitoring protocol - focus on problem-specific parameters');
+        } else if (calculation.riskLevel === 'mid') {
+            recommendations.push('Enhanced monitoring - secondary systems require increased attention');
+        } else if (calculation.riskLevel === 'high') {
+            recommendations.push('Maximum monitoring protocol - all systems require intensive observation');
+        }
+        
+        // Specific organ recommendations
+        Object.entries(calculation.organStates).forEach(([organ, level]) => {
+            if (level === 'high') {
+                recommendations.push(`${organ.charAt(0).toUpperCase() + organ.slice(1)} requires intensive monitoring`);
+            }
+        });
+        
+        return recommendations;
+    }
+    
+    /**
+     * Update Overall Risk Level and Apply Changes
+     * Updates the patient's overall risk level and immediately applies the new monitoring configuration
+     * @param {string} newRiskLevel - New risk level ('low', 'mid', 'high')
+     * @param {Object} organComponents - Page organ components (optional)
+     * @param {string} patientId - Current patient ID (optional)
+     * @returns {Object} - Updated monitoring configuration and impact summary
+     */
+    updateOverallRiskLevel(newRiskLevel, organComponents = null, patientId = null) {
+        console.log(`🔄 Updating overall risk level from ${localStorage.getItem(this.storageKeys.SELECTED_RISK_LEVEL) || 'low'} to ${newRiskLevel}`);
+        
+        // Store the new risk level
+        localStorage.setItem(this.storageKeys.SELECTED_RISK_LEVEL, newRiskLevel);
+        
+        // Get current problem
+        const appData = this.getAppData();
+        const currentProblem = appData?.currentProblem || 'none';
+        
+        // Apply the new monitoring configuration
+        const updatedConfig = this.applyProblemSpecificMonitoring(
+            currentProblem, 
+            organComponents, 
+            patientId, 
+            newRiskLevel
+        );
+        
+        // Get impact summary
+        const overview = this.getRiskManagementOverview(currentProblem, newRiskLevel);
+        
+        console.log(`✅ Risk level updated successfully:`, overview);
+        
+        return {
+            success: true,
+            newConfiguration: updatedConfig,
+            impactSummary: overview,
+            changedFrom: localStorage.getItem(this.storageKeys.SELECTED_RISK_LEVEL),
+            changedTo: newRiskLevel
+        };
+    }
+
+    /**
      * Set organ settings (for compatibility with old dataManager)
      */
     setOrganSettings(organType, settings) {

@@ -319,7 +319,7 @@
                             
                             // Heart (circulatoir) - start inactive
                             console.log('Creating heart component...');
-                            window.organComponents.heart = new HeartCircleComponent('heart-circle-container', { size: circleSize, initialState: 'low' });
+                            window.organComponents.heart = new HeartCircleComponent('heart-circle-container', { size: circleSize, initialState: 'mid' });
                             setTimeout(() => injectSVG('heart-circle-container', 'heart'), 100);
                             
                             // Listen for global heart monitoring level changes
@@ -423,12 +423,12 @@
                             
                             // Lung (respiratoir) - start inactive
                             console.log('Creating lung component...');
-                            window.organComponents.lung = new HeartCircleComponent('lung-circle-container', { size: circleSize, initialState: 'low' });
+                            window.organComponents.lung = new HeartCircleComponent('lung-circle-container', { size: circleSize, initialState: 'mid' });
                             setTimeout(() => injectSVG('lung-circle-container', 'lung'), 100);
                             
                             // Temp (overig) - start inactive
                             console.log('Creating temp component...');
-                            window.organComponents.temp = new HeartCircleComponent('temp-circle-container', { size: circleSize, initialState: 'low' });
+                            window.organComponents.temp = new HeartCircleComponent('temp-circle-container', { size: circleSize, initialState: 'mid' });
                             setTimeout(() => injectSVG('temp-circle-container', 'temp'), 100);
                             
                             // Make all circles appear inactive until user makes selections
@@ -501,6 +501,8 @@
                             const riskButtons = document.querySelectorAll('.btn.risk-low, .btn.risk-mid, .btn.risk-high');
                             riskButtons.forEach(button => {
                                 button.addEventListener('click', function() {
+                                    console.log('\n🟡 === RISK BUTTON CLICKED ===');
+                                    
                                     // Remove selected class from all risk buttons
                                     riskButtons.forEach(btn => btn.classList.remove('selected'));
                                     // Add selected class to clicked button
@@ -509,11 +511,33 @@
                                     // Get risk level and update circles
                                     const riskLevel = this.classList.contains('risk-low') ? 'low' : 
                                                      this.classList.contains('risk-high') ? 'high' : 'mid';
-                                    console.log('Risk button clicked, detected risk level:', riskLevel);
+                                    console.log('🔵 Risk button clicked, detected risk level:', riskLevel);
+                                    console.log('🔵 Current selectedProblem:', selectedProblem);
+                                    
+                                    // Debug organ components before update
+                                    console.log('🔧 Organ components before update:', window.organComponents);
+                                    if (window.organComponents) {
+                                        console.log('🔧 Heart level before:', window.organComponents.heart?.getRiskLevel?.());
+                                        console.log('🔧 Lung level before:', window.organComponents.lung?.getRiskLevel?.());
+                                        console.log('🔧 Temp level before:', window.organComponents.temp?.getRiskLevel?.());
+                                    }
+                                    
                                     selectedRiskLevel = riskLevel;
-                                    console.log('selectedRiskLevel is now:', selectedRiskLevel);
+                                    console.log('🔵 selectedRiskLevel is now:', selectedRiskLevel);
                                     window.dataManager?.setSelectedRiskLevel(riskLevel);
                                     updateOrganCirclesWithRisk(riskLevel);
+                                    
+                                    // Debug organ components after update
+                                    setTimeout(() => {
+                                        console.log('🔧 Organ components after update:', window.organComponents);
+                                        if (window.organComponents) {
+                                            console.log('🔧 Heart level after:', window.organComponents.heart?.getRiskLevel?.());
+                                            console.log('🔧 Lung level after:', window.organComponents.lung?.getRiskLevel?.());
+                                            console.log('🔧 Temp level after:', window.organComponents.temp?.getRiskLevel?.());
+                                        }
+                                        console.log('🟡 === END RISK BUTTON CLICK ===\n');
+                                    }, 100);
+                                    
                                     updateProgressBar(); // Update progress when risk level is selected
                                 });
                             });
@@ -737,8 +761,11 @@
                         
                         // Function to update organ circles based on risk level
                         function updateOrganCirclesWithRisk(riskLevel) {
-                            console.log('Risk level selected:', riskLevel);
+                            console.log('🔄 updateOrganCirclesWithRisk called with:', riskLevel);
+                            console.log('🔄 Current selectedProblem:', selectedProblem);
+                            console.log('🔄 Setting selectedRiskLevel to:', riskLevel);
                             selectedRiskLevel = riskLevel;
+                            console.log('🔄 Calling updateOrganCircles...');
                             updateOrganCircles();
                         }
 
@@ -784,42 +811,70 @@
 
                         // Main function to update organ circles based on current problem and risk
                         function updateOrganCircles() {
+                            console.log('🚀 updateOrganCircles called with selectedProblem:', selectedProblem);
+                            
                             if (!window.sharedDataManager) {
-                                console.warn('SharedDataManager not available');
+                                console.error('❌ SharedDataManager not available');
                                 return;
                             }
                             
-                            // Use SharedDataManager to calculate organ states
-                            const finalOrganStates = window.sharedDataManager.calculateOrganStates(selectedProblem, selectedRiskLevel);
+                            if (!window.organComponents) {
+                                console.error('❌ Organ components not available');
+                                return;
+                            }
+                            
+            // Use the centralized function from SharedDataManager that handles both monitoring levels and target ranges
+            console.log('🔧 Calling applyProblemSpecificMonitoring with:');
+            console.log('   - Problem:', selectedProblem);
+            console.log('   - Risk Level:', selectedRiskLevel);
+            console.log('   - Organ Components:', window.organComponents);
+            
+            // If no problem is selected, use default but still apply risk level logic
+            const effectiveProblem = selectedProblem || 'none';
+            // If a problem is selected but no risk level chosen, default to 'mid' for visualization
+            const effectiveRiskLevel = selectedProblem && !selectedRiskLevel ? 'mid' : selectedRiskLevel;
+            console.log('   - Effective Problem:', effectiveProblem);
+            console.log('   - Effective Risk Level:', effectiveRiskLevel);
+            
+            const result = window.sharedDataManager.applyProblemSpecificMonitoring(
+                effectiveProblem, 
+                window.organComponents,
+                window.sharedDataManager.getCurrentPatientId(), // Pass patient ID to save target ranges
+                effectiveRiskLevel // Use 'mid' as default when problem selected but no risk chosen
+            );                            const finalOrganStates = result.organStates;
+                            const targetRanges = result.targetRanges;
                             const isActivated = selectedProblem !== '';
                             
-                            // Update each organ component
-                            if (window.organComponents.heart) {
-                                window.organComponents.heart.setRiskLevel(finalOrganStates.heart);
+                            console.log('🎯 Applied organ states:', finalOrganStates);
+                            console.log('🎯 Applied target ranges:', targetRanges);
+                            console.log('🎯 Current selectedProblem:', selectedProblem);
+                            console.log('🎯 Current selectedRiskLevel:', selectedRiskLevel);
+                            console.log('🎯 isActivated:', isActivated);
+                            
+                            // Update organ settings (organ components already updated by centralized function)
+                            if (finalOrganStates.heart) {
                                 window.sharedDataManager.setOrganSettings('circulatoir', { 
                                     active: isActivated, 
                                     severity: isActivated ? 'active' : 'los', 
                                     riskLevel: finalOrganStates.heart 
                                 });
-                                console.log('Heart set to:', finalOrganStates.heart);
+                                console.log('Heart settings saved:', finalOrganStates.heart);
                             }
-                            if (window.organComponents.lung) {
-                                window.organComponents.lung.setRiskLevel(finalOrganStates.lung);
+                            if (finalOrganStates.lung) {
                                 window.sharedDataManager.setOrganSettings('respiratoir', { 
                                     active: isActivated, 
                                     severity: isActivated ? 'active' : 'los', 
                                     riskLevel: finalOrganStates.lung 
                                 });
-                                console.log('Lung set to:', finalOrganStates.lung);
+                                console.log('Lung settings saved:', finalOrganStates.lung);
                             }
-                            if (window.organComponents.temp) {
-                                window.organComponents.temp.setRiskLevel(finalOrganStates.temp);
+                            if (finalOrganStates.temp) {
                                 window.sharedDataManager.setOrganSettings('overig', { 
                                     active: isActivated, 
                                     severity: isActivated ? 'active' : 'los', 
                                     riskLevel: finalOrganStates.temp 
                                 });
-                                console.log('Temp set to:', finalOrganStates.temp);
+                                console.log('Temp settings saved:', finalOrganStates.temp);
                             }
                             
                             // Update monitoring status after all circles are updated
@@ -827,6 +882,65 @@
                             
                             // Update opacity for all monitoring elements
                             updateAllOpacity(isActivated);
+                            
+                            // Update displayed target ranges 
+                            updateTargetRangeDisplays(targetRanges);
+                            
+                            // Update progress bar to reflect current state
+                            updateProgressBar();
+                        }
+                        
+                        // Function to update the displayed target ranges on the UI
+                        function updateTargetRangeDisplays(targetRanges) {
+                            console.log('📊 Updating target range displays with:', targetRanges);
+                            
+                            if (!targetRanges) {
+                                console.warn('No target ranges provided');
+                                return;
+                            }
+                            
+                            try {
+                                // Find all value-number elements by their position/context
+                                const valueNumbers = document.querySelectorAll('.value-number');
+                                
+                                // Update HR (Heart Rate) - First value-number in circulatory section
+                                if (targetRanges.HR && valueNumbers[0]) {
+                                    valueNumbers[0].textContent = `${targetRanges.HR.min} - ${targetRanges.HR.max} ${targetRanges.HR.unit}`;
+                                    console.log('✅ Updated HR display:', valueNumbers[0].textContent);
+                                }
+                                
+                                // Update BP Mean - Second value-number in circulatory section
+                                if (targetRanges.BP_Mean && valueNumbers[1]) {
+                                    valueNumbers[1].textContent = `${targetRanges.BP_Mean.min} - ${targetRanges.BP_Mean.max} ${targetRanges.BP_Mean.unit}`;
+                                    console.log('✅ Updated BP Mean display:', valueNumbers[1].textContent);
+                                }
+                                
+                                // Update Saturatie (Oxygen Saturation) - First value-number in respiratory section
+                                if (targetRanges.Saturatie && valueNumbers[2]) {
+                                    valueNumbers[2].textContent = `${targetRanges.Saturatie.min} - ${targetRanges.Saturatie.max}${targetRanges.Saturatie.unit}`;
+                                    console.log('✅ Updated Saturatie display:', valueNumbers[2].textContent);
+                                }
+                                
+                                // Update AF (Respiratory Rate) - Second value-number in respiratory section (has id="af-range-display")
+                                if (targetRanges.AF) {
+                                    const afDisplay = document.getElementById('af-range-display');
+                                    if (afDisplay) {
+                                        afDisplay.textContent = `${targetRanges.AF.min} - ${targetRanges.AF.max} ${targetRanges.AF.unit}`;
+                                        console.log('✅ Updated AF display:', afDisplay.textContent);
+                                    }
+                                }
+                                
+                                // Update Temperature - Last value-number in other section
+                                if (targetRanges.Temp && valueNumbers[4]) {
+                                    valueNumbers[4].textContent = `${targetRanges.Temp.min} - ${targetRanges.Temp.max} ${targetRanges.Temp.unit}`;
+                                    console.log('✅ Updated Temp display:', valueNumbers[4].textContent);
+                                }
+                                
+                                console.log('📊 All target range displays updated successfully');
+                                
+                            } catch (error) {
+                                console.error('❌ Error updating target range displays:', error);
+                            }
                         }
 
                         function updateParameterRanges() {
@@ -956,6 +1070,7 @@
                         }
 
                         function updateProgressBar() {
+                            console.log('🔄 updateProgressBar called with selectedProblem:', selectedProblem, 'selectedRiskLevel:', selectedRiskLevel);
                             const stepNumbers = document.querySelectorAll('.step-number');
                             
                             // Reset all steps to inactive first
@@ -1148,20 +1263,37 @@
                             // Update labels and status opacity
                             document.querySelectorAll('.monitor-label, .monitor-status').forEach(element => {
                                 if (isActive) {
+                                    element.classList.remove('inactive-text');
                                     element.classList.add('active');
                                 } else {
                                     element.classList.remove('active');
+                                    element.classList.add('inactive-text');
+                                }
+                            });
+                            
+                            // Update value labels and numbers opacity
+                            document.querySelectorAll('.value-label, .value-number').forEach(element => {
+                                if (isActive) {
+                                    element.classList.remove('inactive-text');
+                                    element.classList.add('active');
+                                } else {
+                                    element.classList.remove('active');
+                                    element.classList.add('inactive-text');
                                 }
                             });
                             
                             // Update value cards opacity
                             document.querySelectorAll('.value-card').forEach(card => {
                                 if (isActive) {
+                                    card.classList.remove('inactive-text');
                                     card.classList.add('active');
                                 } else {
                                     card.classList.remove('active');
+                                    card.classList.add('inactive-text');
                                 }
                             });
+                            
+                            console.log('📱 Updated all opacity elements to isActive:', isActive);
                         }
 
                         // Function to update circle opacity
@@ -1245,7 +1377,7 @@
             if (value) {
                 window.dataManager?.setSelectedProblem(selectedProblem);
                 updateOrganCirclesBasedOnProblem(selectedProblem);
-                updateProgressBar(); // Update progress when problem is selected
+                // updateProgressBar is called by updateOrganCircles, no need to call it here
             }
         }
 
