@@ -1,12 +1,9 @@
 <!DOCTYPE html>
 <html lang="nl">
 <head>
-    <!-- Meta tags for character encoding and responsive design -->
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    
-    <!-- Page title that appears in browser tab -->
-    <title>Instellen Nieuwe Patiënt</title>
+    <title>Patiënten Overzicht - Smart Alarm</title>
     
     <!-- Google Fonts - Open Sans with multiple weights -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -16,1085 +13,1102 @@
     <!-- Link to external CSS file for styling -->
     <link rel="stylesheet" href="styles.css">
     
-    <!-- Data Manager for cross-page data synchronization -->
-    <script src="js/data-manager.js"></script>
+    <style>
+        /* Title and header buttons layout */
+        .title-header-layout {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin: 0 auto 30px auto;
+            margin-top: 50px;
+            max-width: 1200px;
+            gap: 30px;
+        }
+
+        .title-header-layout .main-title {
+            margin-bottom: 0;
+            flex-shrink: 0;
+        }
+
+        .title-header-layout .header-buttons {
+            margin-bottom: 0;
+            flex-shrink: 0;
+        }
+
+        .header-buttons {
+            display: flex;
+            gap: 10px;
+        }
+
+        .header-btn {
+            background-color: #ffffff;
+            border: 2px solid #FF6B35;
+            color: #FF6B35;
+            padding: 8px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .header-btn:hover {
+            background-color: #FF6B35;
+            color: white;
+        }
+
+        .header-buttons {
+            display: flex;
+            gap: 10px;
+        }
+
+        .header-btn {
+            padding: 9px 15px;
+            background: #bdc3c7;
+            color: white;
+            border: none;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .header-btn::after {
+            content: '▼';
+            font-size: 10px;
+            color: white;
+        }
+
+        .instruction-text {
+            text-align: left;
+            margin: 0 auto 40px auto;
+            max-width: 1200px;
+            color: #7f8c8d;
+            font-style: italic;
+            font-size: 16px;
+            padding: 0;
+        }
+
+        .instruction-text.hidden {
+            display: none;
+        }
+
+        .beds-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 20px;
+            align-items: start;
+            max-width: 1200px;
+            margin: 80px auto 40px auto;
+        }
+
+        /* Center beds vertically when patient selection is not visible */
+        body:not(.patient-selection-active) .beds-grid {
+            margin: 25vh auto 25vh auto;
+        }
+
+        /* Responsive design for smaller screens */
+        @media (max-width: 1024px) {
+            .beds-grid {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 20px;
+                max-width: 800px;
+            }
+        }
+
+        @media (max-width: 768px) {
+            body {
+                padding: 20px 20px;
+            }
+            
+            .beds-grid {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 15px;
+            }
+        }
+
+        /* Remove old column classes as we now have 4 beds in one row */
+        .left-column,
+        .right-column {
+            display: contents;
+        }
+
+        /* Patient selection area - now positioned below beds */
+        .patient-selection-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0;
+        }
+
+        .bed-card {
+            background: #bdc3c7;
+            border-radius: 15px;
+            padding: 20px;
+            min-height: 260px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            align-items: center;
+            text-align: center;
+            position: relative;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .bed-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+        }
+
+        .bed-card.occupied {
+            color: white;
+        }
+
+        .bed-card.occupied.risk-low {
+            background: #C2E4FF;
+            color: #333;
+        }
+
+        .bed-card.occupied.risk-low .bed-status {
+            color: #666;
+        }
+
+        .bed-card.occupied.risk-mid {
+            background: #1191FA;
+            color: white;
+        }
+
+        .bed-card.occupied.risk-high {
+            background: #0020CB;
+            color: white;
+        }
+
+        .bed-card.alarm-active {
+            background: linear-gradient(135deg, #e74c3c, #c0392b);
+            color: white;
+            animation: pulse 2s infinite;
+        }
+
+        /* Selected bed styling - orange border when selecting patient */
+        .bed-card.selected {
+            border: 3px solid #FC6039;
+            box-shadow: 0 4px 15px rgba(252, 96, 57, 0.3);
+        }
+
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(231, 76, 60, 0.7); }
+            70% { box-shadow: 0 0 0 10px rgba(231, 76, 60, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(231, 76, 60, 0); }
+        }
+
+        .bed-number {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+
+        .bed-vpk {
+            position: absolute;
+            top: 10px;
+            right: 15px;
+            background: rgba(255,255,255,0.9);
+            color: #333;
+            padding: 4px 8px;
+            border-radius: 0px 8px 0px 8px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        .bed-icon {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            align-items: center;
+            justify-content: center;
+            margin: 10px 0;
+        }
+
+        .add-patient-btn {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            border: 3px dashed #7f8c8d;
+            background: transparent;
+            font-size: 30px;
+            color: #7f8c8d;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+        }
+
+        .add-patient-btn:hover {
+            color: #ff6b35;
+            border: 3px solid #ff6b35;
+            transform: scale(1.1);
+        }
+
+        .alarm-btn {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            border: none;
+            background: #fff;
+            color: #FC6039;
+            font-size: 24px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        }
+
+        .alarm-icon {
+            width: 24px;
+            height: 24px;
+        }
+
+        .discharge-btn {
+            padding: 6px 12px;
+            border: 1px solid #FC6039;
+            background: #fff;
+            color: #f74518;
+            border-radius: 15px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-top: 4px;
+        }
+
+        .discharge-btn:hover {
+            background: #e74c3c;
+            color: #fff;
+        }
+
+        .bed-card.occupied.risk-low .alarm-btn {
+            background: #fff;
+            color: #0020CB;
+        }
+
+        .bed-status {
+            font-size: 14px;
+            color: #7f8c8d;
+            margin-top: 10px;
+        }
+
+        .bed-card.occupied .bed-status {
+            color: rgba(255,255,255,0.9);
+        }
+
+        .patient-name {
+            font-size: 16px;
+            font-weight: bold;
+            margin-top: 10px;
+        }
+
+        .patient-selection {
+            background: #ecf0f1;
+            border-radius: 15px;
+            padding: 30px;
+            min-height: 250px;
+            width: 100%;
+            text-align: center;
+            display: none;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            margin-top: 20px;
+        }
+
+        .patient-selection.active {
+            display: block;
+        }
+
+        .patient-selection h3 {
+            color: #2c3e50;
+            margin-bottom: 20px;
+            font-size: 18px;
+        }
+
+        .patient-list {
+            list-style: none;
+            padding: 0;
+            max-width: 400px;
+            margin: 0 auto;
+        }
+
+        .patient-item {
+            background: white;
+            margin: 10px 0;
+            padding: 15px;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: 2px solid transparent;
+        }
+
+        .patient-item:hover {
+            background: #F1D9D3;
+            transform: translateX(5px);
+        }
+
+        .patient-item.selected {
+            border-color: #FC6039;
+            background: #FC6039;
+            color: white;
+        }
+
+        .no-patients {
+            background: #f8f9fa;
+            color: #6c757d;
+            text-align: center;
+            padding: 20px;
+            border-radius: 10px;
+            font-style: italic;
+        }
+
+        .patient-info {
+            text-align: left;
+            font-size: 16px;
+        }
+
+        .patient-id {
+            font-weight: normal;
+        }
+
+        .patient-name {
+            font-weight: bold;
+        }
+
+        .patient-details {
+            font-weight: normal;
+            opacity: 0.8;
+        }
+
+        .selection-buttons {
+            margin-top: 20px;
+            display: flex;
+            gap: 15px;
+            justify-content: space-between;
+            max-width: 400px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        /* Base styling for navigation buttons (matching setup page) */
+        .nav-btn {
+            padding: 10px 20px;
+            border: 2px solid #ff6b35;
+            border-radius: 20px;
+            background: white;
+            color: #ff6b35;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            font-family: 'Open Sans', sans-serif;
+            transition: all 0.3s ease;
+        }
+
+        /* Primary action button (Bevestigen) styling */
+        .nav-btn.primary {
+            background-color: #1961AB;
+            border-color: #1961AB;
+            color: white;
+        }
+
+        /* Disabled state for primary button */
+        .nav-btn.primary.disabled {
+            background-color: #ccc;
+            border-color: #ccc;
+            color: #666;
+            cursor: not-allowed;
+        }
+
+        /* Hover effects */
+        .nav-btn:hover:not(.disabled) {
+            background-color: #ff6b35;
+            color: white;
+        }
+
+        .nav-btn.primary:hover:not(.disabled) {
+            background-color: #144a8a;
+            border-color: #144a8a;
+        }
+    </style>
+    
+    <!-- Shared Data Manager for cross-page data synchronization -->
     <script src="js/shared-data-manager.js"></script>
 </head>
-<body class="setup-page">
-    <!-- Patient information header section -->
-    <div class="header">
-        <img src="svg's/patient_icon.svg" alt="Patient" class="user-icon" />
-        <span id="patient-header-info">34567 - S. Groen - Vrouw - 16 jaar - 55 kg</span>
-    </div>
-    
-    <!-- Main page title -->
-    <h1 class="main-title">Instellen Nieuwe Patiënt</h1>
-    
-    <!-- Progress indicator showing current step (1-4) -->
-    <div class="progress-bar">
-        <div class="step">
-            <div class="step-number">1</div>
-        </div>
-        <div class="step-line"></div>
-        <div class="step">
-            <div class="step-number inactive">2</div>
-        </div>
-        <div class="step-line"></div>
-        <div class="step">
-            <div class="step-number inactive">3</div>
-        </div>
-        <div class="step-line"></div>
-        <div class="step">
-            <div class="step-number inactive">✓</div>
-        </div>
-    </div>
-    
-    <!-- Container for the three main form sections - horizontal layout -->
-    <div class="form-sections-container">
-        <!-- Section 1: Main problem selection -->
-        <div class="form-section">
-            <h2 class="section-title">Wat is het hoofdprobleem?</h2>
-            <div class="dropdown-container">
-                <select class="problem-dropdown" id="problemDropdown">
-                    <option value="">Selecteer een probleem...</option>
-                    <option value="respiratoire-insufficientie">Respiratoire Insufficiëntie</option>
-                    <option value="hart-falen">Hart Falen</option>
-                    <option value="sepsis">Sepsis</option>
-                    <option value="neurologische-aandoening">Neurologische Aandoening</option>
-                    <option value="nierinsuffcientie">Nierinsufficiëntie</option>
-                    <option value="leverfalen">Leverfalen</option>
-                </select>
-            </div>
-        </div>
+<body>
+    <!-- Title and header buttons layout -->
+    <div class="title-header-layout">
+        <!-- Main page title -->
+        <h1 class="main-title">Bedden Overzicht</h1>
         
-        <!-- Section 2: Risk level selection -->
-        <div class="form-section">
-            <h2 class="section-title">Wat is het risico - level van de patiënt?</h2>
-            <div class="button-group">
-                <button class="btn risk-low">Laag</button>
-                <button class="btn risk-mid">Mid</button>
-                <button class="btn risk-high">Hoog</button>
-            </div>
-            <!-- Static alarm indicator SVG -->
-            <div class="alarm-indicator-svg">
-                <img src="svg's/alarm_indicator.svg" alt="Alarm Indicator" />
-            </div>
+        <!-- Header buttons for plattegrond and unit selection -->
+        <div class="header-buttons">
+            <button class="header-btn">Plattegrond</button>
+            <button class="header-btn">Unit 1</button>
         </div>
-        
-        <!-- Section 3: Additional medical conditions/tags -->
-        <div class="form-section">
-            <h2 class="section-title">Selecteer eventueel additionele informatie:</h2>
-            <div class="tags-section">
-                <!-- All tags in horizontal layout with wrapping -->
-                <div class="button-group tags-horizontal">
-                    <button class="btn tag-btn" data-condition="sepsis">
-                        Sepsis <img src="svg's/sepsis.svg" alt="Sepsis" class="sepsis-icon">
-                    </button>
-                    <button class="btn tag-btn" data-condition="diabetes">Diabetes 🔧</button>
-                    <button class="btn tag-btn" data-condition="herstellende">Herstellende 👤</button>
-                    <button class="btn tag-btn" data-condition="pneumonie">
-                        Pneumonie <img src="svg's/lung.svg" alt="Pneumonie" class="condition-icon">
-                    </button>
-                    <button class="btn tag-btn" data-condition="chronisch-nierfalen">Chronisch Nierfalen 🧠</button>
-                    <!-- More button to show additional options -->
-                    <button class="more-btn">⋯</button>
-                </div>
-            </div>
-        </div>
-    </div>
-    
-    <!-- Section 4: Organ-level monitoring configuration -->
-    <div class="monitoring-section">
-        <h2 class="section-title">Monitoring op Orgaan Niveau</h2>
-        
-        <!-- Grid of organ monitoring circles -->
-        <div class="monitoring-grid">
-            <!-- Circulatory system -->
-            <div class="monitor-item">
-                <div class="monitor-label inactive-text">Circulatoir</div>
-                <div id="heart-circle-container"></div>
-                <div class="monitor-status inactive-text">los</div>
-                <!-- Circulatory parameters -->
-                <div class="value-card">
-                    <div class="parameter-group">
-                        <div class="value-label inactive-text">HR</div>
-                        <div class="value-number inactive-text">70 - 110 bpm</div>
-                    </div>
-                    
-                    <div class="parameter-group">
-                        <div class="value-label inactive-text">BP Mean</div>
-                        <div class="value-number inactive-text">65 - 85 mmHg</div>
-                    </div>
-                </div>
-            </div>
-            <!-- Respiratory system -->
-            <div class="monitor-item">
-                <div class="monitor-label inactive-text">Respiratoir</div>
-                <div id="lung-circle-container"></div>
-                <div class="monitor-status inactive-text">los</div>
-                <!-- Respiratory parameters -->
-                <div class="value-card">
-                    <div class="parameter-group">
-                        <div class="value-label inactive-text">Saturatie</div>
-                        <div class="value-number inactive-text">90 - 100%</div>
-                    </div>
-                    
-                    <div class="parameter-group">
-                        <div class="value-label inactive-text">AF</div>
-                        <div class="value-number inactive-text" id="af-range-display">10 - 25 /min</div>
-                    </div>
-                </div>
-            </div>
-            <!-- Other/Temperature system -->
-            <div class="monitor-item">
-                <div class="monitor-label inactive-text">Overig</div>
-                <div id="temp-circle-container"></div>
-                <div class="monitor-status inactive-text">los</div>
-                <!-- Temperature parameters -->
-                <div class="value-card">
-                    <div class="parameter-group">
-                        <div class="value-label inactive-text">Temp.</div>
-                        <div class="value-number inactive-text">36.5 - 39 °C</div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-    
-    <!-- Navigation buttons at bottom of page -->
-    <div class="navigation">
-        <!-- Back button with onclick event -->
-        <button class="nav-btn" onclick="goBack()">← Terug</button>
-        <!-- Confirm button with onclick event -->
-        <button class="nav-btn primary disabled" id="confirm-btn" onclick="confirmSettings()">Bevestigen</button>
     </div>
 
-            <!-- Import Heart Circle Component -->
-            <script src="heart-circle-component.js"></script>
-            <script>
-                // Global variables for current session
-                let selectedProblem = '';
-                let selectedRiskLevel = '';
-                let selectedTags = [];
-                let currentPatientId = null; // Add current patient ID variable
+    <div class="instruction-text" id="instruction-text">
+        <p>Klik op een bed om een patiënt toe te voegen</p>
+    </div>
+
+    <div class="beds-grid">
+        <!-- All 4 beds in one row -->
+        <div class="bed-card" id="bed-1" onclick="handleBedClick(1)">
+            <div class="bed-number">1</div>
+            <div class="bed-icon">
+                <button class="add-patient-btn">+</button>
+            </div>
+            <div class="bed-status">Nieuwe Patiënt</div>
+        </div>
+
+        <div class="bed-card" id="bed-2" onclick="handleBedClick(2)">
+            <div class="bed-number">2</div>
+            <div class="bed-icon">
+                <button class="add-patient-btn">+</button>
+            </div>
+            <div class="bed-status">Nieuwe Patiënt</div>
+        </div>
+
+        <div class="bed-card" id="bed-3" onclick="handleBedClick(3)">
+            <div class="bed-number">3</div>
+            <div class="bed-icon">
+                <button class="add-patient-btn">+</button>
+            </div>
+            <div class="bed-status">Nieuwe Patiënt</div>
+        </div>
+
+        <div class="bed-card" id="bed-4" onclick="handleBedClick(4)">
+            <div class="bed-number">4</div>
+            <div class="bed-icon">
+                <button class="add-patient-btn">+</button>
+            </div>
+            <div class="bed-status">Nieuwe Patiënt</div>
+        </div>
+    </div>
+
+    <!-- Patient Selection Area - Now Below Beds -->
+    <div class="patient-selection-container">
+        <div class="patient-selection" id="patient-selection">
+            <h3>Selecteer een patiënt voor bed <span id="selected-bed-number"></span></h3>
+            <ul class="patient-list" id="patient-list">
+                <!-- Patients will be populated here -->
+            </ul>
+            <div class="selection-buttons">
+                <button class="nav-btn" onclick="cancelSelection()">Annuleren</button>
+                <button class="nav-btn primary disabled" id="confirm-btn" onclick="confirmPatientSelection()" disabled>Bevestigen</button>
+            </div>
+        </div>
+    </div>
+
+    <script type="text/javascript">
+        let bedData = {};
+        let availablePatients = [];
+        let selectedBed = null;
+        let selectedPatient = null;
+
+        // Function to save bed states using shared data manager
+        function saveBedStatesToStorage() {
+            try {
+                window.sharedDataManager.saveBedStates(bedData);
+                console.log('✅ Bed states saved via shared data manager:', bedData);
+            } catch (error) {
+                console.error('❌ Error saving bed states:', error);
+            }
+        }
+
+        // Function to load bed states using shared data manager
+        function loadBedStatesFromStorage() {
+            try {
+                const savedBedStates = window.sharedDataManager.getBedStates();
+                if (savedBedStates) {
+                    // Migrate old "med" values to "mid" in bed states
+                    let hasChanges = false;
+                    Object.keys(savedBedStates).forEach(bedNumber => {
+                        if (savedBedStates[bedNumber].riskLevel === 'med') {
+                            savedBedStates[bedNumber].riskLevel = 'mid';
+                            hasChanges = true;
+                            console.log('🔄 Migrated bed ' + bedNumber + ' risk level from "med" to "mid"');
+                        }
+                    });
+                    
+                    // Save back if we made changes
+                    if (hasChanges) {
+                        window.sharedDataManager.saveBedStates(savedBedStates);
+                    }
+                    
+                    console.log('✅ Loaded bed states via shared data manager:', savedBedStates);
+                    return savedBedStates;
+                } else {
+                    console.log('ℹ️ No bed states found in shared data manager');
+                }
+            } catch (error) {
+                console.error('❌ Error loading bed states:', error);
+            }
+            return null;
+        }
+
+        // Function to save patient medical information using shared data manager
+        function savePatientMedicalInfo(patientId, medicalInfo) {
+            try {
+                window.sharedDataManager.savePatientMedicalInfo(patientId, medicalInfo);
+                console.log('✅ Saved medical info for patient ' + patientId + ' via shared data manager:', medicalInfo);
+            } catch (error) {
+                console.error('❌ Error saving patient medical info:', error);
+            }
+        }
+
+        // Function to load patient medical information using shared data manager
+        function loadPatientMedicalInfo(patientId) {
+            try {
+                const savedInfo = window.sharedDataManager.getPatientMedicalInfo(patientId);
+                if (savedInfo) {
+                    // Migrate old "med" values to "mid" for consistency
+                    if (savedInfo.selectedRiskLevel === 'med') {
+                        savedInfo.selectedRiskLevel = 'mid';
+                        // Save the migrated data back
+                        window.sharedDataManager.savePatientMedicalInfo(patientId, savedInfo);
+                        console.log('🔄 Migrated risk level from "med" to "mid" for patient ' + patientId);
+                    }
+                    
+                    console.log('✅ Loaded medical info for patient ' + patientId + ' via shared data manager:', savedInfo);
+                    return savedInfo;
+                } else {
+                    console.log('ℹ️ No medical info found for patient ' + patientId);
+                }
+            } catch (error) {
+                console.error('❌ Error loading patient medical info:', error);
+            }
+            return null;
+        }
+
+        // Refresh risk levels for all occupied beds from patient medical info
+        function refreshRiskLevelsFromMedicalInfo() {
+            console.log('🔄 Refreshing risk levels from patient medical info...');
+            
+            Object.keys(bedData).forEach(bedNumber => {
+                const bed = bedData[bedNumber];
+                if (bed.occupied && bed.patientId) {
+                    // Get patient medical info from SharedDataManager
+                    const patientMedicalInfo = window.sharedDataManager.getPatientMedicalInfo(bed.patientId);
+                    if (patientMedicalInfo && patientMedicalInfo.selectedRiskLevel) {
+                        const oldRiskLevel = bed.riskLevel;
+                        // Migrate old "med" values to "mid"
+                        const riskLevel = patientMedicalInfo.selectedRiskLevel === 'med' ? 'mid' : patientMedicalInfo.selectedRiskLevel;
+                        bed.riskLevel = riskLevel;
+                        console.log(`✅ Updated bed ${bedNumber} risk level: ${oldRiskLevel} → ${bed.riskLevel} (patient ${bed.patientId})`);
+                    } else {
+                        console.log(`ℹ️ No risk level found for patient ${bed.patientId} in bed ${bedNumber}`);
+                    }
+                }
+            });
+            
+            // Save updated bed states to storage
+            saveBedStatesToStorage();
+        }
+
+        // Load initial data
+        async function loadData() {
+            console.log('🔄 loadData() function called');
+            console.log('📍 Current availablePatients:', availablePatients);
+            
+            // First try to load bed states from storage
+            const savedBedStates = loadBedStatesFromStorage();
+            if (savedBedStates) {
+                bedData = savedBedStates;
+                console.log('Using saved bed states:', bedData);
+            } else {
+                // Initialize with default data if no saved states
+                initializeDefaultData();
+            }
+
+            // Try to load patient list from shared data manager
+            console.log('👥 Patient data already loaded via shared data manager initialization');
+            try {
+                const hospitalData = window.sharedDataManager.getHospitalData();
+                console.log('� Hospital data from shared manager:', hospitalData);
                 
-                // SVG content embedded to avoid CORS issues
-                        const svgContent = {
-                            heart: `<svg class="organ-icon" viewBox="0 0 22 26" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                <path d="M13.22 10.3743C12.0679 12.132 10.9163 15.0615 10.9163 19.1628M13.22 10.3743C12.0681 12.132 11.4922 14.4756 6.30842 14.4756M13.22 10.3743C14.6766 8.39884 16.9516 6.83964 19.3552 6.3986C20.0557 6.27006 20.6011 5.62288 20.4841 4.90863L20.2921 3.73684C20.1996 3.17181 19.7182 2.75127 19.159 2.81881C16.3987 3.15222 12.9705 4.8327 10.9162 7.44486C10.9162 6.27307 10.9162 2.75769 10.3402 1M5.73245 6.85896C5.15648 5.10127 4.00454 3.92948 2.27663 3.92948M1.70071 15.6441C2.85258 20.9171 7.26892 25 10.3401 25C13.4113 25 17.6365 20.9175 18.9799 15.6441C20.3232 10.3707 16.1 6.85563 13.2201 10.371C13.2201 8.61732 11.4922 6.85906 8.03639 6.85906C4.58057 6.85906 0.548838 10.371 1.70071 15.6441Z" stroke="black" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-                            </svg>`,
-                            lung: `<svg class="organ-icon" viewBox="0 0 30 26" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                <path d="M11.5007 5.62881C11.5007 4.02205 10.3628 2.41595 5.90178 6.31748C-0.397037 11.8263 1.7026 24.2213 2.40247 24.91C3.10233 25.5986 10.8008 22.1555 11.5007 20.7783C12.2006 19.4011 10.8008 17.3352 12.2006 14.5808M18.4993 5.62879C18.4993 4.02203 19.6372 2.41593 24.0982 6.31746C30.397 11.8263 28.2974 24.2213 27.5975 24.9099C26.8977 25.5985 19.1992 22.1555 18.4993 20.7783C17.7994 19.401 19.1992 17.3352 17.7994 14.5807M21.9987 16.6468C21.9987 13.3949 19.8717 11.7738 18.2519 10.7191C14.9109 8.54378 15 4.4935 15 0.999945C15 4.4935 15.0891 8.54378 11.7481 10.7191C10.1283 11.7738 8.00142 13.3949 8.00142 16.6468" stroke="black" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-                            </svg>`,
-                            temp: `<svg class="organ-icon" viewBox="0 0 16 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                <path d="M5.71349 0C3.94455 0 2.4982 1.42157 2.4982 3.15972V13.7459C0.944989 14.7857 0.000507593 16.5193 0 18.3844C0 21.4774 2.56656 24 5.71349 24C8.86042 24 11.4265 21.4774 11.4265 18.3844C11.4265 16.5193 10.482 14.7842 8.92828 13.7444V3.15972C8.92828 1.42157 7.48193 0 5.71349 0ZM5.71349 1.41162C6.71166 1.41162 7.49206 2.17865 7.49206 3.15972V14.1326C7.49212 14.2565 7.52539 14.3783 7.58851 14.4856C7.65162 14.5929 7.74237 14.682 7.85162 14.7438C9.17643 15.4954 9.99076 16.8812 9.99076 18.3844C9.99076 20.7144 8.08457 22.5884 5.714 22.5879C5.71383 22.5879 5.71416 22.5879 5.714 22.5879C3.34393 22.5884 1.43673 20.7144 1.43673 18.3849C1.43724 16.8822 2.25207 15.4964 3.57587 14.7453C3.68512 14.6834 3.77586 14.5944 3.83898 14.4871C3.9021 14.3798 3.93536 14.258 3.93543 14.1341V3.15972C3.93543 2.17865 4.71482 1.41162 5.71349 1.41162ZM11.5885 1.87453C11.3981 1.87455 11.2154 1.94891 11.0808 2.08127C10.9461 2.21363 10.8704 2.39315 10.8704 2.58033C10.8704 2.76752 10.9461 2.94704 11.0808 3.0794C11.2154 3.21176 11.3981 3.28613 11.5885 3.28615H15.2819C15.4723 3.28613 15.655 3.21176 15.7897 3.0794C15.9243 2.94704 16 2.76752 16 2.58033C16 2.39315 15.9243 2.21363 15.7896 2.08127C15.655 1.94891 15.4723 1.87455 15.2819 1.87453H11.5885ZM5.71349 2.58033C5.61915 2.58028 5.52572 2.59849 5.43854 2.63394C5.35136 2.66938 5.27214 2.72136 5.2054 2.7869C5.13867 2.85245 5.08572 2.93028 5.0496 3.01594C5.01348 3.1016 4.99488 3.19342 4.99487 3.28615V15.2102C3.51864 15.5338 2.40552 16.8384 2.40552 18.3834C2.40552 20.1708 3.89492 21.6347 5.71349 21.6347C7.53156 21.6347 9.02146 20.1708 9.02146 18.3834C9.02146 16.8384 7.90783 15.5348 6.4316 15.2102V3.28615C6.43158 3.09896 6.35592 2.91944 6.22125 2.78708C6.08658 2.65472 5.90394 2.58035 5.71349 2.58033ZM11.5885 5.10144C11.4942 5.10145 11.4008 5.11973 11.3136 5.15523C11.2265 5.19073 11.1473 5.24277 11.0806 5.30836C11.0139 5.37395 10.961 5.45182 10.925 5.5375C10.8889 5.62319 10.8704 5.71502 10.8704 5.80775C10.8704 5.99493 10.9461 6.17445 11.0808 6.30681C11.2154 6.43917 11.3981 6.51353 11.5885 6.51355H13.8431C14.0336 6.51353 14.2162 6.43917 14.3509 6.30681C14.4856 6.17445 14.5612 5.99493 14.5612 5.80775C14.5613 5.71502 14.5428 5.62319 14.5067 5.5375C14.4707 5.45182 14.4178 5.37395 14.3511 5.30836C14.2844 5.24277 14.2052 5.19073 14.1181 5.15523C14.0309 5.11972 13.9375 5.10145 13.8431 5.10144H11.5885ZM11.5885 8.32885C11.3981 8.32886 11.2154 8.40323 11.0808 8.53559C10.9461 8.66796 10.8704 8.84747 10.8704 9.03466C10.8704 9.22184 10.9461 9.40136 11.0808 9.53372C11.2154 9.66608 11.3981 9.74045 11.5885 9.74046H15.2819C15.4723 9.74045 15.655 9.66608 15.7896 9.53372C15.9243 9.40136 16 9.22184 16 9.03466C16 8.84747 15.9243 8.66796 15.7897 8.53559C15.655 8.40323 15.4723 8.32886 15.2819 8.32885H11.5885ZM11.5885 11.5563C11.3981 11.5563 11.2154 11.6306 11.0808 11.763C10.9461 11.8954 10.8704 12.0749 10.8704 12.2621C10.8704 12.4493 10.9461 12.6288 11.0808 12.7611C11.2154 12.8935 11.3981 12.9679 11.5885 12.9679H13.8431C14.0336 12.9679 14.2162 12.8935 14.3509 12.7611C14.4856 12.6288 14.5612 12.4493 14.5612 12.2621C14.5612 12.0749 14.4856 11.8954 14.3509 11.763C14.2162 11.6306 14.0336 11.5563 13.8431 11.5563H11.5885ZM5.71349 16.5437C6.75571 16.5437 7.58473 17.359 7.58473 18.3834C7.58473 19.4078 6.75571 20.2231 5.71349 20.2231C4.67127 20.2231 3.84174 19.4078 3.84174 18.3834C3.84174 17.359 4.67127 16.5437 5.71349 16.5437Z" fill="black"/>
-                            </svg>`
-                        };
-
-                        // Utility to inject SVG content directly
-                        function injectSVG(containerId, svgType) {
-                            console.log('Injecting ' + svgType + ' SVG into ' + containerId);
-                            const container = document.getElementById(containerId);
-                            if (!container) {
-                                console.log(`Container ${containerId} not found`);
-                                return;
-                            }
-                            const iconDiv = container.querySelector('.heart-white-center');
-                            if (iconDiv) {
-                                console.log(`Found white center in ${containerId}, injecting SVG`);
-                                iconDiv.innerHTML = svgContent[svgType];
-                                const svgEl = iconDiv.querySelector('svg');
-                                if (svgEl) {
-                                    svgEl.style.width = '70%';
-                                    svgEl.style.height = '70%';
-                                    svgEl.style.display = 'block';
-                                    svgEl.style.margin = '0 auto';
-                                    console.log('SVG successfully injected into ' + containerId);
-                                }
-                            } else {
-                                console.log('White center not found in ' + containerId);
-                                // Try again after a short delay
-                                setTimeout(() => injectSVG(containerId, svgType), 50);
-                            }
+                // Get available patients
+                if (hospitalData && hospitalData.patients && Array.isArray(hospitalData.patients)) {
+                    availablePatients = [...hospitalData.patients];
+                    console.log('✅ Successfully loaded patients:', availablePatients);
+                    
+                    // Remove patients that are already assigned to beds
+                    Object.values(bedData).forEach(bed => {
+                        if (bed.occupied && bed.patientId) {
+                            availablePatients = availablePatients.filter(p => p.id !== bed.patientId);
                         }
+                    });
+                    
+                    console.log('Successfully loaded patients from shared data manager');
+                    console.log('Available patients after filtering:', availablePatients);
+                } else {
+                    throw new Error('Invalid data structure - missing patients array');
+                }
+            } catch (error) {
+                console.warn('Could not load patient data from shared data manager, using fallback:', error.message);
+                // Use fallback patient data
+                if (availablePatients.length === 0) {
+                    // Only set default patients if we don't already have them
+                    availablePatients = [
+                        { id: "1", name: "S. Groen", gender: "Vrouw", age: 16, weight: 55 },
+                        { id: "2", name: "M. Bunnik", gender: "Vrouw", age: 44, weight: 70 },
+                        { id: "3", name: "H. Demir", gender: "Man", age: 35, weight: 81 },
+                        { id: "4", name: "B. Al Salah", gender: "Man", age: 65, weight: 73 }
+                    ];
+                    
+                    // Remove patients that are already assigned to beds
+                    Object.values(bedData).forEach(bed => {
+                        if (bed.occupied && bed.patientId) {
+                            availablePatients = availablePatients.filter(p => p.id !== bed.patientId);
+                        }
+                    });
+                }
+            }
+            
+            // Refresh risk levels from patient medical info for all occupied beds
+            refreshRiskLevelsFromMedicalInfo();
+            
+            updateDisplay();
+        }
+
+        function initializeDefaultData() {
+            bedData = {
+                1: { bedNumber: 1, occupied: false, patientId: null, vpkCode: null, riskLevel: null },
+                2: { bedNumber: 2, occupied: false, patientId: null, vpkCode: null, riskLevel: null },
+                3: { bedNumber: 3, occupied: false, patientId: null, vpkCode: null, riskLevel: null },
+                4: { bedNumber: 4, occupied: false, patientId: null, vpkCode: null, riskLevel: null }
+            };
+            
+            availablePatients = [
+                { id: "1", name: "S. Groen", gender: "Vrouw", age: 16, weight: 55 },
+                { id: "2", name: "M. Bunnik", gender: "Vrouw", age: 44, weight: 70 },
+                { id: "3", name: "H. Demir", gender: "Man", age: 35, weight: 81 },
+                { id: "4", name: "B. Al Salah", gender: "Man", age: 65, weight: 73 }
+            ];
+            
+            updateDisplay();
+        }
+
+        function updateDisplay() {
+            // Update bed displays
+            Object.keys(bedData).forEach(bedNumber => {
+                updateBedDisplay(parseInt(bedNumber));
+            });
+        }
+
+        // Function to translate risk levels to Dutch
+        function translateRiskLevel(riskLevel) {
+            const translations = {
+                'low': 'laag',
+                'mid': 'mid',
+                'high': 'hoog'
+            };
+            return translations[riskLevel] || riskLevel;
+        }
+
+        function updateBedDisplay(bedNumber) {
+            const bed = bedData[bedNumber];
+            const bedElement = document.getElementById('bed-' + bedNumber);
+            
+            if (bed.occupied) {
+                const patient = getPatientById(bed.patientId);
+                const patientMedicalInfo = loadPatientMedicalInfo(bed.patientId);
+                const riskClass = bed.riskLevel ? 'risk-' + bed.riskLevel : 'risk-mid';
+                
+                
+
+
+                // Create display text for medical info
+                let medicalDisplay = 'Alarm Instellingen';
+                if (patientMedicalInfo) {
+                    const problem = patientMedicalInfo.selectedProblem || 'Geen probleem geselecteerd';
+                    const riskLevel = patientMedicalInfo.selectedRiskLevel || 'Geen risico geselecteerd';
+                    medicalDisplay = problem + ' (' + translateRiskLevel(riskLevel) + ')';
+                }
+                
+                console.log('Updating bed ' + bedNumber + ' display with risk level: ' + bed.riskLevel + ', CSS class: ' + riskClass);
+                bedElement.className = 'bed-card occupied ' + riskClass;
+                bedElement.innerHTML = 
+                    '<div class="bed-number">' + bedNumber + '</div>' +
+                    '<div class="bed-vpk">VPK: ' + bed.vpkCode + '</div>' +
+                    '<div class="bed-icon">' +
+                        '<button class="alarm-btn" onclick="event.stopPropagation(); navigateToAlarmSettings(' + bedNumber + ', \'' + bed.patientId + '\')"><svg class="alarm-icon" width="26" height="32" viewBox="0 0 26 32" fill="none" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" clip-rule="evenodd" d="M3.9015 21.8751H22.105C21.5979 21.0816 21.2059 20.023 21.1188 18.4159V18.4005C21.0612 16.0508 20.9803 14.1972 20.7532 12.718C20.537 11.3143 20.1932 10.2804 19.6083 9.50695L19.5974 9.49154C18.8461 8.42376 17.8536 7.5732 16.7211 6.98768C15.5964 6.40677 14.3271 6.08939 13.0157 6.08785H12.9908C11.6779 6.08939 10.4101 6.4068 9.28537 6.98768C8.15603 7.57013 7.16822 8.41911 6.41688 9.48227L6.39821 9.50847C5.81329 10.282 5.46954 11.3159 5.2533 12.7196C5.02618 14.1941 4.94529 16.0401 4.88773 18.3776V18.4192C4.80062 20.0247 4.40865 21.0831 3.9015 21.8751ZM23.7569 22.0477C23.0584 21.2988 22.4144 20.305 22.3102 18.3574C22.2511 15.9536 22.1671 14.057 21.9353 12.5423C21.6911 10.9522 21.2804 9.75035 20.5648 8.80426C19.703 7.58548 18.5675 6.61165 17.2732 5.94294C16.6183 5.6055 15.923 5.34357 15.2027 5.16792C15.7441 4.61785 16.077 3.86899 16.077 3.04312C16.077 2.20183 15.7332 1.4422 15.1763 0.890593L15.1747 0.892133C14.6178 0.342069 13.8494 0 13.0031 0C12.1756 0 11.4211 0.326654 10.8673 0.85825L10.83 0.892149C10.2731 1.44375 9.92929 2.20339 9.92929 3.04468C9.92929 3.869 10.2622 4.61941 10.8035 5.16794C10.0833 5.34359 9.38794 5.604 8.73305 5.94296C7.4388 6.61167 6.3032 7.5855 5.44143 8.80428C4.7274 9.75187 4.31519 10.9522 4.07096 12.5423C3.83918 14.0539 3.75517 15.9476 3.69606 18.3467L3.69451 18.3575C3.59028 20.3097 2.94316 21.3051 2.24315 22.0524L2.22137 22.074C2.05337 22.2527 1.88226 22.4176 1.71427 22.5794C0.777789 23.4823 -0.0575398 24.2881 0.0031107 26.2296C0.00155481 26.2527 0.0031108 26.2758 0.00466628 26.2989C0.0544451 26.8968 0.28467 27.3621 0.696911 27.6934C1.0687 27.9923 1.57115 28.1587 2.20429 28.1926C2.22918 28.1957 2.25563 28.1972 2.28052 28.1972H8.33004C8.5276 29.1941 9.04407 30.0801 9.77052 30.7442C10.6199 31.5239 11.7555 32 12.9999 32C14.2444 32 15.3784 31.5239 16.2293 30.7442C16.9542 30.0801 17.4707 29.1941 17.6698 28.1972H23.7193V28.1957H23.7427C24.3991 28.1695 24.9202 28.0016 25.3029 27.6949C25.7152 27.3637 25.947 26.8983 25.9952 26.3005H25.9936L25.9952 26.2743C26.0714 24.3005 25.2298 23.49 24.2856 22.5794C24.1191 22.4191 23.9496 22.2558 23.7831 22.0786C23.7769 22.0694 23.7662 22.0584 23.7569 22.0477ZM23.0818 23.0584C23.2078 23.1848 23.3338 23.3065 23.4582 23.4267C24.1971 24.1386 24.8567 24.7749 24.8085 26.2079C24.7867 26.4698 24.7011 26.6609 24.5549 26.7795C24.3807 26.9198 24.1038 26.9983 23.7242 27.0168V27.0153H2.26317C1.89294 26.9953 1.62226 26.9167 1.45114 26.7795C1.30336 26.6609 1.2178 26.4698 1.19758 26.2079L1.19602 26.194C1.15247 24.7688 1.81049 24.1355 2.54782 23.4252C2.67227 23.305 2.79827 23.1833 2.92427 23.0569L23.0815 23.06L23.0818 23.0584ZM15.425 29.8813C14.7919 30.4622 13.9409 30.8166 13.0029 30.8166C12.0665 30.8166 11.2156 30.4622 10.5809 29.8813C10.094 29.4345 9.73311 28.8551 9.55733 28.1987H16.4487C16.2729 28.8536 15.9119 29.4345 15.425 29.8813ZM14.3314 1.72565V1.72873C14.6705 2.06463 14.8821 2.52994 14.8821 3.04458C14.8821 3.55923 14.6721 4.02456 14.3345 4.36044L14.3314 4.36352C13.9985 4.69326 13.538 4.89974 13.0278 4.90589L13.0029 4.90435H12.978C12.4678 4.89819 12.0074 4.69172 11.6745 4.36198L11.6714 4.3589C11.3338 4.02454 11.1238 3.55922 11.1238 3.04304C11.1238 2.52994 11.3338 2.0646 11.6745 1.72719L11.7009 1.69945C12.0369 1.37896 12.4958 1.18327 13.0029 1.18327C13.5225 1.18327 13.9923 1.39129 14.3314 1.72565Z" fill="#FC6039"/><path d="M17.4041 13.9091H16.6699C16.5736 13.4633 16.3962 13.0483 16.1565 12.6766L16.6774 12.1568C16.9876 11.8466 16.9876 11.3437 16.6774 11.0335C16.3666 10.7234 15.8627 10.7234 15.5519 11.0335L15.0309 11.5534C14.6585 11.3136 14.2426 11.1365 13.7959 11.0404V10.3077C13.7959 9.8695 13.4398 9.51351 13 9.51351C12.5602 9.51351 12.2041 9.8695 12.2041 10.3077V11.0404C11.7574 11.1371 11.3415 11.3142 10.9697 11.5534L10.4488 11.0335C10.1386 10.7234 9.634 10.7234 9.32382 11.0335C9.01302 11.3437 9.01302 11.8466 9.32382 12.1568L9.84414 12.676C9.60317 13.0477 9.42638 13.4633 9.32949 13.9091H8.59589C8.15673 13.9091 7.8 14.2645 7.8 14.7033C7.8 15.1422 8.1561 15.4976 8.59589 15.4976H9.32949C9.42638 15.9433 9.6038 16.3583 9.84351 16.73L9.32319 17.2493C9.01239 17.5594 9.01239 18.0623 9.32319 18.3725C9.4786 18.5276 9.68181 18.6048 9.88629 18.6048C10.0908 18.6048 10.2934 18.5276 10.4494 18.3725L10.9697 17.8526C11.3422 18.0925 11.758 18.2689 12.2047 18.3656V19.0977C12.2047 19.5359 12.5608 19.8919 13.0006 19.8919C13.4404 19.8919 13.7965 19.5365 13.7965 19.0977V18.3656C14.2432 18.2695 14.6597 18.0918 15.0322 17.8526L15.5525 18.3719C15.7079 18.5269 15.9111 18.6048 16.1156 18.6048C16.3188 18.6048 16.5227 18.5276 16.6781 18.3725C16.9889 18.0623 16.9889 17.5594 16.6787 17.2499L16.1578 16.7294C16.3981 16.3583 16.5749 15.9427 16.6711 15.4976H17.4041C17.8433 15.4976 18.2 15.1422 18.2 14.7033C18.2 14.2645 17.8433 13.9091 17.4041 13.9091ZM13.0006 16.8638C11.8065 16.8638 10.8357 15.8956 10.8344 14.7052L10.8351 14.7033L10.8344 14.7014C10.8357 13.5104 11.8065 12.5423 13.0006 12.5423C14.1941 12.5423 15.1649 13.5117 15.1649 14.7033C15.1649 15.8944 14.1941 16.8638 13.0006 16.8638Z" fill="#FC6039"/></svg></button>' +
+                        '<button class="discharge-btn" onclick="event.stopPropagation(); dischargePatient(' + bedNumber + ')" title="Patiënt ontslaan">Ontslaan</button>' +
+                    '</div>' +
+                    '<div class="patient-name">' + (patient ? patient.name : 'Unknown') + '</div>' +
+                    '<div class="bed-status">' + medicalDisplay + '</div>';
+            } else {
+                bedElement.className = 'bed-card';
+                bedElement.innerHTML = 
+                    '<div class="bed-number">' + bedNumber + '</div>' +
+                    '<div class="bed-icon">' +
+                        '<button class="add-patient-btn">+</button>' +
+                    '</div>' +
+                    '<div class="bed-status">Nieuwe Patiënt</div>';
+            }
+        }
+
+        function getPatientById(patientId) {
+            // Use shared data manager to get patient info
+            return window.sharedDataManager.getPatientInfo(patientId);
+        }
+
+        function handleBedClick(bedNumber) {
+            console.log('🛏️ Bed clicked:', bedNumber);
+            const bed = bedData[bedNumber];
+            console.log('📋 Bed data:', bed);
+            
+            if (bed.occupied) {
+                console.log('👤 Bed is occupied, navigating to alarm settings');
+                // Navigate to alarm settings for occupied bed
+                navigateToAlarmSettings(bedNumber, bed.patientId);
+            } else {
+                console.log('➕ Bed is empty, showing patient selection');
+                // Show patient selection for empty bed
+                showPatientSelection(bedNumber);
+            }
+        }
+
+        function showPatientSelection(bedNumber) {
+            console.log('📋 showPatientSelection called for bed:', bedNumber);
+            console.log('👥 Available patients at start:', availablePatients);
+            
+            selectedBed = bedNumber;
+            selectedPatient = null;
+            
+            // Remove selected class from all beds and add to current bed
+            document.querySelectorAll('.bed-card').forEach(bed => bed.classList.remove('selected'));
+            document.getElementById('bed-' + bedNumber).classList.add('selected');
+            
+            document.getElementById('selected-bed-number').textContent = bedNumber;
+            document.getElementById('instruction-text').classList.add('hidden');
+            document.getElementById('patient-selection').classList.add('active');
+            
+            // Add class to body to indicate patient selection is active
+            document.body.classList.add('patient-selection-active');
+            
+            console.log('🔄 Calling updatePatientList...');
+            updatePatientList();
+        }
+
+        function updatePatientList() {
+            const patientList = document.getElementById('patient-list');
+            patientList.innerHTML = '';
+            
+            console.log('updatePatientList called - availablePatients:', availablePatients);
+            console.log('Number of available patients:', availablePatients.length);
+            
+            if (availablePatients.length === 0) {
+                patientList.innerHTML = '<li class="no-patients">Geen patiënten beschikbaar</li>';
+                console.warn('No patients available to display');
+                return;
+            }
+            
+            // Sort patients by ID (1-4) with lowest number on top
+            const sortedPatients = [...availablePatients].sort((a, b) => {
+                const idA = parseInt(a.id) || 0;
+                const idB = parseInt(b.id) || 0;
+                return idA - idB;
+            });
+            
+            sortedPatients.forEach(patient => {
+                console.log('Adding patient to list:', patient);
+                const li = document.createElement('li');
+                li.className = 'patient-item';
+                li.onclick = () => selectPatient(patient.id);
+                li.innerHTML = 
+                    '<div class="patient-info">' + 
+                    '<span class="patient-id">' + patient.id + ' - </span>' +
+                    '<span class="patient-name">' + patient.name + '</span>' +
+                    '<span class="patient-details"> - ' + patient.gender + ' - ' + patient.age + ' jaar - ' + patient.weight + ' kg</span>' +
+                    '</div>';
+                patientList.appendChild(li);
+            });
+            
+            const confirmBtn = document.getElementById('confirm-btn');
+            confirmBtn.disabled = true;
+            confirmBtn.classList.add('disabled');
+        }
+
+        function selectPatient(patientId) {
+            console.log('✅ Patient selected:', patientId);
+            selectedPatient = patientId;
+            
+            // Update visual selection
+            document.querySelectorAll('.patient-item').forEach(item => {
+                item.classList.remove('selected');
+            });
+            
+            event.target.closest('.patient-item').classList.add('selected');
+            const confirmBtn = document.getElementById('confirm-btn');
+            confirmBtn.disabled = false;
+            confirmBtn.classList.remove('disabled');
+            console.log('✅ Confirm button enabled for patient:', patientId);
+        }
+
+        function confirmPatientSelection() {
+            if (!selectedPatient || !selectedBed) {
+                console.error('❌ Missing selectedPatient or selectedBed:', {selectedPatient, selectedBed});
+                return;
+            }
+            
+            console.log('✅ Assigning patient ' + selectedPatient + ' to bed ' + selectedBed);
+            
+            // Validate that the patient exists
+            const patientExists = availablePatients.find(p => p.id === selectedPatient);
+            if (!patientExists) {
+                console.error('❌ Selected patient not found in available patients:', selectedPatient);
+                return;
+            }
+            
+            // Generate VPK code
+            const vpkCodes = ['FG', 'AM', 'IB', 'GT'];
+            const vpkCode = vpkCodes[Math.floor(Math.random() * vpkCodes.length)];
+            
+            // Update bed data with default medium risk (will be updated when returning from setup)
+            bedData[selectedBed].occupied = true;
+            bedData[selectedBed].patientId = selectedPatient;
+            bedData[selectedBed].vpkCode = vpkCode;
+            bedData[selectedBed].riskLevel = 'mid'; // default risk level
+            
+            console.log('✅ Updated bed data:', bedData[selectedBed]);
+            
+            // Save bed states immediately
+            saveBedStatesToStorage();
+            
+            // Remove patient from available list
+            availablePatients = availablePatients.filter(p => p.id !== selectedPatient);
+            
+            console.log('Remaining available patients:', availablePatients);
+            
+            // Update display
+            updateBedDisplay(selectedBed);
+            // cancelSelection();
+            
+            // Navigate to patient setup
+            navigateToPatientSetup(bedNumber = selectedBed, patientId = selectedPatient);
+        }
+
+        function cancelSelection() {
+            selectedBed = null;
+            selectedPatient = null;
+            
+            // Remove selected class from all beds
+            document.querySelectorAll('.bed-card').forEach(bed => bed.classList.remove('selected'));
+            
+            // Reset button state
+            const confirmBtn = document.getElementById('confirm-btn');
+            confirmBtn.disabled = true;
+            confirmBtn.classList.add('disabled');
+            
+            document.getElementById('patient-selection').classList.remove('active');
+            document.getElementById('instruction-text').classList.remove('hidden');
+            
+            // Remove class from body to center beds vertically
+            document.body.classList.remove('patient-selection-active');
+        }
+
+        function navigateToPatientSetup(bedNumber, patientId) {
+            console.log('Navigating to patient setup for bed', bedNumber, 'patient', patientId);
+            // Store current state using shared data manager
+            console.log('Saving state before navigation:', {
+                bedData: bedData,
+                availablePatients: availablePatients
+            });
+            
+            // Validate patient ID
+            if (!patientId) {
+                console.error('❌ No patient ID provided to navigateToPatientSetup');
+                return;
+            }
+            
+            console.log('✅ Setting session data with patientId:', patientId, 'bedNumber:', bedNumber);
+            
+            // Save session data
+            window.sharedDataManager.saveSessionData({
+                currentBed: bedNumber,
+                currentPatient: patientId,
+                bedOverviewState: {
+                    bedData: bedData,
+                    availablePatients: availablePatients
+                },
+                timestamp: new Date().toISOString()
+            });
+            
+            // Verify the data was saved correctly
+            const verifyData = window.sharedDataManager.getSessionData();
+            console.log('✅ Verified session data after save:', verifyData);
+            
+            if (verifyData.currentPatient !== patientId) {
+                console.error('❌ Patient ID was not saved correctly!');
+                return;
+            }
+            
+            console.log('Navigating to patient setup for bed', bedNumber, 'patient', patientId);
+            
+            // Navigate to setup page
+            window.location.href = 'setup.html';
+        }
+
+        function navigateToAlarmSettings(bedNumber, patientId) {
+            console.log('Navigating to alarm settings for bed ' + bedNumber + ', patient ' + patientId);
+            // Navigate to alarm overview page with bed and patient parameters
+            window.location.href = 'alarm-overview.html?bed=' + bedNumber + '&patient=' + patientId;
+        }
+
+        // Function to discharge a patient from a bed
+        function dischargePatient(bedNumber) {
+            const bed = bedData[bedNumber];
+            if (!bed || !bed.occupied) {
+                console.log('Bed ' + bedNumber + ' is not occupied or does not exist');
+                return;
+            }
+
+            const patient = getPatientById(bed.patientId);
+            const patientName = patient ? patient.name : 'Unknown';
+            
+            if (confirm('Weet je zeker dat je ' + patientName + ' wilt ontslaan uit bed ' + bedNumber + '?')) {
+                console.log('Discharging patient ' + bed.patientId + ' from bed ' + bedNumber);
+                
+                // Clear patient medical info using shared data manager
+                window.sharedDataManager.removePatient(bed.patientId);
+                console.log('Cleared medical info for patient ' + bed.patientId + ' via shared data manager');
+                
+                // Add patient back to available patients list if not already there
+                const patientExists = availablePatients.find(p => p.id === bed.patientId);
+                if (!patientExists && patient) {
+                    availablePatients.push(patient);
+                    console.log('Added patient ' + patient.name + ' back to available patients');
+                }
+                
+                // Clear bed data
+                bedData[bedNumber] = {
+                    bedNumber: bedNumber,
+                    occupied: false,
+                    patientId: null,
+                    vpkCode: null,
+                    riskLevel: null
+                };
+                
+                // Save updated state and refresh display
+                saveBedStatesToStorage();
+                updateDisplay();
+                
+                console.log('Patient discharged from bed ' + bedNumber + '. Bed is now available.');
+            }
+        }
+
+        // Check if returning from patient setup
+        function checkReturnFromSetup() {
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.get('from') === 'setup') {
+                console.log('Returning from setup, updating risk level...');
+                
+                // Get the risk level and bed from shared data manager
+                const sessionData = window.sharedDataManager.getSessionData();
+                const currentBed = sessionData.currentBed;
+                const savedRiskLevel = sessionData.selectedRiskLevel;
+                console.log('Retrieved from shared data manager - currentBed:', currentBed, 'savedRiskLevel:', savedRiskLevel);
+                
+                if (currentBed && savedRiskLevel) {
+                    // Load current bed states
+                    const currentBedStates = loadBedStatesFromStorage();
+                    if (currentBedStates && currentBedStates[currentBed] && currentBedStates[currentBed].occupied) {
+                        console.log('Updating bed ' + currentBed + ' risk level from ' + currentBedStates[currentBed].riskLevel + ' to ' + savedRiskLevel);
                         
-                        // Function to load patient data when coming from bed overview
-                        function loadPatientFromBedOverview() {
-                            const initData = window.sharedDataManager.initializeIndexPage();
-                            const currentPatient = initData.sessionData.currentPatient;
-                            
-                            // Set the global currentPatientId variable
-                            currentPatientId = currentPatient;
-                            console.log('✅ Set currentPatientId to:', currentPatientId);
-                            
-                            if (currentPatient) {
-                                // Get patient info using shared data manager
-                                const patient = window.sharedDataManager.getPatientInfo(currentPatient);
-                                
-                                if (patient) {
-                                    // Update header with patient information
-                                    const headerInfo = document.getElementById('patient-header-info');
-                                    if (headerInfo) {
-                                        headerInfo.textContent = `${patient.id} - ${patient.name} - ${patient.gender} - ${patient.age} jaar - ${patient.weight} kg`;
-                                    }
-                                    
-                                    // Patient data is already managed by SharedDataManager
-                                    console.log('✅ Patient info loaded:', patient);
-                                }
-                            }
-                        }
+                        // Update the risk level in bed data
+                        currentBedStates[currentBed].riskLevel = savedRiskLevel;
                         
-                        // Wait for SharedDataManager to be ready
-                        document.addEventListener('DOMContentLoaded', async function() {
-                            console.log('DOM loaded, initializing SharedDataManager...');
-                            
-                            // AGGRESSIVE CLEAR: First clear all tag buttons before any initialization
-                            console.log('🧹 Aggressive clearing of all tag buttons...');
-                            const allTagButtons = document.querySelectorAll('.tag-btn');
-                            allTagButtons.forEach(btn => {
-                                btn.classList.remove('selected');
-                                console.log('🧹 Cleared button:', btn.dataset.condition || btn.textContent.trim());
-                            });
-                            selectedTags = [];
-                            console.log('🧹 Cleared selectedTags array');
-                            
-                            // Check if coming from bed overview and load patient data
-                            loadPatientFromBedOverview();
-                            
-                            // SharedDataManager is already initialized when the script loads
-                            if (window.sharedDataManager) {
-                                console.log('SharedDataManager initialized successfully');
-                                
-                                // Verify configurations are available
-                                const configs = window.sharedDataManager.getCircleConfigurations();
-                                console.log('Available circle configurations:', configs);
-                                
-                                // Load any existing session data
-                                loadSessionData();
-                                
-                                // Initialize sepsis tag state based on current patient target ranges
-                                initializeSepsisTagState();
-                            }
-                            
-                            // Create circle components after SharedDataManager is ready
-                            await initializeCircleComponents();
-                            
-                            // Set up event listeners
-                            setupEventListeners();
-                            
-                            // Initialize progress bar state
-                            updateProgressBar();
-                        });
+                        // Save the updated bed states
+                        bedData = currentBedStates;
+                        saveBedStatesToStorage();
                         
-                        async function initializeCircleComponents() {
-                            // Make all circles larger but still fit side by side
-                            const circleSize = 130;
-                            
-                            console.log('Initializing heart circle components...');
-                            
-                            // Store references to the components for later control
-                            window.organComponents = {};
-                            
-                            // Heart (circulatoir) - start inactive
-                            console.log('Creating heart component...');
-                            window.organComponents.heart = new HeartCircleComponent('heart-circle-container', { size: circleSize, initialState: 'low' });
-                            setTimeout(() => injectSVG('heart-circle-container', 'heart'), 100);
-                            
-                            // Listen for global heart monitoring level changes
-                            document.addEventListener('heartMonitoringLevelChanged', function(event) {
-                                const { level } = event.detail;
-                                if (window.organComponents?.heart) {
-                                    console.log(`Received heart monitoring level change:`, level);
-                                    window.organComponents.heart.setRiskLevel(level);
-                                }
-                            });
-                            
-                            // Listen for HR range changes from sepsis selection
-                            window.addEventListener('hrRangesChanged', function(event) {
-                                console.log('💓 HR ranges changed event received in index:', event.detail);
-                                if (event.detail.patientId === currentPatientId) {
-                                    // Update the HR display immediately
-                                    updateHRDisplay(event.detail.HR_low, event.detail.HR_high, event.detail.source === 'sepsis');
-                                    // Also update parameter ranges to ensure consistency
-                                    updateParameterRanges();
-                                    
-                                    // Update sepsis tag button state based on the event source
-                                    const sepsisButton = document.querySelector('.tag-btn[data-condition="sepsis"]');
-                                    if (sepsisButton) {
-                                        if (event.detail.source === 'sepsis') {
-                                            // Sepsis was selected elsewhere, select our button
-                                            if (!sepsisButton.classList.contains('selected')) {
-                                                sepsisButton.classList.add('selected');
-                                                selectedTags.push('sepsis');
-                                                console.log('✅ Synced sepsis button to selected state from external change (index)');
-                                            }
-                                        } else if (event.detail.source === 'restore') {
-                                            // Sepsis was deselected elsewhere, deselect our button
-                                            if (sepsisButton.classList.contains('selected')) {
-                                                sepsisButton.classList.remove('selected');
-                                                selectedTags = selectedTags.filter(t => t !== 'sepsis');
-                                                console.log('✅ Synced sepsis button to deselected state from external change (index)');
-                                            }
-                                        }
-                                    }
-                                }
-                            });
-                            
-                            // Listen for condition state changes from other pages
-                            window.addEventListener('patientConditionStateChanged', function(event) {
-                                console.log('🏥 Condition state changed event received on setup page:', event.detail);
-                                
-                                const { condition, state } = event.detail;
-                                
-                                // Only update if it's for the current patient
-                                if (state.patientId === currentPatientId) {
-                                    const conditionButton = document.querySelector(`.tag-btn[data-condition="${condition}"]`);
-                                    if (conditionButton) {
-                                        if (state.isActive) {
-                                            if (!conditionButton.classList.contains('selected')) {
-                                                conditionButton.classList.add('selected');
-                                                if (!selectedTags.includes(condition)) {
-                                                    selectedTags.push(condition);
-                                                }
-                                                console.log(`✅ Synced ${condition} button to selected state from external change (setup)`);
-                                            }
-                                        } else {
-                                            if (conditionButton.classList.contains('selected')) {
-                                                conditionButton.classList.remove('selected');
-                                                selectedTags = selectedTags.filter(t => t !== condition);
-                                                console.log(`✅ Synced ${condition} button to deselected state from external change (setup)`);
-                                            }
-                                        }
-                                        
-                                        // Update parameter ranges after condition state change
-                                        updateParameterRanges();
-                                    }
-                                }
-                            });
-                            
-                            // Lung (respiratoir) - start inactive
-                            console.log('Creating lung component...');
-                            window.organComponents.lung = new HeartCircleComponent('lung-circle-container', { size: circleSize, initialState: 'low' });
-                            setTimeout(() => injectSVG('lung-circle-container', 'lung'), 100);
-                            
-                            // Temp (overig) - start inactive
-                            console.log('Creating temp component...');
-                            window.organComponents.temp = new HeartCircleComponent('temp-circle-container', { size: circleSize, initialState: 'low' });
-                            setTimeout(() => injectSVG('temp-circle-container', 'temp'), 100);
-                            
-                            // Make all circles appear inactive until user makes selections
-                            setTimeout(() => {
-                                updateAllOpacity(false);
-                            }, 200);
-                        }
-                        
-                        function setupEventListeners() {
-                            // Set up problem dropdown listener
-                            const problemDropdown = document.getElementById('problemDropdown');
-                            if (problemDropdown) {
-                                problemDropdown.addEventListener('change', function() {
-                                    selectedProblem = this.value;
-                                    window.dataManager?.setSelectedProblem(selectedProblem);
-                                    updateOrganCirclesBasedOnProblem(selectedProblem);
-                                    updateProgressBar(); // Update progress when problem is selected
-                                });
-                            }
-                            
-                            // Set up risk level button listeners
-                            const riskButtons = document.querySelectorAll('.btn.risk-low, .btn.risk-mid, .btn.risk-high');
-                            riskButtons.forEach(button => {
-                                button.addEventListener('click', function() {
-                                    // Remove selected class from all risk buttons
-                                    riskButtons.forEach(btn => btn.classList.remove('selected'));
-                                    // Add selected class to clicked button
-                                    this.classList.add('selected');
-                                    
-                                    // Get risk level and update circles
-                                    const riskLevel = this.classList.contains('risk-low') ? 'low' : 
-                                                     this.classList.contains('risk-high') ? 'high' : 'mid';
-                                    console.log('Risk button clicked, detected risk level:', riskLevel);
-                                    selectedRiskLevel = riskLevel;
-                                    console.log('selectedRiskLevel is now:', selectedRiskLevel);
-                                    window.dataManager?.setSelectedRiskLevel(riskLevel);
-                                    updateOrganCirclesWithRisk(riskLevel);
-                                    updateProgressBar(); // Update progress when risk level is selected
-                                });
-                            });
-                            
-                            // Set up tag button listeners
-                            const tagButtons = document.querySelectorAll('.tags-section .btn:not(.more-btn)');
-                            tagButtons.forEach(button => {
-                                button.addEventListener('click', function() {
-                                    const tagCondition = this.dataset.condition || this.textContent.trim(); // Use data-condition if available, fallback to text
-                                    
-                                    if (this.classList.contains('selected')) {
-                                        // Deselect tag
-                                        this.classList.remove('selected');
-                                        selectedTags = selectedTags.filter(tag => tag !== tagCondition);
-                                        
-                                        // Handle condition deselection using new condition state system
-                                        if (currentPatientId && window.sharedDataManager) {
-                                            window.sharedDataManager.setPatientConditionState(tagCondition, {
-                                                isActive: false,
-                                                patientId: currentPatientId,
-                                                timestamp: Date.now(),
-                                                source: 'setup-page'
-                                            });
-                                            
-                                            // Handle pneumonie-specific AF range restoration
-                                            if (tagCondition === 'pneumonie') {
-                                                console.log('🫁 Pneumonie deselected on setup page - restoring previous AF ranges');
-                                                window.sharedDataManager.restorePreviousAFRanges(currentPatientId);
-                                            }
-                                        }
-                                    } else {
-                                        // Select tag
-                                        this.classList.add('selected');
-                                        if (!selectedTags.includes(tagCondition)) {
-                                            selectedTags.push(tagCondition);
-                                        }
-                                        
-                                        // Handle condition selection using new condition state system
-                                        if (currentPatientId && window.sharedDataManager) {
-                                            window.sharedDataManager.setPatientConditionState(tagCondition, {
-                                                isActive: true,
-                                                patientId: currentPatientId,
-                                                timestamp: Date.now(),
-                                                source: 'setup-page'
-                                            });
-                                            
-                                            // Handle pneumonie-specific AF range changes
-                                            if (tagCondition === 'pneumonie') {
-                                                console.log('🫁 Pneumonie selected on setup page - applying AF range changes');
-                                                window.sharedDataManager.applyPneumonieAFRanges(currentPatientId);
-                                            }
-                                        }
-                                    }
-                                    
-                                    window.dataManager?.setSelectedTags(selectedTags);
-                                    // Update parameter ranges based on selected conditions
-                                    updateParameterRanges();
-                                });
-                            });
-                            
-                            // Listen for HR range changes from sepsis selection/deselection
-                            window.addEventListener('hrRangesChanged', function(event) {
-                                console.log('💓 HR ranges changed event received in setup page:', event.detail);
-                                if (event.detail.patientId === currentPatientId) {
-                                    // Directly update the HR display with the new values
-                                    const { HR_low, HR_high, BP_low, BP_high, source } = event.detail;
-                                    updateHRDisplayDirectly(HR_low, HR_high, source === 'sepsis');
-                                    
-                                    // Also update BP display if BP values are provided
-                                    if (typeof BP_low !== 'undefined' && typeof BP_high !== 'undefined') {
-                                        updateBPDisplayDirectly(BP_low, BP_high, source === 'sepsis');
-                                    }
-                                    
-                                    console.log('✅ Directly updated HR and BP displays with values:', HR_low, '-', HR_high, 'BP:', BP_low, '-', BP_high);
-                                }
-                            });
-                            
-                            // Listen for AF range changes from pneumonie selection/deselection
-                            window.addEventListener('afRangesChanged', function(event) {
-                                console.log('🫁 AF ranges changed event received in setup page:', event.detail);
-                                if (event.detail.patientId === currentPatientId) {
-                                    const { AF_min, AF_max, source } = event.detail;
-                                    updateAFDisplayDirectly(AF_min, AF_max, source === 'pneumonie');
-                                    console.log('✅ Directly updated AF display with values:', AF_min, '-', AF_max);
-                                }
-                            });
-                        }
-                        
-                        // Function to directly update HR display on setup page
-                        function updateHRDisplayDirectly(hrLow, hrHigh, isSepsis) {
-                            console.log(`🔄 Directly updating HR display: ${hrLow}-${hrHigh} (sepsis: ${isSepsis})`);
-                            
-                            const circulatoryCard = document.querySelector('.value-card');
-                            const hrRange = circulatoryCard?.querySelector('.value-number');
-                            
-                            if (hrRange) {
-                                hrRange.textContent = `${hrLow} - ${hrHigh} bpm`;
-                                
-                                // Apply sepsis styling if needed
-                                if (isSepsis) {
-                                    hrRange.style.backgroundColor = '#fff3cd'; // Light yellow highlight
-                                    hrRange.style.border = '2px solid #ffc107'; // Yellow border
-                                    hrRange.style.borderRadius = '4px';
-                                    hrRange.style.padding = '2px 4px';
-                                    console.log('✅ Applied sepsis styling to HR display');
-                                } else {
-                                    // Remove sepsis styling
-                                    hrRange.style.backgroundColor = '';
-                                    hrRange.style.border = '';
-                                    hrRange.style.borderRadius = '';
-                                    hrRange.style.padding = '';
-                                    console.log('✅ Removed sepsis styling from HR display');
-                                }
-                                
-                                console.log(`✅ HR display updated directly: ${hrLow} - ${hrHigh}`);
-                            } else {
-                                console.warn('❌ Could not find HR display element on setup page');
-                            }
-                        }
-                        
-                        // Function to directly update BP display on setup page
-                        function updateBPDisplayDirectly(bpLow, bpHigh, isSepsis) {
-                            console.log(`🩸 Directly updating BP display: ${bpLow}-${bpHigh} mmHg (sepsis: ${isSepsis})`);
-                            
-                            const circulatoryCard = document.querySelector('.value-card');
-                            const bpRange = circulatoryCard?.querySelectorAll('.value-number')[1]; // Second value-number is BP
-                            
-                            if (bpRange) {
-                                bpRange.textContent = `${bpLow} - ${bpHigh} mmHg`;
-                                
-                                // Apply sepsis styling if needed
-                                if (isSepsis) {
-                                    bpRange.style.backgroundColor = '#fff3cd'; // Light yellow highlight
-                                    bpRange.style.border = '2px solid #ffc107'; // Yellow border
-                                    bpRange.style.borderRadius = '4px';
-                                    bpRange.style.padding = '2px 4px';
-                                    console.log('✅ Applied sepsis styling to BP display');
-                                } else {
-                                    // Remove sepsis styling
-                                    bpRange.style.backgroundColor = '';
-                                    bpRange.style.border = '';
-                                    bpRange.style.borderRadius = '';
-                                    bpRange.style.padding = '';
-                                    console.log('✅ Removed sepsis styling from BP display');
-                                }
-                                
-                                console.log(`✅ BP display updated directly: ${bpLow} - ${bpHigh} mmHg`);
-                            } else {
-                                console.warn('❌ Could not find BP display element on setup page');
-                            }
-                        }
-                        
-                        // Function to directly update AF display on setup page
-                        function updateAFDisplayDirectly(afMin, afMax, isPneumonie) {
-                            console.log(`🫁 Directly updating AF display: ${afMin}-${afMax} /min (pneumonie: ${isPneumonie})`);
-                            
-                            const afRangeDisplay = document.getElementById('af-range-display');
-                            
-                            if (afRangeDisplay) {
-                                afRangeDisplay.textContent = `${afMin} - ${afMax}`;
-                                
-                                // Apply pneumonie styling if needed
-                                if (isPneumonie) {
-                                    afRangeDisplay.style.backgroundColor = '#e1f5fe'; // Light blue highlight
-                                    afRangeDisplay.style.border = '2px solid #29b6f6'; // Blue border
-                                    afRangeDisplay.style.borderRadius = '4px';
-                                    afRangeDisplay.style.padding = '2px 4px';
-                                    console.log('✅ Applied pneumonie styling to AF display');
-                                } else {
-                                    // Remove pneumonie styling
-                                    afRangeDisplay.style.backgroundColor = '';
-                                    afRangeDisplay.style.border = '';
-                                    afRangeDisplay.style.borderRadius = '';
-                                    afRangeDisplay.style.padding = '';
-                                    console.log('✅ Removed pneumonie styling from AF display');
-                                }
-                                
-                                console.log(`✅ AF display updated directly: ${afMin} - ${afMax} /min`);
-                            } else {
-                                console.warn('❌ Could not find AF display element on setup page');
-                            }
-                        }
-                        
-                        // Always start with fresh session data (no restoration of previous selections)
-                        function loadSessionData() {
-                            // Check if coming from bed overview - if so, don't reset everything
-                            const sessionData = window.sharedDataManager.getSessionData();
-                            const currentBed = sessionData.currentBed;
-                            const comingFromBedOverview = !!currentBed;
-                            
-                            if (!comingFromBedOverview) {
-                                // Ensure interface starts clean - no previous selections restored
-                                selectedProblem = '';
-                                selectedRiskLevel = '';
-                                selectedTags = [];
-                                
-                                // Ensure UI elements are reset
-                                const dropdown = document.getElementById('problemDropdown');
-                                if (dropdown) dropdown.value = '';
-                                
-                                // Remove any selected classes from risk buttons
-                                document.querySelectorAll('.btn.risk-low, .btn.risk-mid, .btn.risk-high').forEach(btn => {
-                                    btn.classList.remove('selected');
-                                });
-                                
-                                // Remove any selected classes from tag buttons
-                                document.querySelectorAll('.tag-btn').forEach(btn => {
-                                    btn.classList.remove('selected');
-                                });
-                            } else {
-                                console.log('Coming from bed overview, preserving fresh state for new patient setup');
-                                // Still reset for fresh patient setup, but don't interfere with workflow
-                                selectedProblem = '';
-                                selectedRiskLevel = '';
-                                selectedTags = [];
-                            }
-                            
-                            // Always reset tag buttons
-                            document.querySelectorAll('.tags-section .btn').forEach(btn => {
-                                btn.classList.remove('selected');
-                            });
-                            
-                            console.log('Interface reset to fresh state');
-                        }
+                        console.log('Bed ' + currentBed + ' after risk level update:', bedData[currentBed]);
+                    } else {
+                        console.log('Bed not found or not occupied:', currentBed);
+                    }
+                }
+                
+                // Clean up temporary session data
+                window.sharedDataManager.clearSessionData();
+                localStorage.removeItem('bedOverviewState'); // Clean up old system
+                
+                // Load the updated data and display
+                loadData();
+                return true; // Indicate that we handled the return from setup
+            }
+            return false; // No return from setup
+        }
 
-                        // Function to update organ circles based on selected problem
-                        function updateOrganCirclesBasedOnProblem(problemValue) {
-                            console.log('Problem selected:', problemValue);
-                            selectedProblem = problemValue;
-                            updateOrganCircles();
-                        }
-                        
-                        // Function to update organ circles based on risk level
-                        function updateOrganCirclesWithRisk(riskLevel) {
-                            console.log('Risk level selected:', riskLevel);
-                            selectedRiskLevel = riskLevel;
-                            updateOrganCircles();
-                        }
+        // Initialize page
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('🚀 DOMContentLoaded event fired');
+            
+            // Initialize using shared data manager
+            const initData = window.sharedDataManager.initializeBedOverviewPage();
+            console.log('📊 Initialized bed overview data:', initData);
+            
+            // Use initialized available patients
+            if (initData.availablePatients) {
+                availablePatients = [...initData.availablePatients];
+                console.log('✅ Using available patients from shared data manager:', availablePatients);
+            }
+            
+            // Clear any old localStorage data that might conflict
+            localStorage.removeItem('bedOverviewState');
+            localStorage.removeItem('currentBed');
+            localStorage.removeItem('currentPatient');
+            console.log('🧹 Cleared old localStorage data');
+            
+            const stateRestored = checkReturnFromSetup();
+            console.log('🔄 checkReturnFromSetup result:', stateRestored);
+            
+            if (!stateRestored) {
+                console.log('📞 Calling loadData()...');
+                // Only load default data if no state was restored
+                loadData();
+            } else {
+                console.log('⏭️ Skipped loadData() because state was restored');
+            }
+        });
 
-                        function initializeSepsisTagState() {
-                            console.log('🏥 Initializing condition states on setup page...');
-                            
-                            if (currentPatientId && window.sharedDataManager) {
-                                // Clear any existing selected tags for fresh start
-                                selectedTags = [];
-                                console.log('🧹 Cleared selectedTags for fresh patient setup');
-                                
-                                // For setup page, this is often a new patient setup, so force clean state
-                                window.sharedDataManager.ensureCleanPatientState(currentPatientId, true);
-                                
-                                // Initialize all condition buttons based on stored states
-                                const conditions = ['sepsis', 'pneumonie'];
-                                
-                                conditions.forEach(condition => {
-                                    const conditionState = window.sharedDataManager.getPatientConditionState(condition, currentPatientId);
-                                    const conditionButton = document.querySelector(`.tag-btn[data-condition="${condition}"]`);
-                                    
-                                    if (conditionButton) {
-                                        // Force deselect all condition buttons for new setup
-                                        conditionButton.classList.remove('selected');
-                                        
-                                        if (conditionState && conditionState.isActive) {
-                                            conditionButton.classList.add('selected');
-                                            if (!selectedTags.includes(condition)) {
-                                                selectedTags.push(condition);
-                                            }
-                                            console.log(`✅ Initialized ${condition} button as selected (setup)`);
-                                        } else {
-                                            console.log(`✅ Initialized ${condition} button as deselected (setup)`);
-                                        }
-                                    }
-                                });
-                                
-                                console.log('🔍 Final selectedTags after initialization:', selectedTags);
-                                // Update parameter ranges after initializing condition states
-                                updateParameterRanges();
-                            }
-                        }
+        // Test function to manually test risk levels (for debugging)
+        function testRiskLevels() {
+            console.log('Testing risk levels...');
+            // Manually set bed 1 to different risk levels for testing
+            bedData[1] = { bedNumber: 1, occupied: true, patientId: "1", vpkCode: "TEST", riskLevel: 'low' };
+            bedData[2] = { bedNumber: 2, occupied: true, patientId: "2", vpkCode: "TEST", riskLevel: 'mid' };
+            bedData[3] = { bedNumber: 3, occupied: true, patientId: "3", vpkCode: "TEST", riskLevel: 'high' };
+            updateDisplay();
+        }
 
-                        // Main function to update organ circles based on current problem and risk
-                        function updateOrganCircles() {
-                            if (!window.sharedDataManager) {
-                                console.warn('SharedDataManager not available');
-                                return;
-                            }
-                            
-                            // Use SharedDataManager to calculate organ states
-                            const finalOrganStates = window.sharedDataManager.calculateOrganStates(selectedProblem, selectedRiskLevel);
-                            const isActivated = selectedProblem !== '';
-                            
-                            // Update each organ component
-                            if (window.organComponents.heart) {
-                                window.organComponents.heart.setRiskLevel(finalOrganStates.heart);
-                                window.sharedDataManager.setOrganSettings('circulatoir', { 
-                                    active: isActivated, 
-                                    severity: isActivated ? 'active' : 'los', 
-                                    riskLevel: finalOrganStates.heart 
-                                });
-                                console.log('Heart set to:', finalOrganStates.heart);
-                            }
-                            if (window.organComponents.lung) {
-                                window.organComponents.lung.setRiskLevel(finalOrganStates.lung);
-                                window.sharedDataManager.setOrganSettings('respiratoir', { 
-                                    active: isActivated, 
-                                    severity: isActivated ? 'active' : 'los', 
-                                    riskLevel: finalOrganStates.lung 
-                                });
-                                console.log('Lung set to:', finalOrganStates.lung);
-                            }
-                            if (window.organComponents.temp) {
-                                window.organComponents.temp.setRiskLevel(finalOrganStates.temp);
-                                window.sharedDataManager.setOrganSettings('overig', { 
-                                    active: isActivated, 
-                                    severity: isActivated ? 'active' : 'los', 
-                                    riskLevel: finalOrganStates.temp 
-                                });
-                                console.log('Temp set to:', finalOrganStates.temp);
-                            }
-                            
-                            // Update opacity for all monitoring elements
-                            updateAllOpacity(isActivated);
-                        }
+        // Test shared data manager flow
+        function testLocalStorageFlow(bedNum, riskLevel) {
+            console.log('Testing shared data manager flow for bed ' + bedNum + ' with risk ' + riskLevel);
+            
+            // Simulate the workflow using shared data manager
+            window.sharedDataManager.saveSessionData({
+                currentBed: bedNum,
+                selectedRiskLevel: riskLevel,
+                timestamp: new Date().toISOString()
+            });
+            
+            // Simulate returning from setup
+            const urlParams = new URLSearchParams('?from=setup');
+            window.history.replaceState({}, '', window.location.pathname + '?from=setup');
+            
+            // Trigger state restoration
+            checkReturnFromSetup();
+        }
 
-                        function updateParameterRanges() {
-                            console.log('🔍 DEBUG: Updating parameter ranges for selected tags:', selectedTags);
-                            
-                            // Check if sepsis is selected
-                            const hasSepsis = selectedTags.some(tag => tag.toLowerCase().includes('sepsis'));
-                            console.log('🔍 DEBUG: Has sepsis tag:', hasSepsis);
-                            
-                            // Get thresholds from shared data manager
-                            const normalThresholds = window.sharedDataManager.getThresholds('normal');
-                            const sepsisThresholds = window.sharedDataManager.getThresholds('conditions')?.sepsis;
-                            
-                            console.log('🔍 DEBUG: Normal thresholds:', normalThresholds);
-                            console.log('🔍 DEBUG: Sepsis thresholds:', sepsisThresholds);
-                            
-                            // Determine which thresholds to use
-                            const currentThresholds = hasSepsis && sepsisThresholds ? 
-                                {
-                                    ...normalThresholds,
-                                    circulatoir: {
-                                        ...normalThresholds.circulatoir,
-                                        ...sepsisThresholds.circulatoir
-                                    }
-                                } : normalThresholds;
-                            
-                            console.log('🔍 DEBUG: Using thresholds:', currentThresholds);
-                            
-                            // Save target ranges for current patient if we have a patient ID
-                            if (currentPatientId && currentThresholds.circulatoir) {
-                                // Get existing target ranges to preserve AF and other ranges
-                                const existingTargetRanges = window.sharedDataManager.getPatientTargetRanges(currentPatientId) || {};
-                                
-                                const targetRanges = {
-                                    // Preserve existing ranges
-                                    ...existingTargetRanges,
-                                    // Update only HR and BP_Mean
-                                    HR: {
-                                        min: Math.round(currentThresholds.circulatoir.HR?.min || 60),
-                                        max: Math.round(currentThresholds.circulatoir.HR?.max || 100),
-                                        unit: currentThresholds.circulatoir.HR?.unit || 'bpm'
-                                    },
-                                    BP_Mean: {
-                                        min: Math.round(currentThresholds.circulatoir.BP_Mean?.min || 65),
-                                        max: Math.round(currentThresholds.circulatoir.BP_Mean?.max || 85),
-                                        unit: currentThresholds.circulatoir.BP_Mean?.unit || 'mmHg'
-                                    }
-                                };
-                                
-                                console.log('🔍 Preserving existing target ranges:', existingTargetRanges);
-                                console.log('🔍 New target ranges with preserved AF:', targetRanges);
-                                
-                                // Update target ranges in shared data manager
-                                window.sharedDataManager.updateGlobalTargetRanges(currentPatientId, targetRanges);
-                                console.log('🎯 Updated target ranges for patient:', currentPatientId, targetRanges);
-                            }
-                            
-                            // Update circulatory parameters (HR and BP)
-                            const circulatoryCard = document.querySelector('.value-card');
-                            const hrRange = circulatoryCard?.querySelector('.value-number');
-                            const bpRange = circulatoryCard?.querySelectorAll('.value-number')[1]; // Second value-number is BP
-                            
-                            if (hrRange && currentThresholds.circulatoir && currentThresholds.circulatoir.HR) {
-                                const hr = currentThresholds.circulatoir.HR;
-                                hrRange.textContent = hr.min + ' - ' + hr.max + ' ' + hr.unit;
-                                
-                                console.log('🔍 DEBUG: Updated HR range to:', hr.min + ' - ' + hr.max + ' ' + hr.unit);
-                                
-                                // Highlight if using sepsis thresholds
-                                if (hasSepsis && sepsisThresholds) {
-                                    hrRange.style.backgroundColor = '#fff3cd'; // Light yellow highlight
-                                    hrRange.style.border = '2px solid #ffc107'; // Yellow border
-                                    hrRange.style.borderRadius = '4px';
-                                    hrRange.style.padding = '2px 4px';
-                                    console.log('🔍 DEBUG: Applied sepsis highlighting to HR range');
-                                } else {
-                                    // Reset to normal styling
-                                    hrRange.style.backgroundColor = '';
-                                    hrRange.style.border = '';
-                                    hrRange.style.borderRadius = '';
-                                    hrRange.style.padding = '';
-                                    console.log('🔍 DEBUG: Reset HR range to normal styling');
-                                }
-                            }
-                            
-                            // Update BP range
-                            if (bpRange && currentThresholds.circulatoir && currentThresholds.circulatoir.BP_Mean) {
-                                const bp = currentThresholds.circulatoir.BP_Mean;
-                                bpRange.textContent = bp.min + ' - ' + bp.max + ' ' + bp.unit;
-                                
-                                console.log('🔍 DEBUG: Updated BP range to:', bp.min + ' - ' + bp.max + ' ' + bp.unit);
-                                
-                                // Highlight if using sepsis thresholds
-                                if (hasSepsis && sepsisThresholds) {
-                                    bpRange.style.backgroundColor = '#fff3cd'; // Light yellow highlight
-                                    bpRange.style.border = '2px solid #ffc107'; // Yellow border
-                                    bpRange.style.borderRadius = '4px';
-                                    bpRange.style.padding = '2px 4px';
-                                    console.log('🔍 DEBUG: Applied sepsis highlighting to BP range');
-                                } else {
-                                    // Reset to normal styling
-                                    bpRange.style.backgroundColor = '';
-                                    bpRange.style.border = '';
-                                    bpRange.style.borderRadius = '';
-                                    bpRange.style.padding = '';
-                                    console.log('🔍 DEBUG: Reset BP range to normal styling');
-                                }
-                            }
-                        }
-
-                        function updateHRDisplay(hrLow, hrHigh, isSepsis) {
-                            console.log('💓 Updating HR display in index:', hrLow, '-', hrHigh, 'sepsis:', isSepsis);
-                            
-                            // Find the HR display element
-                            const circulatoryCard = document.querySelector('.value-card');
-                            const hrRange = circulatoryCard?.querySelector('.value-number');
-                            
-                            if (hrRange) {
-                                // Update the display text
-                                hrRange.textContent = hrLow + ' - ' + hrHigh + ' bpm';
-                                
-                                // Apply styling based on source
-                                if (isSepsis) {
-                                    hrRange.style.backgroundColor = '#fff3cd'; // Light yellow highlight for sepsis
-                                    hrRange.style.border = '2px solid #ffc107'; // Yellow border
-                                    hrRange.style.borderRadius = '4px';
-                                    hrRange.style.padding = '2px 4px';
-                                    console.log('🦠 Applied sepsis styling to HR display in index');
-                                } else {
-                                    hrRange.style.backgroundColor = '#e8f5e8'; // Light green for restored
-                                    hrRange.style.border = '2px solid #28a745'; // Green border
-                                    hrRange.style.borderRadius = '4px';
-                                    hrRange.style.padding = '2px 4px';
-                                    console.log('🔙 Applied restored styling to HR display in index');
-                                }
-                            }
-                        }
-
-                        function updateProgressBar() {
-                            const stepNumbers = document.querySelectorAll('.step-number');
-                            
-                            // Reset all steps to inactive first
-                            stepNumbers.forEach(step => {
-                                step.classList.add('inactive');
-                                step.style.backgroundColor = '';
-                            });
-                            
-                            // Step 1 is always blue (active by default)
-                            if (stepNumbers[0]) {
-                                stepNumbers[0].classList.remove('inactive');
-                                stepNumbers[0].style.backgroundColor = '#1961AB';
-                            }
-                            
-                            // Step 2 becomes blue when problem is selected
-                            if (selectedProblem && stepNumbers[1]) {
-                                stepNumbers[1].classList.remove('inactive');
-                                stepNumbers[1].style.backgroundColor = '#1961AB';
-                            }
-                            
-                            // Steps 3 and ✓ become blue when risk level is selected
-                            if (selectedRiskLevel) {
-                                if (stepNumbers[2]) {
-                                    stepNumbers[2].classList.remove('inactive');
-                                    stepNumbers[2].style.backgroundColor = '#1961AB';
-                                }
-                                if (stepNumbers[3]) {
-                                    stepNumbers[3].classList.remove('inactive');
-                                    stepNumbers[3].style.backgroundColor = '#1961AB';
-                                }
-                            }
-                            
-                            // Update confirm button state
-                            updateConfirmButton();
-                            
-                            // Update data manager with current progress
-                            let completedSteps = 1; // Always start with step 1
-                            if (selectedProblem) completedSteps = 2;
-                            if (selectedRiskLevel) completedSteps = 4; // All steps complete
-                            
-                            if (window.dataManager) {
-                                window.dataManager.setProgressStep(completedSteps);
-                            }
-                        }
-
-                        function updateConfirmButton() {
-                            const confirmBtn = document.getElementById('confirm-btn');
-                            if (confirmBtn) {
-                                if (selectedProblem && selectedRiskLevel) {
-                                    // Both selections made - enable button
-                                    confirmBtn.classList.remove('disabled');
-                                    confirmBtn.style.pointerEvents = 'auto';
-                                } else {
-                                    // Missing selection(s) - disable button
-                                    confirmBtn.classList.add('disabled');
-                                    confirmBtn.style.pointerEvents = 'none';
-                                }
-                            }
-                        }
-
-                        // Navigation functions
-                        function goBack() {
-                            if (confirm('Weet je zeker dat je terug wilt gaan? Alle wijzigingen gaan verloren.')) {
-                                // Reset all selections and data manager
-                                selectedProblem = '';
-                                selectedRiskLevel = '';
-                                selectedTags = [];
-                                
-                                if (window.dataManager) {
-                                    window.dataManager.resetSession();
-                                }
-                                
-                                // Reset UI
-                                document.querySelectorAll('.btn.selected').forEach(btn => btn.classList.remove('selected'));
-                                document.getElementById('problemDropdown').value = '';
-                                updateProgressBar();
-                                
-                                alert('Terug naar vorige stap...');
-                            }
-                        }
-
-                        function confirmSettings() {
-                            // Check if button is disabled
-                            const confirmBtn = document.getElementById('confirm-btn');
-                            if (confirmBtn && confirmBtn.classList.contains('disabled')) {
-                                return; // Don't execute if button is disabled
-                            }
-                            
-                            console.log('confirmSettings called - selectedRiskLevel:', selectedRiskLevel);
-                            console.log('confirmSettings called - selectedProblem:', selectedProblem);
-                            
-                            if (!selectedProblem || !selectedRiskLevel) {
-                                alert('Selecteer eerst een hoofdprobleem en risico niveau voordat je doorgaat.');
-                                return;
-                            }
-                            
-                            const organSettings = window.dataManager?.getCurrentSession()?.organSettings || {};
-                            const activeOrgans = Object.keys(organSettings).filter(organ => organSettings[organ].active);
-                            
-                            const summary = 
-                                'Overzicht instellingen:\n' +
-                                '- Hoofdprobleem: ' + selectedProblem + '\n' +
-                                '- Risico niveau: ' + selectedRiskLevel + '\n' +
-                                '- Additionele tags: ' + (selectedTags.length > 0 ? selectedTags.join(', ') : 'Geen') + '\n' +
-                                '- Actieve monitoring: ' + (activeOrgans.length > 0 ? activeOrgans.join(', ') : 'Geen');
-                            
-                            if (confirm(summary + '\n\nWil je deze instellingen bevestigen?')) {
-                                // Save all the selected data to patient-data.json
-                                if (window.dataManager) {
-                                    window.dataManager.setSelectedProblem(selectedProblem);
-                                    window.dataManager.setSelectedRiskLevel(selectedRiskLevel);
-                                    window.dataManager.setSelectedTags(selectedTags);
-                                    window.dataManager.setProgressStep(4);
-                                }
-                                
-                                // Save patient medical information permanently
-                                const sessionData = window.sharedDataManager.getSessionData();
-                                const currentPatient = sessionData.currentPatient;
-                                const currentBed = sessionData.currentBed; // Declare at function level
-                                
-                                if (currentPatient) {
-                                    const patientMedicalInfo = {
-                                        selectedProblem: selectedProblem,
-                                        selectedRiskLevel: selectedRiskLevel,
-                                        selectedTags: selectedTags,
-                                        organSettings: (window.dataManager && typeof window.dataManager.getOrganSettings === 'function') ? window.dataManager.getOrganSettings() : {},
-                                        lastUpdated: new Date().toISOString()
-                                    };
-                                    
-                                    // Save using shared data manager for cross-page access
-                                    window.sharedDataManager.savePatientMedicalInfo(currentPatient, patientMedicalInfo);
-                                    
-                                    // Also save session data including risk level
-                                    window.sharedDataManager.saveSessionData({
-                                        currentPatient: currentPatient,
-                                        currentBed: currentBed,
-                                        selectedRiskLevel: selectedRiskLevel,
-                                        lastUpdated: new Date().toISOString()
-                                    });
-                                    
-                                    // Ensure data synchronization between both managers
-                                    synchronizeDataManagers(currentPatient, patientMedicalInfo);
-                                }
-                                
-                                // alert('Instellingen opgeslagen! Patiënt monitoring is geactiveerd.');
-                                
-                                // Simulate moving to next step
-                                const lastStep = document.querySelector('.step:last-child .step-number');
-                                lastStep.classList.remove('inactive');
-                                lastStep.textContent = '✓';
-                                lastStep.style.backgroundColor = '#28a745';
-                                
-                                // Check if user came from bed overview and redirect back
-                                window.location.href = 'bed-overview.html?from=setup';
-                            }
-                        }
-
-                        // Function to update opacity for all monitoring elements
-                        function updateAllOpacity(isActive) {
-                            // Update circle opacity
-                            ['heart-circle-container', 'lung-circle-container', 'temp-circle-container'].forEach(containerId => {
-                                updateCircleOpacity(containerId, isActive);
-                            });
-                            
-                            // Update labels and status opacity
-                            document.querySelectorAll('.monitor-label, .monitor-status').forEach(element => {
-                                if (isActive) {
-                                    element.classList.add('active');
-                                } else {
-                                    element.classList.remove('active');
-                                }
-                            });
-                            
-                            // Update value cards opacity
-                            document.querySelectorAll('.value-card').forEach(card => {
-                                if (isActive) {
-                                    card.classList.add('active');
-                                } else {
-                                    card.classList.remove('active');
-                                }
-                            });
-                        }
-
-                        // Function to update circle opacity
-                        function updateCircleOpacity(containerId, isActive) {
-                            const container = document.getElementById(containerId);
-                            if (container) {
-                                const circle = container.querySelector('.heart-organ-circle');
-                                if (circle) {
-                                    circle.style.opacity = isActive ? '1' : '0.3';
-                                }
-                            }
-                        }
-
-                        // Function to synchronize data between both data managers
-                        function synchronizeDataManagers(patientId, medicalInfo) {
-                            try {
-                                // Ensure old data manager has the patient info
-                                if (window.dataManager && medicalInfo) {
-                                    window.dataManager.updatePatientInfo({ id: patientId });
-                                    window.dataManager.setSelectedProblem(medicalInfo.selectedProblem);
-                                    window.dataManager.setSelectedRiskLevel(medicalInfo.selectedRiskLevel);
-                                    window.dataManager.setSelectedTags(medicalInfo.selectedTags);
-                                }
-                                
-                                // Save a combined localStorage entry that both can read
-                                const combinedData = {
-                                    patientId: patientId,
-                                    medicalInfo: medicalInfo,
-                                    timestamp: new Date().toISOString()
-                                };
-                                localStorage.setItem(`patient_${patientId}_medicalInfo`, JSON.stringify(combinedData));
-                                
-                                console.log('✅ Data synchronized between both managers for patient:', patientId);
-                            } catch (error) {
-                                console.error('❌ Error synchronizing data managers:', error);
-                            }
-                        }
-            </script>
+        // Call this function from browser console to test: testRiskLevels()
+    </script>
 </body>
 </html>

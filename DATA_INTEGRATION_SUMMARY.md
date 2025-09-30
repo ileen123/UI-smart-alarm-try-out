@@ -33,7 +33,7 @@
 
 ### 🔧 **Files Updated**
 
-- **bed-overview.html**: Now fetches from `hospital-data.json` instead of `bed-overview.json`
+- **index.html**: Now fetches from `hospital-data.json` instead of `bed-overview.json`
 - **hospital-data.json**: New unified data file
 - **Removed files**: `patient-data.json`, `bed-overview.json` (redundant)
 
@@ -48,7 +48,7 @@
 ### 🏥 **Data Flow**
 
 - **Patient Setup (index.html)**: Uses localStorage for temporary session data, references `hospital-data.json` via data-manager.js
-- **Bed Overview (bed-overview.html)**: Loads patient list from `hospital-data.json`, uses localStorage for bed state persistence
+- **Bed Overview (index.html)**: Loads patient list from `hospital-data.json`, uses localStorage for bed state persistence
 - **Configuration**: Still uses separate `config.json` for organ settings and UI configuration
 
 This integration maintains all functionality while eliminating redundancy and improving maintainability.

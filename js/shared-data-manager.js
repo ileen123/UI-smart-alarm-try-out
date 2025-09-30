@@ -490,7 +490,7 @@ class SharedDataManager {
     }
 
     /**
-     * Initialize data for bed-overview.html
+     * Initialize data for index.html
      */
     initializeBedOverviewPage() {
         console.log('🏥 Initializing bed overview page...');

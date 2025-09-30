@@ -1184,7 +1184,7 @@
                 if (!currentPatientId || !currentBed) {
                     console.warn('⚠️ No patient or bed data found, redirecting to bed overview');
                     alert('Geen patiëntgegevens gevonden. Ga terug naar het bedoverzicht om een patiënt te selecteren.');
-                    window.location.href = 'bed-overview.html';
+                    window.location.href = 'index.html';
                     return;
                 }
                 
@@ -1870,7 +1870,7 @@
                 window.location.href = alarmUrl;
             } else {
                 console.warn('⚠️ Missing patient or bed data, redirecting to bed overview');
-                window.location.href = 'bed-overview.html';
+                window.location.href = 'index.html';
             }
         }
 
@@ -1894,7 +1894,7 @@
                 window.location.href = respiratoryUrl;
             } else {
                 console.warn('⚠️ Missing patient or bed data, redirecting to bed overview');
-                window.location.href = 'bed-overview.html';
+                window.location.href = 'index.html';
             }
         }
 
@@ -1912,7 +1912,7 @@
             }
             
             // Navigate to bed overview
-            window.location.href = 'bed-overview.html';
+            window.location.href = 'index.html';
         }
     </script>
 </body>

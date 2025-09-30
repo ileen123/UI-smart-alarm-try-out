@@ -90,7 +90,7 @@ const initData = window.sharedDataManager.initializeIndexPage();
 const initData = window.sharedDataManager.initializeAlarmOverviewPage(currentPatientId);
 ```
 
-**bed-overview.html:**
+**index.html:**
 ```javascript
 const initData = window.sharedDataManager.initializeBedOverviewPage();
 ```
@@ -120,19 +120,19 @@ const initData = window.sharedDataManager.initializeBedOverviewPage();
 ## Data Flow Examples
 
 ### 1. Patient Setup Workflow
-1. **bed-overview.html**: User selects bed and patient
+1. **index.html**: User selects bed and patient
 2. **Shared Data Manager**: Saves session data with currentBed and currentPatient
 3. **index.html**: Loads session data, shows patient info, saves medical settings
 4. **Shared Data Manager**: Saves patient medical info and updates session with risk level
-5. **bed-overview.html**: Retrieves updated data and updates bed display
+5. **index.html**: Retrieves updated data and updates bed display
 
 ### 2. Alarm Configuration
-1. **bed-overview.html**: User clicks alarm settings for a patient
+1. **index.html**: User clicks alarm settings for a patient
 2. **alarm-overview.html**: Initializes with patient ID from URL
 3. **Shared Data Manager**: Loads patient medical info and displays current settings
 4. **alarm-overview.html**: User modifies settings
 5. **Shared Data Manager**: Saves updated medical info
-6. **bed-overview.html**: Shows updated alarm status
+6. **index.html**: Shows updated alarm status
 
 ## Migration Notes
 

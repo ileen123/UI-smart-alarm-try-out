@@ -40,7 +40,7 @@ The hospital data system has been enhanced to permanently store and display each
 - **localStorage Storage**: Medical info saved as `patient_{patientId}_medicalInfo`
 - **Comprehensive Data**: Includes problem, risk level, tags, organ settings, and timestamp
 
-### **2. Bed Overview (bed-overview.html)**
+### **2. Bed Overview (index.html)**
 - **Medical Info Display**: Bed cards now show the patient's problem and risk level
 - **Enhanced Status**: Instead of generic "Alarm Instellingen", shows specific medical condition
 - **Example**: "Hartfalen (high)" or "Sepsis (med)"
