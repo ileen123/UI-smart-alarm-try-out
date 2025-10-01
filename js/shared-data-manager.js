@@ -601,25 +601,18 @@ class SharedDataManager {
             thresholds: {
                 normal: {
                     circulatoir: { 
-                        HR: { min: 70, max: 110, unit: "bpm" }, 
-                        BP_Mean: { min: 65, max: 85, unit: "mmHg" } 
+                        HR: { min: 60, max: 100, unit: "bpm" }, 
+                        BP_Mean: { min: 60, max: 90, unit: "mmHg" } 
                     },
                     respiratoir: { 
                         Saturatie: { min: 90, max: 100, unit: "%" }, 
                         AF: { min: 10, max: 25, unit: "/min" } 
                     },
                     overig: { 
-                        Temp: { min: 36.5, max: 39, unit: "°C" } 
-                    }
-                },
-                conditions: {
-                    sepsis: {
-                        circulatoir: { 
-                            HR: { min: 90, max: 130, unit: "bpm" }, 
-                            BP_Mean: { min: 45, max: 65, unit: "mmHg" } 
-                        }
+                        Temp: { min: 36.0, max: 38.5, unit: "°C" } 
                     }
                 }
+                // REMOVED: sepsis conditions no longer modify ranges
             },
             circleConfigurations: {
                 "low": {
@@ -855,15 +848,15 @@ class SharedDataManager {
                 break;
                 
             default:
-                // Use default/normal target ranges (matching original HTML values)
+                // No main problem selected - show placeholder values
                 targetRanges = {
-                    HR: { min: 70, max: 110, unit: 'bpm' },
-                    BP_Systolic: { min: 100, max: 140, unit: 'mmHg' },
-                    BP_Diastolic: { min: 60, max: 90, unit: 'mmHg' },
-                    BP_Mean: { min: 65, max: 85, unit: 'mmHg' },
-                    AF: { min: 10, max: 25, unit: '/min' },
-                    Saturatie: { min: 90, max: 100, unit: '%' },
-                    Temperature: { min: 36.5, max: 39, unit: '°C' }
+                    HR: { min: '-', max: '-', unit: 'bpm' },
+                    BP_Systolic: { min: '-', max: '-', unit: 'mmHg' },
+                    BP_Diastolic: { min: '-', max: '-', unit: 'mmHg' },
+                    BP_Mean: { min: '-', max: '-', unit: 'mmHg' },
+                    AF: { min: '-', max: '-', unit: '/min' },
+                    Saturatie: { min: '-', max: '-', unit: '%' },
+                    Temperature: { min: 36.0, max: 38.5, unit: '°C' }
                 };
                 break;
         }
@@ -1591,29 +1584,9 @@ class SharedDataManager {
             
             let targetRanges = this.getDefaultTargetRanges();
             
-            // Apply condition-specific adjustments
-            if (condition === 'sepsis') {
-                const sepsisThresholds = this.getThresholds('conditions')?.sepsis;
-                if (sepsisThresholds && sepsisThresholds.circulatoir) {
-                    // Update HR ranges for sepsis
-                    if (sepsisThresholds.circulatoir.HR) {
-                        targetRanges.HR = {
-                            min: sepsisThresholds.circulatoir.HR.min,
-                            max: sepsisThresholds.circulatoir.HR.max,
-                            unit: sepsisThresholds.circulatoir.HR.unit || 'bpm'
-                        };
-                    }
-                    
-                    // Update BP ranges for sepsis
-                    if (sepsisThresholds.circulatoir.BP_Mean) {
-                        targetRanges.BP_Mean = {
-                            min: sepsisThresholds.circulatoir.BP_Mean.min,
-                            max: sepsisThresholds.circulatoir.BP_Mean.max,
-                            unit: sepsisThresholds.circulatoir.BP_Mean.unit || 'mmHg'
-                        };
-                    }
-                }
-            }
+            // DISABLED: Sepsis no longer modifies target ranges
+            // All condition-specific adjustments have been removed
+            console.log('🔍 Condition adjustments disabled:', condition);
             
             // Save the updated ranges
             this.savePatientTargetRanges(patientId, targetRanges);
@@ -1714,145 +1687,41 @@ class SharedDataManager {
 
     /**
      * Apply sepsis HR ranges (90-130) and notify all pages
+     * DISABLED: Now only maintains visual state, no range changes
      */
     applySepsisHRRanges(patientId) {
-        // Save current values as backup
-        this.saveHRBackup(patientId);
-        
-        // Set sepsis values
-        window.HR_low = 90;
-        window.HR_high = 130;
-        
-        // Get existing target ranges, preserving ALL existing values
-        let targetRanges = this.getPatientTargetRanges(patientId);
-        if (!targetRanges) {
-            // Only use defaults if no existing data exists
-            targetRanges = this.getDefaultTargetRanges();
-        }
-        
-        // Only modify HR and BP ranges, preserve everything else (AF, Saturatie, Temperature, etc.)
-        targetRanges.HR = {
-            min: 90,
-            max: 130,
-            unit: 'bpm'
-        };
-        
-        // Apply sepsis BP ranges (45-65)
-        targetRanges.BP_Mean = {
-            min: 45,
-            max: 65,
-            unit: 'mmHg'
-        };
-        
-        this.savePatientTargetRanges(patientId, targetRanges);
-        
-        // Emit event to update all pages
-        const event = new CustomEvent('hrRangesChanged', {
-            detail: { 
-                patientId, 
-                HR_low: window.HR_low, 
-                HR_high: window.HR_high,
-                BP_low: 45,
-                BP_high: 65,
-                source: 'sepsis' 
-            }
+        // Keep the sepsis condition state for button appearance
+        this.setPatientConditionState('sepsis', {
+            patientId: patientId,
+            isActive: true,
+            timestamp: Date.now(),
+            source: 'sepsis-selection'
         });
-        window.dispatchEvent(event);
         
-        console.log('🦠 Applied sepsis HR ranges:', window.HR_low, '-', window.HR_high);
-        console.log('🦠 Applied sepsis BP ranges: 45 - 65 mmHg');
+        console.log('🦠 Sepsis selected - visual state updated, but ranges unchanged');
+        // No longer modifies target ranges or dispatches events
     }
 
     /**
      * Restore previous HR ranges when sepsis is deselected
+     * DISABLED: Now only maintains visual state, no range changes
      */
     restorePreviousHRRanges(patientId) {
-        const backup = this.getHRBackup(patientId);
-        
-        if (backup) {
-            window.HR_low = backup.HR_low;
-            window.HR_high = backup.HR_high;
-            
-            // Get existing target ranges, preserving ALL existing values
-            let targetRanges = this.getPatientTargetRanges(patientId);
-            if (!targetRanges) {
-                // Only use defaults if no existing data exists
-                targetRanges = this.getDefaultTargetRanges();
-            }
-            
-            // Only modify HR and BP ranges, preserve everything else (AF, Saturatie, Temperature, etc.)
-            targetRanges.HR = {
-                min: backup.HR_low,
-                max: backup.HR_high,
-                unit: 'bpm'
-            };
-            
-            // Restore backed up BP ranges instead of hardcoded values
-            targetRanges.BP_Mean = {
-                min: backup.BP_low || 65,
-                max: backup.BP_high || 85,
-                unit: 'mmHg'
-            };
-            
-            this.savePatientTargetRanges(patientId, targetRanges);
-            
-            // Clear the backup after successful restore
-            const backupKey = `${this.storageKeys.PATIENT_PREFIX}${patientId}_hrBackup`;
-            localStorage.removeItem(backupKey);
-            
-            console.log('🔙 Restored previous HR ranges:', window.HR_low, '-', window.HR_high);
-            console.log('🔙 Restored previous BP ranges:', backup.BP_low || 65, '-', backup.BP_high || 85, 'mmHg');
-        } else {
-            // Fallback to default normal ranges
-            const normalThresholds = this.getThresholds('normal');
-            if (normalThresholds && normalThresholds.circulatoir.HR) {
-                window.HR_low = normalThresholds.circulatoir.HR.min;
-                window.HR_high = normalThresholds.circulatoir.HR.max;
-                
-                // Get existing target ranges, preserving ALL existing values
-                let targetRanges = this.getPatientTargetRanges(patientId);
-                if (!targetRanges) {
-                    // Only use defaults if no existing data exists
-                    targetRanges = this.getDefaultTargetRanges();
-                }
-                
-                // Only modify HR ranges, preserve everything else
-                targetRanges.HR = {
-                    min: window.HR_low,
-                    max: window.HR_high,
-                    unit: 'bpm'
-                };
-                
-                // Restore default BP ranges
-                targetRanges.BP_Mean = {
-                    min: 65,
-                    max: 85,
-                    unit: 'mmHg'
-                };
-                
-                this.savePatientTargetRanges(patientId, targetRanges);
-                
-                console.log('🔙 Restored default HR ranges:', window.HR_low, '-', window.HR_high);
-                console.log('🔙 Restored default BP ranges: 65 - 85 mmHg');
-            }
-        }
-        
-        // Emit event to update all pages
-        const event = new CustomEvent('hrRangesChanged', {
-            detail: { 
-                patientId, 
-                HR_low: window.HR_low, 
-                HR_high: window.HR_high,
-                BP_low: 65,
-                BP_high: 85,
-                source: 'restore' 
-            }
+        // Keep the sepsis condition state for button appearance
+        this.setPatientConditionState('sepsis', {
+            patientId: patientId,
+            isActive: false,
+            timestamp: Date.now(),
+            source: 'sepsis-deselection'
         });
-        window.dispatchEvent(event);
+        
+        console.log('🔙 Sepsis deselected - visual state updated, but ranges unchanged');
+        // No longer modifies target ranges or dispatches events
     }
 
     /**
      * Handle sepsis tag selection/deselection
+     * DISABLED: Now only maintains visual state, no range changes
      */
     handleSepsisTagChange(patientId, isSelected) {
         if (isSelected) {
@@ -1860,6 +1729,7 @@ class SharedDataManager {
         } else {
             this.restorePreviousHRRanges(patientId);
         }
+        // Both methods now only handle visual state, not actual range changes
     }
 
     /**

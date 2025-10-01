@@ -58,7 +58,7 @@
           "AF": { "min": 10, "max": 25, "unit": "/min" }
         },
         "overig": {
-          "Temp": { "min": 36.5, "max": 39.0, "unit": "°C" }
+          "Temp": { "min": 36.0, "max": 38.5, "unit": "°C" }
         }
       }
     },
@@ -89,7 +89,7 @@
           "AF": { "min": 10, "max": 25, "unit": "/min" }
         },
         "overig": {
-          "Temp": { "min": 36.5, "max": 39.0, "unit": "°C" }
+          "Temp": { "min": 36.0, "max": 38.5, "unit": "°C" }
         }
       }
     },
@@ -120,7 +120,7 @@
           "AF": { "min": 12, "max": 28, "unit": "/min" }
         },
         "overig": {
-          "Temp": { "min": 36.5, "max": 39.0, "unit": "°C" }
+          "Temp": { "min": 36.0, "max": 38.5, "unit": "°C" }
         }
       }
     }

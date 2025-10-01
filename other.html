@@ -958,7 +958,7 @@
         let currentPatientId = null;
         let currentBed = null;
         let currentSettings = {
-            temperature: { min: 36.5, max: 39.0 }
+            temperature: { min: 36.0, max: 38.5 }
         };
         
         // Store slider references for monitoring level changes
@@ -1603,7 +1603,7 @@
                     console.log('✅ Loaded temperature settings from target ranges:', currentSettings.temperature);
                 } else {
                     // Load default temperature settings if no target ranges exist
-                    currentSettings.temperature = currentSettings.temperature || { min: 36.5, max: 39.0 };
+                    currentSettings.temperature = currentSettings.temperature || { min: 36.0, max: 38.5 };
                     console.log('📊 Using default temperature settings:', currentSettings.temperature);
                 }
                 
@@ -1667,7 +1667,7 @@
                             parameter: 'Temperature',
                             name: 'Temperatuur',
                             unit: '°C',
-                            targetRange: currentSettings.temperature || { min: 36.5, max: 39.0 },
+                            targetRange: currentSettings.temperature || { min: 36.0, max: 38.5 },
                             yAxis: { min: 35, max: 42, step: 0.5 },
                             monitoringLevel: 'mid',
                             patientId: currentPatientId,

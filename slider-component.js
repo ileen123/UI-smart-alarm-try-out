@@ -1076,7 +1076,7 @@ class PatientConfigurationHelper {
                 case 'Temp':
                     defaultTargetRange = thresholds.overig?.Temp ? 
                         { min: thresholds.overig.Temp.min, max: thresholds.overig.Temp.max } :
-                        { min: 36.5, max: 39 };
+                        { min: 36.0, max: 38.5 };
                     break;
                 default:
                     defaultTargetRange = { min: 0, max: 100 };

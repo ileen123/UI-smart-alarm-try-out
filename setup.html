@@ -176,7 +176,7 @@
                 <div class="value-card">
                     <div class="parameter-group">
                         <div class="value-label inactive-text">Temp.</div>
-                        <div class="value-number inactive-text">36.5 - 39 °C</div>
+                        <div class="value-number inactive-text">36.0 - 38.5 °C</div>
                     </div>
                 </div>
             </div>
@@ -358,7 +358,9 @@
                                 }
                             });
                             
-                            // Listen for HR range changes from sepsis selection
+                            // DISABLED: Listen for HR range changes from sepsis selection
+                            // Sepsis no longer changes target ranges, only visual state
+                            /*
                             window.addEventListener('hrRangesChanged', function(event) {
                                 console.log('💓 HR ranges changed event received in index:', event.detail);
                                 if (event.detail.patientId === currentPatientId) {
@@ -388,6 +390,7 @@
                                     }
                                 }
                             });
+                            */
                             
                             // Listen for condition state changes from other pages
                             window.addEventListener('patientConditionStateChanged', function(event) {
@@ -415,8 +418,14 @@
                                             }
                                         }
                                         
-                                        // Update parameter ranges after condition state change
-                                        updateParameterRanges();
+                                        // FIXED: Only update parameter ranges for non-sepsis conditions
+                                        // Sepsis should only affect visual state, not target ranges
+                                        if (condition !== 'sepsis') {
+                                            console.log('🔄 Updating parameter ranges for external condition change:', condition);
+                                            updateParameterRanges();
+                                        } else {
+                                            console.log('🦠 Sepsis condition changed externally - visual state only, no range changes');
+                                        }
                                     }
                                 }
                             });
@@ -593,12 +602,21 @@
                                     }
                                     
                                     window.dataManager?.setSelectedTags(selectedTags);
-                                    // Update parameter ranges based on selected conditions
-                                    updateParameterRanges();
+                                    
+                                    // FIXED: Only update parameter ranges for non-sepsis conditions
+                                    // Sepsis should only affect visual state, not target ranges
+                                    if (tagCondition !== 'sepsis') {
+                                        console.log('🔄 Updating parameter ranges for condition:', tagCondition);
+                                        updateParameterRanges();
+                                    } else {
+                                        console.log('🦠 Sepsis tag clicked - visual state only, no range changes');
+                                    }
                                 });
                             });
                             
-                            // Listen for HR range changes from sepsis selection/deselection
+                            // DISABLED: Listen for HR range changes from sepsis selection/deselection
+                            // Sepsis no longer changes target ranges, only visual state
+                            /*
                             window.addEventListener('hrRangesChanged', function(event) {
                                 console.log('💓 HR ranges changed event received in setup page:', event.detail);
                                 if (event.detail.patientId === currentPatientId) {
@@ -614,6 +632,7 @@
                                     console.log('✅ Directly updated HR and BP displays with values:', HR_low, '-', HR_high, 'BP:', BP_low, '-', BP_high);
                                 }
                             });
+                            */
                             
                             // Listen for AF range changes from pneumonie selection/deselection
                             window.addEventListener('afRangesChanged', function(event) {
@@ -946,57 +965,23 @@
                         function updateParameterRanges() {
                             console.log('🔍 DEBUG: Updating parameter ranges for selected tags:', selectedTags);
                             
-                            // Check if sepsis is selected
+                            // Check if sepsis is selected as a TAG (not main problem)
                             const hasSepsis = selectedTags.some(tag => tag.toLowerCase().includes('sepsis'));
                             console.log('🔍 DEBUG: Has sepsis tag:', hasSepsis);
                             
+                            // FIXED: If sepsis is selected as a tag, do NOT update any ranges
+                            if (hasSepsis) {
+                                console.log('🦠 SEPSIS TAG DETECTED: Completely skipping parameter range updates - preserving existing ranges');
+                                return; // Exit early, don't change anything
+                            }
+                            
                             // Get thresholds from shared data manager
                             const normalThresholds = window.sharedDataManager.getThresholds('normal');
-                            const sepsisThresholds = window.sharedDataManager.getThresholds('conditions')?.sepsis;
-                            
                             console.log('🔍 DEBUG: Normal thresholds:', normalThresholds);
-                            console.log('🔍 DEBUG: Sepsis thresholds:', sepsisThresholds);
                             
-                            // Determine which thresholds to use
-                            const currentThresholds = hasSepsis && sepsisThresholds ? 
-                                {
-                                    ...normalThresholds,
-                                    circulatoir: {
-                                        ...normalThresholds.circulatoir,
-                                        ...sepsisThresholds.circulatoir
-                                    }
-                                } : normalThresholds;
-                            
+                            // Use normal thresholds for non-sepsis conditions
+                            const currentThresholds = normalThresholds;
                             console.log('🔍 DEBUG: Using thresholds:', currentThresholds);
-                            
-                            // Save target ranges for current patient if we have a patient ID
-                            if (currentPatientId && currentThresholds.circulatoir) {
-                                // Get existing target ranges to preserve AF and other ranges
-                                const existingTargetRanges = window.sharedDataManager.getPatientTargetRanges(currentPatientId) || {};
-                                
-                                const targetRanges = {
-                                    // Preserve existing ranges
-                                    ...existingTargetRanges,
-                                    // Update only HR and BP_Mean
-                                    HR: {
-                                        min: Math.round(currentThresholds.circulatoir.HR?.min || 60),
-                                        max: Math.round(currentThresholds.circulatoir.HR?.max || 100),
-                                        unit: currentThresholds.circulatoir.HR?.unit || 'bpm'
-                                    },
-                                    BP_Mean: {
-                                        min: Math.round(currentThresholds.circulatoir.BP_Mean?.min || 65),
-                                        max: Math.round(currentThresholds.circulatoir.BP_Mean?.max || 85),
-                                        unit: currentThresholds.circulatoir.BP_Mean?.unit || 'mmHg'
-                                    }
-                                };
-                                
-                                console.log('🔍 Preserving existing target ranges:', existingTargetRanges);
-                                console.log('🔍 New target ranges with preserved AF:', targetRanges);
-                                
-                                // Update target ranges in shared data manager
-                                window.sharedDataManager.updateGlobalTargetRanges(currentPatientId, targetRanges);
-                                console.log('🎯 Updated target ranges for patient:', currentPatientId, targetRanges);
-                            }
                             
                             // Update circulatory parameters (HR and BP)
                             const circulatoryCard = document.querySelector('.value-card');
@@ -1009,19 +994,14 @@
                                 
                                 console.log('🔍 DEBUG: Updated HR range to:', hr.min + ' - ' + hr.max + ' ' + hr.unit);
                                 
-                                // Highlight if using sepsis thresholds
-                                if (hasSepsis && sepsisThresholds) {
-                                    window.sharedDataManager.highlightElement(hrRange, 'highlight', 1500);
-                                    console.log('🔍 DEBUG: Applied sepsis highlighting to HR range');
-                                } else {
-                                    // Reset to normal styling
-                                    hrRange.classList.remove('highlight', 'fade-out');
-                                    hrRange.style.backgroundColor = '';
-                                    hrRange.style.border = '';
-                                    hrRange.style.borderRadius = '';
-                                    hrRange.style.padding = '';
-                                    console.log('🔍 DEBUG: Reset HR range to normal styling');
-                                }
+                                // DISABLED: Sepsis highlighting removed since ranges no longer change
+                                // Reset any existing styling to normal
+                                hrRange.classList.remove('highlight', 'fade-out');
+                                hrRange.style.backgroundColor = '';
+                                hrRange.style.border = '';
+                                hrRange.style.borderRadius = '';
+                                hrRange.style.padding = '';
+                                console.log('🔍 DEBUG: Reset HR range to normal styling (sepsis disabled)');
                             }
                             
                             // Update BP range
@@ -1031,19 +1011,14 @@
                                 
                                 console.log('🔍 DEBUG: Updated BP range to:', bp.min + ' - ' + bp.max + ' ' + bp.unit);
                                 
-                                // Highlight if using sepsis thresholds
-                                if (hasSepsis && sepsisThresholds) {
-                                    window.sharedDataManager.highlightElement(bpRange, 'highlight', 1500);
-                                    console.log('🔍 DEBUG: Applied sepsis highlighting to BP range');
-                                } else {
-                                    // Reset to normal styling
-                                    bpRange.classList.remove('highlight', 'fade-out');
-                                    bpRange.style.backgroundColor = '';
-                                    bpRange.style.border = '';
-                                    bpRange.style.borderRadius = '';
-                                    bpRange.style.padding = '';
-                                    console.log('🔍 DEBUG: Reset BP range to normal styling');
-                                }
+                                // DISABLED: Sepsis highlighting removed since ranges no longer change
+                                // Reset any existing styling to normal
+                                bpRange.classList.remove('highlight', 'fade-out');
+                                bpRange.style.backgroundColor = '';
+                                bpRange.style.border = '';
+                                bpRange.style.borderRadius = '';
+                                bpRange.style.padding = '';
+                                console.log('🔍 DEBUG: Reset BP range to normal styling (sepsis disabled)');
                             }
                         }
 

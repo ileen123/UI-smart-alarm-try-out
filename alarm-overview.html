@@ -164,7 +164,7 @@
                 <!-- Temperature parameters -->
                 <div class="value-card">
                     <div class="value-label inactive-text">Temp.</div>
-                    <div class="value-number inactive-text">36.5 - 39 °C</div>
+                    <div class="value-number inactive-text">36.0 - 38.5 °C</div>
                     <button class="adjust-btn" onclick="adjustOrganSettings('overig')">Aanpassen</button>
                 </div>
             </div>
@@ -327,7 +327,9 @@
                 }
             });
             
-            // Listen for HR range changes from sepsis selection
+            // DISABLED: Listen for HR range changes from sepsis selection
+            // Sepsis no longer changes target ranges, only visual state
+            /*
             window.addEventListener('hrRangesChanged', function(event) {
                 console.log('💓 HR ranges changed event received:', event.detail);
                 if (event.detail.patientId === currentPatientId) {
@@ -364,6 +366,7 @@
                     }
                 }
             });
+            */
             
             // Listen for AF range changes from pneumonie selection/deselection
             window.addEventListener('afRangesChanged', function(event) {
@@ -619,38 +622,9 @@
                                 
                                 console.log('🔍 DEBUG: restorePreviousHRRanges method available:', typeof window.sharedDataManager.restorePreviousHRRanges);
                                 if (window.sharedDataManager.restorePreviousHRRanges) {
+                                    // Call the modified method (now only handles visual state)
                                     window.sharedDataManager.restorePreviousHRRanges(currentPatientId);
-                                    
-                                    // Get the restored HR and BP ranges and save them to circulatory settings
-                                    setTimeout(() => {
-                                        const restoredTargetRanges = window.sharedDataManager.getPatientTargetRanges(currentPatientId);
-                                        if (restoredTargetRanges && restoredTargetRanges.HR && restoredTargetRanges.BP_Mean) {
-                                            const existingCirculatorySettings = window.sharedDataManager.getPatientCirculatoirSettings(currentPatientId) || {};
-                                            const newCirculatorySettings = {
-                                                ...existingCirculatorySettings,
-                                                hr: { min: restoredTargetRanges.HR.min, max: restoredTargetRanges.HR.max },
-                                                bp: { min: restoredTargetRanges.BP_Mean.min, max: restoredTargetRanges.BP_Mean.max }
-                                            };
-                                            
-                                            // Save the restored HR and BP ranges automatically
-                                            window.sharedDataManager.savePatientCirculatoirSettings(currentPatientId, newCirculatorySettings);
-                                            console.log('🦠 Sepsis deselected on alarm overview - restored HR & BP ranges automatically saved:', newCirculatorySettings);
-                                            
-                                            // Dispatch event to update sliders on circulatory page
-                                            const hrRangesEvent = new CustomEvent('hrRangesChanged', {
-                                                detail: {
-                                                    patientId: currentPatientId,
-                                                    HR_low: restoredTargetRanges.HR.min,
-                                                    HR_high: restoredTargetRanges.HR.max,
-                                                    BP_low: restoredTargetRanges.BP_Mean.min,
-                                                    BP_high: restoredTargetRanges.BP_Mean.max,
-                                                    source: 'alarm-overview-sepsis-deselection'
-                                                }
-                                            });
-                                            window.dispatchEvent(hrRangesEvent);
-                                            console.log('📡 Dispatched hrRangesChanged event from sepsis deselection');
-                                        }
-                                    }, 100); // Small delay to ensure restoration is complete
+                                    console.log('🦠 Sepsis deselected - visual state updated, ranges unchanged');
                                 } else {
                                     console.error('❌ restorePreviousHRRanges method not found!');
                                 }
@@ -705,11 +679,9 @@
                                     console.error('❌ applyPneumonieAFRanges method not found!');
                                 }
                             } else if (condition === 'sepsis') {
-                                console.log('🦠 Sepsis selected - applying HR/BP range changes');
-                                console.log('🔍 DEBUG: SharedDataManager available:', !!window.sharedDataManager);
-                                console.log('🔍 DEBUG: applySepsisHRRanges method available:', typeof window.sharedDataManager.applySepsisHRRanges);
+                                console.log('🦠 Sepsis selected - visual feedback only, no range changes');
                                 
-                                // Set condition state first
+                                // Set condition state for visual feedback
                                 window.sharedDataManager.setPatientConditionState('sepsis', {
                                     patientId: currentPatientId,
                                     isActive: true,
@@ -717,25 +689,10 @@
                                     source: 'alarm-overview'
                                 });
                                 
+                                // Call the modified method (now only handles visual state)
                                 if (window.sharedDataManager.applySepsisHRRanges) {
                                     window.sharedDataManager.applySepsisHRRanges(currentPatientId);
-                                    
-                                    // Automatically save the sepsis HR and BP ranges to circulatory settings
-                                    const sepsisHRRanges = { min: 90, max: 130 };
-                                    const sepsisBPRanges = { min: 65, max: 85 };
-                                    const existingCirculatorySettings = window.sharedDataManager.getPatientCirculatoirSettings(currentPatientId) || {};
-                                    const newCirculatorySettings = {
-                                        ...existingCirculatorySettings,
-                                        hr: sepsisHRRanges,
-                                        bp: sepsisBPRanges
-                                    };
-                                    
-                                    // Save the HR and BP ranges automatically
-                                    window.sharedDataManager.savePatientCirculatoirSettings(currentPatientId, newCirculatorySettings);
-                                    console.log('🦠 Sepsis selected on alarm overview - HR (90-130) & BP (65-85) ranges automatically saved');
-                                    
-                                    // Apply highlighting since sepsis was just selected via button click
-                                    updateParameterRanges(true, 'sepsis');
+                                    console.log('🦠 Sepsis selected - visual state updated, ranges unchanged');
                                 } else {
                                     console.error('❌ applySepsisHRRanges method not found!');
                                 }
@@ -1111,19 +1068,15 @@
                 console.log('🔍 DEBUG: Normal thresholds:', normalThresholds);
                 console.log('🔍 DEBUG: Sepsis thresholds:', sepsisThresholds);
                 
-                // Determine which thresholds to use
-                const currentThresholds = hasSepsis && sepsisThresholds ? 
-                    {
-                        ...normalThresholds,
-                        circulatoir: {
-                            ...normalThresholds.circulatoir,
-                            ...sepsisThresholds.circulatoir
-                        }
-                    } : normalThresholds;
+                // DISABLED: Sepsis no longer changes thresholds, only visual state
+                // Always use normal thresholds regardless of sepsis selection
+                const currentThresholds = normalThresholds;
                 
                 console.log('🔍 DEBUG: Using thresholds:', currentThresholds);
                 
-                // Update circulatory parameters (HR) - find the heart rate display (ONLY if sepsis is active)
+                // DISABLED: Update circulatory parameters (HR) - sepsis no longer changes ranges
+                // Sepsis only provides visual feedback, no range changes
+                /*
                 if (hasSepsis) {
                     const circulatoryCard = document.querySelector('.value-card');
                     const hrRange = circulatoryCard?.querySelector('.value-number');
@@ -1141,6 +1094,7 @@
                         }
                     }
                 }
+                */
             }
         }
 
