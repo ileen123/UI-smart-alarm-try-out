@@ -18,7 +18,6 @@
     <link rel="stylesheet" href="slider-component.css">
     
     <!-- Data Manager for cross-page data synchronization -->
-    <script src="js/data-manager.js"></script>
     <script src="js/shared-data-manager.js"></script>
     
     <!-- Slider Component -->
@@ -1323,6 +1322,34 @@
 
         function setupEventListeners() {
             console.log('🔧 Setting up event listeners...');
+            
+            // FORCE SLIDER REFRESH FUNCTION: Can be called from other pages to update sliders
+            window.forceAllSlidersRefresh = function() {
+                console.log('💪 FORCE REFRESH - Respiratory sliders');
+                console.log('💪 Global variables - AF:', window.AF_MIN, '-', window.AF_MAX, 'SAT:', window.SAT_MIN, '-', window.SAT_MAX);
+                
+                if (afSlider && afSlider.config && afSlider.config.targetRange) {
+                    console.log('💪 Force updating AF slider:', window.AF_MIN, '-', window.AF_MAX);
+                    afSlider.config.targetRange.min = window.AF_MIN;
+                    afSlider.config.targetRange.max = window.AF_MAX;
+                    afSlider.currentMin = window.AF_MIN;
+                    afSlider.currentMax = window.AF_MAX;
+                    if (afSlider.updateSliderPosition) {
+                        afSlider.updateSliderPosition();
+                    }
+                }
+                
+                if (saturatieSlider && saturatieSlider.config && saturatieSlider.config.targetRange) {
+                    console.log('💪 Force updating Saturatie slider:', window.SAT_MIN, '-', window.SAT_MAX);
+                    saturatieSlider.config.targetRange.min = window.SAT_MIN;
+                    saturatieSlider.config.targetRange.max = window.SAT_MAX;
+                    saturatieSlider.currentMin = window.SAT_MIN;
+                    saturatieSlider.currentMax = window.SAT_MAX;
+                    if (saturatieSlider.updateSliderPosition) {
+                        saturatieSlider.updateSliderPosition();
+                    }
+                }
+            };
             
             // SIMPLE APPROACH: Listen for global parameter changes from problem changes
             window.addEventListener('globalParametersChanged', function(event) {

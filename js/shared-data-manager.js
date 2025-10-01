@@ -1041,26 +1041,19 @@ class SharedDataManager {
                 // so sliders will use the new global defaults instead of old localStorage settings
                 if (patientId) {
                     console.log('🗑️ Clearing saved custom slider settings for patient:', patientId);
-                    // Clear HR settings
-                    localStorage.removeItem(`patient-${patientId}-HR-custom-threshold`);
-                    localStorage.removeItem(`patient-${patientId}-HR_MIN-manual`);
-                    localStorage.removeItem(`patient-${patientId}-HR_MAX-manual`);
-                    // Clear BP settings  
-                    localStorage.removeItem(`patient-${patientId}-BP_Mean-custom-threshold`);
-                    localStorage.removeItem(`patient-${patientId}-BP_MIN-manual`);
-                    localStorage.removeItem(`patient-${patientId}-BP_MAX-manual`);
-                    // Clear AF settings
-                    localStorage.removeItem(`patient-${patientId}-AF-custom-threshold`);
-                    localStorage.removeItem(`patient-${patientId}-AF_MIN-manual`);
-                    localStorage.removeItem(`patient-${patientId}-AF_MAX-manual`);
-                    // Clear Saturatie settings
-                    localStorage.removeItem(`patient-${patientId}-Saturatie-custom-threshold`);
-                    localStorage.removeItem(`patient-${patientId}-SAT_MIN-manual`);
-                    localStorage.removeItem(`patient-${patientId}-SAT_MAX-manual`);
-                    // Clear Temperature settings
-                    localStorage.removeItem(`patient-${patientId}-Temperature-custom-threshold`);
-                    localStorage.removeItem(`patient-${patientId}-TEMP_MIN-manual`);
-                    localStorage.removeItem(`patient-${patientId}-TEMP_MAX-manual`);
+                    
+                    // Use the centralized clearing function
+                    this.clearPatientManualAdjustments(patientId);
+                    
+                    // ADDITIONAL CLEARING: Clear any other possible localStorage keys
+                    const allKeys = Object.keys(localStorage);
+                    const patientKeys = allKeys.filter(key => key.includes(`patient-${patientId}-`));
+                    patientKeys.forEach(key => {
+                        if (key.includes('threshold') || key.includes('manual') || key.includes('MIN') || key.includes('MAX')) {
+                            console.log('🗑️ Removing additional key:', key);
+                            localStorage.removeItem(key);
+                        }
+                    });
                 }
                 
                 // Update global variables with problem defaults
@@ -1121,6 +1114,19 @@ class SharedDataManager {
                     }
                 }));
                 console.log('🔄 Dispatched globalParametersChanged event for problem change');
+                
+                // FORCE SLIDER REFRESH: Also try to update any currently loaded sliders
+                // This handles cases where sliders are already loaded but not receiving events
+                setTimeout(() => {
+                    if (window.forceAllSlidersRefresh) {
+                        console.log('🔄 Calling forceAllSlidersRefresh (respiratory)...');
+                        window.forceAllSlidersRefresh();
+                    }
+                    if (window.forceTemperatureSliderRefresh) {
+                        console.log('🔄 Calling forceTemperatureSliderRefresh (other)...');
+                        window.forceTemperatureSliderRefresh();
+                    }
+                }, 50);
             }, 10);
         } else {
             console.log('⏸️ NOT dispatching globalParametersChanged - shouldOverwriteManualAdjustments is false');

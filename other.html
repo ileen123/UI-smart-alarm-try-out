@@ -18,7 +18,6 @@
     <link rel="stylesheet" href="slider-component.css">
     
     <!-- Data Manager for cross-page data synchronization -->
-    <script src="js/data-manager.js"></script>
     <script src="js/shared-data-manager.js"></script>
     
     <!-- Slider Component -->
@@ -1299,6 +1298,25 @@
 
         function setupEventListeners() {
             console.log('🔧 Setting up event listeners...');
+            
+            // FORCE SLIDER REFRESH FUNCTION: Can be called from other pages to update temperature slider
+            window.forceTemperatureSliderRefresh = function() {
+                console.log('💪 FORCE REFRESH - Temperature slider');
+                console.log('💪 Global variables - TEMP:', window.TEMP_MIN, '-', window.TEMP_MAX);
+                
+                if (tempSlider && tempSlider.config && tempSlider.config.targetRange) {
+                    console.log('💪 Force updating Temperature slider:', window.TEMP_MIN, '-', window.TEMP_MAX);
+                    tempSlider.config.targetRange.min = window.TEMP_MIN;
+                    tempSlider.config.targetRange.max = window.TEMP_MAX;
+                    tempSlider.currentMin = window.TEMP_MIN;
+                    tempSlider.currentMax = window.TEMP_MAX;
+                    if (tempSlider.updateSliderPosition) {
+                        tempSlider.updateSliderPosition();
+                    }
+                } else {
+                    console.log('❌ Temperature slider not available for force refresh');
+                }
+            };
             
             // SIMPLE APPROACH: Listen for global parameter changes
             window.addEventListener('globalParametersChanged', function(event) {
