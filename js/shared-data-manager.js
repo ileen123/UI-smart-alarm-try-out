@@ -1734,101 +1734,36 @@ class SharedDataManager {
 
     /**
      * Apply pneumonie-specific AF ranges (10-30 instead of 10-25)
+     * DISABLED: Now only maintains visual state, no range changes
      */
     applyPneumonieAFRanges(patientId) {
-        // Get existing target ranges, preserving ALL existing values
-        let targetRanges = this.getPatientTargetRanges(patientId);
-        if (!targetRanges) {
-            // Only use defaults if no existing data exists
-            targetRanges = this.getDefaultTargetRanges();
-        }
-        
-        // Backup current AF ranges if not already backed up
-        const afBackupKey = `${this.storageKeys.PATIENT_PREFIX}${patientId}_af_backup`;
-        if (!localStorage.getItem(afBackupKey)) {
-            const currentAF = targetRanges.AF || { min: 10, max: 25, unit: '/min' };
-            localStorage.setItem(afBackupKey, JSON.stringify(currentAF));
-            console.log('💾 Backed up current AF ranges:', currentAF);
-        }
-        
-        // Only modify AF ranges, preserve everything else (HR, BP, Saturatie, Temperature, etc.)
-        targetRanges.AF = {
-            min: 10,
-            max: 30,
-            unit: '/min'
-        };
-        
-        this.savePatientTargetRanges(patientId, targetRanges);
-        
-        console.log('🫁 Applied pneumonie AF ranges: 10 - 30 /min');
-        
-        // Emit event to update all pages
-        const event = new CustomEvent('afRangesChanged', {
-            detail: { 
-                patientId, 
-                AF_min: 10, 
-                AF_max: 30,
-                source: 'pneumonie' 
-            }
+        // Keep the pneumonie condition state for button appearance
+        this.setPatientConditionState('pneumonie', {
+            patientId: patientId,
+            isActive: true,
+            timestamp: Date.now(),
+            source: 'pneumonie-selection'
         });
-        window.dispatchEvent(event);
+        
+        console.log('🫁 Pneumonie selected - visual state updated, but AF ranges unchanged');
+        // No longer modifies target ranges or dispatches events
     }
 
     /**
      * Restore previous AF ranges when pneumonie is deselected
+     * DISABLED: Now only maintains visual state, no range changes
      */
     restorePreviousAFRanges(patientId) {
-        const afBackupKey = `${this.storageKeys.PATIENT_PREFIX}${patientId}_af_backup`;
-        const backup = JSON.parse(localStorage.getItem(afBackupKey));
-        
-        if (backup) {
-            // Get existing target ranges, preserving ALL existing values
-            let targetRanges = this.getPatientTargetRanges(patientId);
-            if (!targetRanges) {
-                // Only use defaults if no existing data exists
-                targetRanges = this.getDefaultTargetRanges();
-            }
-            
-            // Only modify AF ranges, preserve everything else (HR, BP, Saturatie, Temperature, etc.)
-            targetRanges.AF = {
-                min: backup.min,
-                max: backup.max,
-                unit: backup.unit || '/min'
-            };
-            
-            this.savePatientTargetRanges(patientId, targetRanges);
-            
-            console.log('🔙 Restored previous AF ranges:', backup.min, '-', backup.max, backup.unit);
-        } else {
-            // Fallback to default AF ranges
-            let targetRanges = this.getPatientTargetRanges(patientId);
-            if (!targetRanges) {
-                // Only use defaults if no existing data exists
-                targetRanges = this.getDefaultTargetRanges();
-            }
-            
-            // Only modify AF ranges, preserve everything else
-            targetRanges.AF = {
-                min: 10,
-                max: 25,
-                unit: '/min'
-            };
-            
-            this.savePatientTargetRanges(patientId, targetRanges);
-            
-            console.log('🔙 Restored default AF ranges: 10 - 25 /min');
-        }
-        
-        // Emit event to update all pages
-        const event = new CustomEvent('afRangesChanged', {
-            detail: { 
-                patientId, 
-                AF_min: 10, 
-                AF_max: 25,
-                source: 'restore' 
-            }
+        // Keep the pneumonie condition state for button appearance
+        this.setPatientConditionState('pneumonie', {
+            patientId: patientId,
+            isActive: false,
+            timestamp: Date.now(),
+            source: 'pneumonie-deselection'
         });
-        window.dispatchEvent(event);
+        
+        console.log('🫁 Pneumonie deselected - visual state updated, but AF ranges unchanged');
+        // No longer modifies target ranges or dispatches events
     }
 
     /**

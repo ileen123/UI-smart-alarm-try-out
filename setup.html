@@ -418,13 +418,14 @@
                                             }
                                         }
                                         
-                                        // FIXED: Only update parameter ranges for non-sepsis conditions
-                                        // Sepsis should only affect visual state, not target ranges
-                                        if (condition !== 'sepsis') {
+                                        // FIXED: Only update parameter ranges for non-sepsis and non-pneumonie conditions
+                                        // Sepsis and pneumonie should only affect visual state, not target ranges
+                                        if (condition !== 'sepsis' && condition !== 'pneumonie') {
                                             console.log('🔄 Updating parameter ranges for external condition change:', condition);
                                             updateParameterRanges();
                                         } else {
-                                            console.log('🦠 Sepsis condition changed externally - visual state only, no range changes');
+                                            if (condition === 'sepsis') console.log('🦠 Sepsis condition changed externally - visual state only, no range changes');
+                                            if (condition === 'pneumonie') console.log('🫁 Pneumonie condition changed externally - visual state only, no AF range changes');
                                         }
                                     }
                                 }
@@ -571,11 +572,9 @@
                                                 source: 'setup-page'
                                             });
                                             
-                                            // Handle pneumonie-specific AF range restoration
-                                            if (tagCondition === 'pneumonie') {
-                                                console.log('🫁 Pneumonie deselected on setup page - restoring previous AF ranges');
-                                                window.sharedDataManager.restorePreviousAFRanges(currentPatientId);
-                                            }
+                                            // DISABLED: Pneumonie no longer changes AF ranges, only visual state
+                                            // AF ranges should remain unchanged when pneumonie is deselected
+                                            console.log('🫁 Pneumonie deselected - visual state only, no AF range changes');
                                         }
                                     } else {
                                         // Select tag
@@ -593,23 +592,22 @@
                                                 source: 'setup-page'
                                             });
                                             
-                                            // Handle pneumonie-specific AF range changes
-                                            if (tagCondition === 'pneumonie') {
-                                                console.log('🫁 Pneumonie selected on setup page - applying AF range changes');
-                                                window.sharedDataManager.applyPneumonieAFRanges(currentPatientId);
-                                            }
+                                            // DISABLED: Pneumonie no longer changes AF ranges, only visual state
+                                            // AF ranges should remain unchanged when pneumonie is selected
+                                            console.log('🫁 Pneumonie selected - visual state only, no AF range changes');
                                         }
                                     }
                                     
                                     window.dataManager?.setSelectedTags(selectedTags);
                                     
-                                    // FIXED: Only update parameter ranges for non-sepsis conditions
-                                    // Sepsis should only affect visual state, not target ranges
-                                    if (tagCondition !== 'sepsis') {
+                                    // FIXED: Only update parameter ranges for non-sepsis and non-pneumonie conditions
+                                    // Sepsis and pneumonie should only affect visual state, not target ranges
+                                    if (tagCondition !== 'sepsis' && tagCondition !== 'pneumonie') {
                                         console.log('🔄 Updating parameter ranges for condition:', tagCondition);
                                         updateParameterRanges();
                                     } else {
-                                        console.log('🦠 Sepsis tag clicked - visual state only, no range changes');
+                                        if (tagCondition === 'sepsis') console.log('🦠 Sepsis tag clicked - visual state only, no range changes');
+                                        if (tagCondition === 'pneumonie') console.log('🫁 Pneumonie tag clicked - visual state only, no range changes');
                                     }
                                 });
                             });
@@ -634,7 +632,9 @@
                             });
                             */
                             
-                            // Listen for AF range changes from pneumonie selection/deselection
+                            // DISABLED: Listen for AF range changes from pneumonie selection/deselection
+                            // Pneumonie no longer changes AF ranges, only visual state
+                            /*
                             window.addEventListener('afRangesChanged', function(event) {
                                 console.log('🫁 AF ranges changed event received in setup page:', event.detail);
                                 if (event.detail.patientId === currentPatientId) {
@@ -643,6 +643,7 @@
                                     console.log('✅ Directly updated AF display with values:', AF_min, '-', AF_max);
                                 }
                             });
+                            */
                         }
                         
                         // Function to directly update HR display on setup page
@@ -965,13 +966,15 @@
                         function updateParameterRanges() {
                             console.log('🔍 DEBUG: Updating parameter ranges for selected tags:', selectedTags);
                             
-                            // Check if sepsis is selected as a TAG (not main problem)
+                            // Check if sepsis or pneumonie are selected as TAGs (not main problem)
                             const hasSepsis = selectedTags.some(tag => tag.toLowerCase().includes('sepsis'));
-                            console.log('🔍 DEBUG: Has sepsis tag:', hasSepsis);
+                            const hasPneumonie = selectedTags.some(tag => tag.toLowerCase().includes('pneumonie'));
+                            console.log('🔍 DEBUG: Has sepsis tag:', hasSepsis, 'Has pneumonie tag:', hasPneumonie);
                             
-                            // FIXED: If sepsis is selected as a tag, do NOT update any ranges
-                            if (hasSepsis) {
-                                console.log('🦠 SEPSIS TAG DETECTED: Completely skipping parameter range updates - preserving existing ranges');
+                            // FIXED: If sepsis or pneumonie are selected as tags, do NOT update any ranges
+                            if (hasSepsis || hasPneumonie) {
+                                if (hasSepsis) console.log('🦠 SEPSIS TAG DETECTED: Completely skipping parameter range updates - preserving existing ranges');
+                                if (hasPneumonie) console.log('🫁 PNEUMONIE TAG DETECTED: Completely skipping parameter range updates - preserving existing ranges');
                                 return; // Exit early, don't change anything
                             }
                             

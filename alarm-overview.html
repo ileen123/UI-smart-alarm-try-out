@@ -368,7 +368,9 @@
             });
             */
             
-            // Listen for AF range changes from pneumonie selection/deselection
+            // DISABLED: Listen for AF range changes from pneumonie selection/deselection
+            // Pneumonie no longer changes AF ranges, only visual state
+            /*
             window.addEventListener('afRangesChanged', function(event) {
                 console.log('🫁 AF ranges changed event received:', event.detail);
                 if (event.detail.patientId === currentPatientId) {
@@ -377,6 +379,7 @@
                     console.log('✅ Updated AF display due to range change');
                 }
             });
+            */
             
             // Listen for condition state changes from other pages
             window.addEventListener('patientConditionStateChanged', function(event) {
@@ -563,52 +566,9 @@
                                 source: 'alarm-overview'
                             });
                             
-                            // Handle condition-specific range restoration
+                            // DISABLED: Pneumonie no longer changes AF ranges, only visual state
                             if (condition === 'pneumonie') {
-                                console.log('🫁 Pneumonie deselected - restoring previous AF ranges');
-                                
-                                // Set condition state first
-                                window.sharedDataManager.setPatientConditionState('pneumonie', {
-                                    patientId: currentPatientId,
-                                    isActive: false,
-                                    timestamp: Date.now(),
-                                    source: 'alarm-overview'
-                                });
-                                
-                                console.log('🔍 DEBUG: restorePreviousAFRanges method available:', typeof window.sharedDataManager.restorePreviousAFRanges);
-                                if (window.sharedDataManager.restorePreviousAFRanges) {
-                                    window.sharedDataManager.restorePreviousAFRanges(currentPatientId);
-                                    
-                                    // Get the restored AF ranges and save them to respiratory settings
-                                    setTimeout(() => {
-                                        const restoredTargetRanges = window.sharedDataManager.getPatientTargetRanges(currentPatientId);
-                                        if (restoredTargetRanges && restoredTargetRanges.AF) {
-                                            const existingRespiratorySettings = window.sharedDataManager.getPatientRespiratorySettings(currentPatientId) || {};
-                                            const newRespiratorySettings = {
-                                                ...existingRespiratorySettings,
-                                                af: { min: restoredTargetRanges.AF.min, max: restoredTargetRanges.AF.max }
-                                            };
-                                            
-                                            // Save the restored AF ranges automatically
-                                            window.sharedDataManager.savePatientRespiratorySettings(currentPatientId, newRespiratorySettings);
-                                            console.log('🫁 Pneumonie deselected on alarm overview - restored AF ranges automatically saved:', newRespiratorySettings);
-                                            
-                                            // Dispatch event to update sliders on respiratory page
-                                            const afRangesEvent = new CustomEvent('afRangesChanged', {
-                                                detail: {
-                                                    patientId: currentPatientId,
-                                                    AF_min: restoredTargetRanges.AF.min,
-                                                    AF_max: restoredTargetRanges.AF.max,
-                                                    source: 'alarm-overview-pneumonie-deselection'
-                                                }
-                                            });
-                                            window.dispatchEvent(afRangesEvent);
-                                            console.log('📡 Dispatched afRangesChanged event from pneumonie deselection');
-                                        }
-                                    }, 100); // Small delay to ensure restoration is complete
-                                } else {
-                                    console.error('❌ restorePreviousAFRanges method not found!');
-                                }
+                                console.log('🫁 Pneumonie deselected - visual state only, no AF range changes');
                             } else if (condition === 'sepsis') {
                                 console.log('🦠 Sepsis deselected - restoring previous HR/BP ranges');
                                 
@@ -644,40 +604,9 @@
                                 source: 'alarm-overview'
                             });
                             
-                            // Handle condition-specific range changes
+                            // DISABLED: Pneumonie no longer changes AF ranges, only visual state
                             if (condition === 'pneumonie') {
-                                console.log('🫁 Pneumonie selected - applying AF range changes');
-                                console.log('🔍 DEBUG: SharedDataManager available:', !!window.sharedDataManager);
-                                console.log('🔍 DEBUG: applyPneumonieAFRanges method available:', typeof window.sharedDataManager.applyPneumonieAFRanges);
-                                
-                                // Set condition state first
-                                window.sharedDataManager.setPatientConditionState('pneumonie', {
-                                    patientId: currentPatientId,
-                                    isActive: true,
-                                    timestamp: Date.now(),
-                                    source: 'alarm-overview'
-                                });
-                                
-                                if (window.sharedDataManager.applyPneumonieAFRanges) {
-                                    window.sharedDataManager.applyPneumonieAFRanges(currentPatientId);
-                                    
-                                    // Automatically save the pneumonie AF ranges to respiratory settings
-                                    const pneumonieAFRanges = { min: 10, max: 30 };
-                                    const existingRespiratorySettings = window.sharedDataManager.getPatientRespiratorySettings(currentPatientId) || {};
-                                    const newRespiratorySettings = {
-                                        ...existingRespiratorySettings,
-                                        af: pneumonieAFRanges
-                                    };
-                                    
-                                    // Save the AF ranges automatically
-                                    window.sharedDataManager.savePatientRespiratorySettings(currentPatientId, newRespiratorySettings);
-                                    console.log('🫁 Pneumonie selected on alarm overview - AF (10-30) ranges automatically saved');
-                                    
-                                    // Apply highlighting since pneumonie was just selected via button click
-                                    updateParameterRanges(true, 'pneumonie');
-                                } else {
-                                    console.error('❌ applyPneumonieAFRanges method not found!');
-                                }
+                                console.log('🫁 Pneumonie selected - visual state only, no AF range changes');
                             } else if (condition === 'sepsis') {
                                 console.log('🦠 Sepsis selected - visual feedback only, no range changes');
                                 

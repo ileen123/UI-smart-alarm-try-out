@@ -1548,7 +1548,9 @@
                 }
             });
             
-            // Listen for AF range changes from pneumonie selection/deselection
+            // DISABLED: Listen for AF range changes from pneumonie selection/deselection
+            // Pneumonie no longer changes AF ranges, only visual state
+            /*
             window.addEventListener('afRangesChanged', function(event) {
                 console.log('🫁 AF ranges changed event received in respiratory settings:', event.detail);
                 
@@ -1579,6 +1581,7 @@
                     }
                 }
             });
+            */
             
             // Event listeners are now handled by the slider components
         }
