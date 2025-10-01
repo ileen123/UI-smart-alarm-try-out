@@ -202,6 +202,56 @@
             </svg>`
         };
 
+        // ===================================================================
+        // CENTRALIZED SYNCHRONIZATION SYSTEM  
+        // ===================================================================
+
+        /**
+         * Synchronize all written displays with centralized target ranges
+         * Called on page load to ensure displays match the source of truth
+         */
+        function syncDisplaysWithCentralizedRanges() {
+            console.log('🌐 SIMPLE SYNC: Updating alarm overview displays with global variables...');
+
+            // Update parameter displays - simple direct approach
+            const valueNumbers = document.querySelectorAll('.value-number');
+            
+            if (valueNumbers.length >= 5) {
+                // Update HR display from global variables
+                if (valueNumbers[0]) {
+                    valueNumbers[0].textContent = `${window.HR_MIN} - ${window.HR_MAX} bpm`;
+                    console.log('📊 Updated HR display:', valueNumbers[0].textContent);
+                }
+
+                // Update BP display from global variables
+                if (valueNumbers[1]) {
+                    valueNumbers[1].textContent = `${window.BP_MIN} - ${window.BP_MAX} mmHg`;
+                    console.log('📊 Updated BP display:', valueNumbers[1].textContent);
+                }
+
+                // Update Saturatie display from global variables
+                if (valueNumbers[2]) {
+                    valueNumbers[2].textContent = `${window.SAT_MIN} - ${window.SAT_MAX}%`;
+                    console.log('📊 Updated Saturatie display:', valueNumbers[2].textContent);
+                }
+
+                // Update AF display from global variables
+                const afDisplay = document.getElementById('af-range-display');
+                if (afDisplay) {
+                    afDisplay.textContent = `${window.AF_MIN} - ${window.AF_MAX} /min`;
+                    console.log('📊 Updated AF display:', afDisplay.textContent);
+                }
+
+                // Update Temperature display from global variables
+                if (valueNumbers[4]) {
+                    valueNumbers[4].textContent = `${window.TEMP_MIN} - ${window.TEMP_MAX}°C`;
+                    console.log('📊 Updated Temperature display:', valueNumbers[4].textContent);
+                }
+            }
+
+            console.log('✅ All alarm overview displays updated with global variables');
+        }
+
         // Initialize page when DOM is loaded
         document.addEventListener('DOMContentLoaded', function() {
             initializeAlarmOverview();
@@ -210,6 +260,9 @@
             
             // Initialize condition states first (source of truth)
             initializeSepsisTagState();
+            
+            // CENTRALIZED SYSTEM: Sync displays with current target ranges
+            syncDisplaysWithCentralizedRanges();
             
             // Load existing settings after components are initialized
             loadExistingSettings();
@@ -318,13 +371,12 @@
                 }
             });
             
-            // Listen for target range changes
-            window.addEventListener('targetRangesChanged', function(event) {
-                const { patientId, targetRanges } = event.detail;
-                if (patientId === currentPatientId) {
-                    console.log('🎯 Target ranges changed in alarm overview:', targetRanges);
-                    updateParameterRanges(); // Refresh the displayed ranges
-                }
+            // SIMPLE SYSTEM: Listen for global parameter changes from slider adjustments
+            window.addEventListener('globalParametersChanged', function(event) {
+                console.log('🌐 Global parameters changed event received on alarm overview:', event.detail);
+                console.log('� Updating alarm overview displays with new global variables...');
+                syncDisplaysWithCentralizedRanges();
+                console.log('📊 SYNC COMPLETED on alarm overview');
             });
             
             // DISABLED: Listen for HR range changes from sepsis selection
@@ -740,7 +792,7 @@
                 // Update organ circles based on loaded data
                 if (selectedProblem && selectedRiskLevel) {
                     console.log('✅ DEBUG: Updating organ circles with:', selectedProblem, selectedRiskLevel);
-                    updateOrganCircles();
+                    updateOrganCircles(false); // PAGE LOAD: Preserve manual adjustments
                 }
             } else {
                 console.log('❌ DEBUG: No existing medical info found for patient:', currentPatientId);
@@ -1216,9 +1268,12 @@
 
         // Function to update organ circles based on selected problem
         function updateOrganCirclesBasedOnProblem(problemValue) {
-            console.log('Problem selected:', problemValue);
+            console.log('🎯 MAIN PROBLEM CHANGE - Problem selected:', problemValue);
+            console.log('🎯 MAIN PROBLEM CHANGE - Previous selectedProblem:', selectedProblem);
             selectedProblem = problemValue;
-            updateOrganCircles();
+            console.log('🎯 MAIN PROBLEM CHANGE - New selectedProblem:', selectedProblem);
+            console.log('🎯 MAIN PROBLEM CHANGE - Calling updateOrganCircles(true)...');
+            updateOrganCircles(true); // MANUAL PROBLEM CHANGE: Overwrite manual adjustments
             
             // Save current medical info including the problem selection
             if (currentPatientId && window.sharedDataManager) {
@@ -1236,12 +1291,12 @@
             console.log('🔄 Setting selectedRiskLevel to:', riskLevel);
             selectedRiskLevel = riskLevel;
             console.log('🔄 Calling updateOrganCircles...');
-            updateOrganCircles();
+            updateOrganCircles(true); // MANUAL RISK CHANGE: Overwrite manual adjustments
         }
 
         // Main function to update organ circles based on current problem and risk
-        function updateOrganCircles() {
-            console.log('🚀 updateOrganCircles called with selectedProblem:', selectedProblem);
+        function updateOrganCircles(shouldOverwriteManualAdjustments = false) {
+            console.log('🚀 updateOrganCircles called with selectedProblem:', selectedProblem, 'shouldOverwrite:', shouldOverwriteManualAdjustments);
             
             if (!window.sharedDataManager) {
                 console.error('❌ SharedDataManager not available');
@@ -1258,6 +1313,7 @@
             console.log('   - Problem:', selectedProblem);
             console.log('   - Risk Level:', selectedRiskLevel);
             console.log('   - Organ Components:', window.organComponents);
+            console.log('   - Should overwrite manual adjustments:', shouldOverwriteManualAdjustments);
             
             // If no problem is selected, use default but still apply risk level logic
             const effectiveProblem = selectedProblem || 'none';
@@ -1270,7 +1326,8 @@
                 effectiveProblem, 
                 window.organComponents,
                 window.sharedDataManager.getCurrentPatientId(), // Pass patient ID to save target ranges
-                effectiveRiskLevel // Use 'mid' as default when problem selected but no risk chosen
+                effectiveRiskLevel, // Use 'mid' as default when problem selected but no risk chosen
+                shouldOverwriteManualAdjustments // CRITICAL: Pass the flag to preserve/overwrite manual adjustments
             );
             
             const finalOrganStates = result.organStates;

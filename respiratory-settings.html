@@ -917,51 +917,95 @@
         let saturatieSlider = null;
         let afSlider = null;
 
+        // ===================================================================
+        // CENTRALIZED SYNCHRONIZATION SYSTEM
+        // ===================================================================
+
+        /**
+         * Synchronize sliders with centralized target ranges
+         * Called on page load and when ranges change from other pages
+         */
+        function syncSlidersWithCentralizedRanges() {
+            if (!currentPatientId || !window.sharedDataManager) {
+                console.log('⏸️ No patient ID or SharedDataManager available for slider sync');
+                return;
+            }
+
+            console.log('📊 Syncing respiratory sliders with centralized target ranges...');
+            const currentRanges = window.sharedDataManager.getCurrentTargetRanges(currentPatientId);
+            
+            if (!currentRanges) {
+                console.log('⏸️ No centralized ranges found for patient:', currentPatientId);
+                return;
+            }
+
+            // Update AF slider
+            if (afSlider && currentRanges.AF) {
+                console.log('📊 Syncing AF slider:', currentRanges.AF.min, '-', currentRanges.AF.max);
+                
+                // Update slider config
+                afSlider.config.targetRange.min = currentRanges.AF.min;
+                afSlider.config.targetRange.max = currentRanges.AF.max;
+                
+                // Update current positions
+                afSlider.currentMin = currentRanges.AF.min;
+                afSlider.currentMax = currentRanges.AF.max;
+                
+                // Update original values so slider doesn't think these are user changes
+                afSlider.originalMin = currentRanges.AF.min;
+                afSlider.originalMax = currentRanges.AF.max;
+                
+                // Force re-render
+                if (afSlider.updateSliderPosition) {
+                    afSlider.updateSliderPosition();
+                    console.log('✅ AF slider synced and re-rendered');
+                }
+            }
+
+            // Update Saturatie slider  
+            if (saturatieSlider && currentRanges.Saturatie) {
+                console.log('📊 Syncing Saturatie slider:', currentRanges.Saturatie.min, '-', currentRanges.Saturatie.max);
+                
+                // Update slider config
+                saturatieSlider.config.targetRange.min = currentRanges.Saturatie.min;
+                saturatieSlider.config.targetRange.max = currentRanges.Saturatie.max;
+                
+                // Update current positions
+                saturatieSlider.currentMin = currentRanges.Saturatie.min;
+                saturatieSlider.currentMax = currentRanges.Saturatie.max;
+                
+                // Update original values
+                saturatieSlider.originalMin = currentRanges.Saturatie.min;
+                saturatieSlider.originalMax = currentRanges.Saturatie.max;
+                
+                // Force re-render
+                if (saturatieSlider.updateSliderPosition) {
+                    saturatieSlider.updateSliderPosition();
+                    console.log('✅ Saturatie slider synced and re-rendered');
+                }
+            }
+
+            console.log('✅ All respiratory sliders synced with centralized ranges');
+        }
+
         // Initialize page when DOM is loaded
         document.addEventListener('DOMContentLoaded', function() {
             initializePage();
             setupEventListeners();
             initializePneumonieTagState(); // Initialize pneumonie state FIRST
-            loadCurrentSettings(); // Then load settings (which will respect sepsis state)
+            
+            // Initialize global variables system (simple approach)
+            if (window.sharedDataManager) {
+                window.sharedDataManager.loadGlobalParameterVariables();
+                console.log('✅ Global variables loaded for respiratory page');
+            }
 
             // Initialize heart circle component (same as alarm overview)
             setTimeout(() => {
                 initializeHeartCircleComponent();
                 initializeSliders();
-                
-                // Always update sliders from current target ranges on page load
-                setTimeout(() => {
-                    if (currentPatientId && window.sharedDataManager) {
-                        const targetRanges = window.sharedDataManager.getPatientTargetRanges(currentPatientId);
-                        console.log('🔍 Loading target ranges on page load:', targetRanges);
-                        
-                        // Update AF slider if target ranges exist
-                        if (targetRanges && targetRanges.AF && afSlider) {
-                            console.log('🔄 Updating AF slider to current target ranges:', targetRanges.AF.min, '-', targetRanges.AF.max);
-                            // Set global values and update sliders
-                            window.AF_low = targetRanges.AF.min;
-                            window.AF_high = targetRanges.AF.max;
-                            
-                            // Update slider configuration
-                            afSlider.config.targetRange.min = window.AF_low;
-                            afSlider.config.targetRange.max = window.AF_high;
-                            afSlider.currentMin = window.AF_low;
-                            afSlider.currentMax = window.AF_high;
-                            
-                            if (afSlider.updateSliderPosition) {
-                                afSlider.updateSliderPosition();
-                                console.log('✅ AF slider updated to target ranges:', window.AF_low, '-', window.AF_high);
-                            }
-                        }
-                        
-                        // Also check for HR ranges if this page has HR elements
-                        if (targetRanges && targetRanges.HR && targetRanges.HR.min === 90 && targetRanges.HR.max === 130) {
-                            console.log('🦠 SEPSIS DETECTED ON PAGE LOAD - forcing slider to 90-130');
-                            testSepsisRange();
-                        }
-                    }
-                }, 500);
             }, 1000);
+        });
         // Heart and Lung SVG content
         const svgContent = {
             heart: `<svg class="organ-icon" viewBox="0 0 22 26" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -1069,7 +1113,6 @@
                 console.warn(`❌ Button with data-level="${mappedLevel}" not found`);
             }
         }
-        });
 
         // Helper function to update sliders monitoring level (moved outside closure for global access)
         function updateSlidersMonitoringLevel(level) {
@@ -1196,6 +1239,12 @@
                 
                 // Update header with patient info
                 updatePatientHeader();
+                
+                // Initialize global variables for this patient (simple approach)
+                if (window.sharedDataManager) {
+                    window.sharedDataManager.initializeGlobalParameterVariables(currentPatientId);
+                    console.log('✅ Global variables initialized for patient:', currentPatientId);
+                }
             } else {
                 console.error('❌ SharedDataManager not available');
                 alert('Data manager niet beschikbaar. Herlaad de pagina.');
@@ -1275,85 +1324,70 @@
         function setupEventListeners() {
             console.log('🔧 Setting up event listeners...');
             
-            // Listen for target range changes from other pages
-            window.addEventListener('targetRangesChanged', function(event) {
-                console.log('🎯 Target ranges changed event received:', event.detail);
+            // SIMPLE APPROACH: Listen for global parameter changes from problem changes
+            window.addEventListener('globalParametersChanged', function(event) {
+                console.log('🌐 Respiratory page received global parameters changed:', event.detail);
+                console.log('🌐 Current global variables - AF:', window.AF_MIN, '-', window.AF_MAX, 'SAT:', window.SAT_MIN, '-', window.SAT_MAX);
+                console.log('🌐 Slider availability - afSlider:', !!afSlider, 'saturatieSlider:', !!saturatieSlider);
                 
-                const { patientId, targetRanges } = event.detail;
+                // ROBUST APPROACH: Force complete slider refresh from global variables
+                if (afSlider && afSlider.config && afSlider.config.targetRange) {
+                    console.log('🔄 Updating AF slider config and position...');
+                    console.log('   - Old AF range:', afSlider.config.targetRange.min, '-', afSlider.config.targetRange.max);
+                    afSlider.config.targetRange.min = window.AF_MIN;
+                    afSlider.config.targetRange.max = window.AF_MAX;
+                    afSlider.currentMin = window.AF_MIN;
+                    afSlider.currentMax = window.AF_MAX;
+                    if (afSlider.updateSliderPosition) {
+                        afSlider.updateSliderPosition();
+                    }
+                    console.log('✅ AF slider forced to:', window.AF_MIN, '-', window.AF_MAX);
+                } else {
+                    console.log('❌ AF slider not available or not properly initialized');
+                }
                 
-                // Only update if it's for the current patient
-                if (patientId === currentPatientId && targetRanges) {
-                    console.log('🔄 Updating sliders with new target ranges:', targetRanges);
+                if (saturatieSlider && saturatieSlider.config && saturatieSlider.config.targetRange) {
+                    console.log('🔄 Updating Saturatie slider config and position...');
+                    console.log('   - Old SAT range:', saturatieSlider.config.targetRange.min, '-', saturatieSlider.config.targetRange.max);
+                    saturatieSlider.config.targetRange.min = window.SAT_MIN;
+                    saturatieSlider.config.targetRange.max = window.SAT_MAX;
+                    saturatieSlider.currentMin = window.SAT_MIN;
+                    saturatieSlider.currentMax = window.SAT_MAX;
+                    if (saturatieSlider.updateSliderPosition) {
+                        saturatieSlider.updateSliderPosition();
+                    }
+                    console.log('✅ Saturatie slider forced to:', window.SAT_MIN, '-', window.SAT_MAX);
+                } else {
+                    console.log('❌ Saturatie slider not available or not properly initialized');
+                }
+            });
+
+            
+            // SIMPLE APPROACH: Function to update HR slider with correct global variables
+            function updateHRSliderFromGlobalValues() {
+                if (typeof window.HR_MIN !== 'undefined' && typeof window.HR_MAX !== 'undefined') {
+                    console.log('🔄 Forcing HR slider update with global values:', window.HR_MIN, '-', window.HR_MAX);
                     
-                    // Update currentSettings
-                    currentSettings = {
-                        hr: {
-                            min: targetRanges.HR?.min || 70,
-                            max: targetRanges.HR?.max || 110
-                        },
-                        bp: {
-                            min: targetRanges.BP_Mean?.min || 65,
-                            max: targetRanges.BP_Mean?.max || 85
-                        }
-                    };
-                    
-                    // Update sliders if they exist
                     if (hrSlider && typeof hrSlider.updateConfig === 'function') {
                         hrSlider.updateConfig({
                             targetRange: {
-                                min: currentSettings.hr.min,
-                                max: currentSettings.hr.max
+                                min: window.HR_MIN,
+                                max: window.HR_MAX
                             }
                         });
-                        console.log('✅ HR slider target range updated');
-                    }
-                    
-                    if (bpSlider && typeof bpSlider.updateConfig === 'function') {
-                        bpSlider.updateConfig({
-                            targetRange: {
-                                min: currentSettings.bp.min,
-                                max: currentSettings.bp.max
-                            }
-                        });
-                        console.log('✅ BP slider target range updated');
-                    }
-                }
-            });
-            
-            // Function to force update HR slider with global HR_low and HR_high values
-            function updateHRSliderFromGlobalValues() {
-                if (typeof window.HR_low !== 'undefined' && typeof window.HR_high !== 'undefined') {
-                    console.log('🔄 Forcing HR slider update with global values:', window.HR_low, '-', window.HR_high);
-                    
-                    if (hrSlider) {
-                        // Directly update slider internal values
-                        hrSlider.currentMin = window.HR_low;
-                        hrSlider.currentMax = window.HR_high;
-                        hrSlider.config.targetRange.min = window.HR_low;
-                        hrSlider.config.targetRange.max = window.HR_high;
-                        
-                        // Update the visual elements directly
-                        const maxValueElement = hrSlider.container.querySelector('.sliding-value-outside.max-value');
-                        const minValueElement = hrSlider.container.querySelector('.sliding-value-outside.min-value');
-                        if (maxValueElement) maxValueElement.textContent = Math.round(window.HR_high);
-                        if (minValueElement) minValueElement.textContent = Math.round(window.HR_low);
-                        
-                        // Update slider positions
-                        hrSlider.updateSliderPosition();
-                        
-                        console.log('✅ HR slider FORCE updated from globals:', window.HR_low, '-', window.HR_high);
+                        console.log('✅ HR slider FORCE updated from globals:', window.HR_MIN, '-', window.HR_MAX);
                     } else {
                         console.warn('⚠️ HR slider not available for global update');
                     }
                 } else {
-                    console.warn('⚠️ Global HR_low or HR_high not available');
+                    console.warn('⚠️ Global HR_MIN or HR_MAX not available');
                 }
             }
             
             // Test function to force sepsis range (90-130) - for debugging
             function testSepsisRange() {
-                window.HR_low = 90;
-                window.HR_high = 130;
+                window.HR_MIN = 90;
+                window.HR_MAX = 130;
                 console.log('🧪 TEST: Set globals to sepsis range 90-130');
                 updateHRSliderFromGlobalValues();
             }
@@ -1361,38 +1395,41 @@
             // Make test function available globally for debugging
             window.testSepsisRange = testSepsisRange;
             
-            // Function to refresh sliders from current target ranges
+            // SIMPLE APPROACH: Function to refresh sliders from global variables
             function refreshSlidersFromTargetRanges() {
-                if (currentPatientId && window.sharedDataManager) {
-                    const targetRanges = window.sharedDataManager.getPatientTargetRanges(currentPatientId);
-                    console.log('🔄 Refreshing AF sliders from target ranges:', targetRanges);
-                    
-                    if (targetRanges && targetRanges.AF && afSlider && afSlider.container) {
-                        // Update global values for AF
-                        window.AF_low = targetRanges.AF.min;
-                        window.AF_high = targetRanges.AF.max;
-                        
-                        // Update slider configuration and position
-                        if (typeof afSlider.updateConfig === 'function') {
-                            afSlider.updateConfig({
-                                targetRange: {
-                                    min: window.AF_low,
-                                    max: window.AF_high
-                                }
-                            });
-                            console.log('✅ AF slider updated from target ranges:', window.AF_low, '-', window.AF_high);
-                        } else {
-                            // Fallback method
-                            afSlider.config.targetRange.min = window.AF_low;
-                            afSlider.config.targetRange.max = window.AF_high;
-                            afSlider.currentMin = window.AF_low;
-                            afSlider.currentMax = window.AF_high;
-                            console.log('✅ AF slider updated via fallback method:', window.AF_low, '-', window.AF_high);
+                console.log('🔄 Refreshing respiratory sliders from global variables');
+                
+                // Update AF slider with current global variables
+                if (afSlider && typeof afSlider.updateConfig === 'function') {
+                    afSlider.updateConfig({
+                        targetRange: {
+                            min: window.AF_MIN,
+                            max: window.AF_MAX
                         }
-                        
-                        console.log('✅ AF sliders refreshed from target ranges');
+                    });
+                    // Force visual position refresh
+                    if (afSlider.updateSliderPosition) {
+                        afSlider.updateSliderPosition();
                     }
+                    console.log('✅ AF slider updated from globals:', window.AF_MIN, '-', window.AF_MAX);
                 }
+                
+                // Update Saturatie slider with current global variables
+                if (saturatieSlider && typeof saturatieSlider.updateConfig === 'function') {
+                    saturatieSlider.updateConfig({
+                        targetRange: {
+                            min: window.SAT_MIN,
+                            max: window.SAT_MAX
+                        }
+                    });
+                    // Force visual position refresh
+                    if (saturatieSlider.updateSliderPosition) {
+                        saturatieSlider.updateSliderPosition();
+                    }
+                    console.log('✅ Saturatie slider updated from globals:', window.SAT_MIN, '-', window.SAT_MAX);
+                }
+                
+                console.log('✅ All respiratory sliders refreshed from global variables');
             }
             
             // Listen for HR range changes from sepsis selection/deselection
@@ -1587,106 +1624,7 @@
         }
         
 
-        function loadCurrentSettings() {
-            console.log('📊 Loading current circulatoir settings...');
-            
-            if (currentPatientId && window.sharedDataManager) {
-                // Load patient-specific target ranges first
-                const targetRanges = window.sharedDataManager.getPatientTargetRanges(currentPatientId);
-                console.log('🎯 Loaded target ranges for patient:', currentPatientId, targetRanges);
-                
-                // Update currentSettings to use target ranges
-                if (targetRanges) {
-                    currentSettings = {
-                        hr: {
-                            min: targetRanges.HR?.min || 70,
-                            max: targetRanges.HR?.max || 110
-                        },
-                        bp: {
-                            min: targetRanges.BP_Mean?.min || 65,
-                            max: targetRanges.BP_Mean?.max || 85
-                        },
-                        // Load respiratory settings from target ranges (these include pneumonie-specific ranges)
-                        saturatie: {
-                            min: targetRanges.Saturatie?.min || 90,
-                            max: targetRanges.Saturatie?.max || 100
-                        },
-                        af: {
-                            min: targetRanges.AF?.min || 10,
-                            max: targetRanges.AF?.max || 25
-                        }
-                    };
-                    console.log('✅ Loaded respiratory settings from target ranges:', {
-                        saturatie: currentSettings.saturatie,
-                        af: currentSettings.af
-                    });
-                } else {
-                    // Load default respiratory settings if no target ranges exist
-                    currentSettings.saturatie = currentSettings.saturatie || { min: 90, max: 100 };
-                    currentSettings.af = currentSettings.af || { min: 12, max: 25 };
-                }
-                
-                // Try to load existing patient-specific fine-tuned settings
-                const savedSettings = window.sharedDataManager.getPatientCirculatoirSettings(currentPatientId);
-                const savedRespiratorySettings = window.sharedDataManager.getPatientRespiratorySettings(currentPatientId);
-                
-                if (savedSettings) {
-                    console.log('✅ Found saved fine-tuned circulatory settings:', savedSettings);
-                    
-                    // Check if current target ranges are sepsis ranges (90-130)
-                    const isSepsisActive = targetRanges && targetRanges.HR && 
-                                          targetRanges.HR.min === 90 && targetRanges.HR.max === 130;
-                    
-                    // Check if current target ranges are pneumonie AF ranges (10-30)
-                    const isPneumonieActive = targetRanges && targetRanges.AF && 
-                                             targetRanges.AF.min === 10 && targetRanges.AF.max === 30;
-                    
-                    // ALWAYS prioritize target ranges when they exist (they reflect current condition state)
-                    if (targetRanges && (targetRanges.HR || targetRanges.BP_Mean)) {
-                        console.log('🎯 Target ranges exist for HR/BP - using target ranges instead of saved settings');
-                        // Keep currentSettings HR/BP as is (target ranges take priority)
-                    } else {
-                        // Only use saved HR/BP settings if no target ranges exist
-                        currentSettings.hr = savedSettings.hr || currentSettings.hr;
-                        currentSettings.bp = savedSettings.bp || currentSettings.bp;
-                        console.log('✅ No HR/BP target ranges - using saved fine-tuned circulatory settings');
-                    }
-                    
-                    // Handle respiratory settings - target ranges always take priority
-                    if (targetRanges && targetRanges.AF) {
-                        console.log('🎯 Target ranges exist for AF - using target ranges instead of saved settings');
-                        // Keep currentSettings AF as is (target ranges take priority)
-                    } else if (savedRespiratorySettings) {
-                        // Only use saved respiratory settings if no AF target ranges exist
-                        if (!targetRanges || !targetRanges.AF) {
-                            currentSettings.af = savedRespiratorySettings.af || currentSettings.af;
-                            console.log('✅ No AF target ranges - using saved AF settings:', currentSettings.af);
-                        }
-                        // For saturatie, use saved settings if no target ranges exist
-                        if (!targetRanges || !targetRanges.Saturatie) {
-                            currentSettings.saturatie = savedRespiratorySettings.saturatie || currentSettings.saturatie;
-                            console.log('✅ Using saved saturatie settings:', currentSettings.saturatie);
-                        }
-                    }
-                } else {
-                    // If no fine-tuned settings, check if we need to load from medical info
-                    const medicalInfo = window.sharedDataManager.getPatientMedicalInfo(currentPatientId);
-                    if (medicalInfo && medicalInfo.selectedTags && !targetRanges) {
-                        // Only apply condition-based thresholds if no target ranges exist
-                        const thresholds = window.sharedDataManager.getThresholdsByTags(medicalInfo.selectedTags);
-                        if (thresholds && thresholds.circulatoir) {
-                            currentSettings = {
-                                hr: thresholds.circulatoir.HR || { min: 70, max: 110 },
-                                bp: thresholds.circulatoir.BP_Mean || { min: 65, max: 85 }
-                            };
-                            console.log('✅ Applied condition-based thresholds:', currentSettings);
-                        }
-                    }
-                }
-                
-                console.log('✅ Final current settings loaded:', currentSettings);
-            }
-        }
+
 
         function initializeSliders() {
             console.log('🎛️ Initializing respiratory sliders...');
@@ -1742,32 +1680,35 @@
                             parameter: 'Saturatie',
                             name: 'Saturatie',
                             unit: '%',
-                            targetRange: currentSettings.saturatie || { min: 90, max: 100 },
+                            targetRange: { min: window.SAT_MIN, max: window.SAT_MAX },
                             yAxis: { min: 80, max: 100, step: 5 },
                             monitoringLevel: 'mid',
                             patientId: currentPatientId,
                             patientName: patientInfo?.name || `Patiënt ${currentPatientId}`,
                             onChange: (data) => {
                                 console.log('Saturatie Slider changed:', data);
-                                if (window.sharedDataManager && data.type === 'save') {
-                                    const newSettings = { saturatie: { min: data.min, max: data.max }, af: currentSettings.af };
-                                    window.sharedDataManager.savePatientRespiratorySettings(currentPatientId, newSettings);
-                                    currentSettings = newSettings;
+                                if (data.type === 'save') {
+                                    console.log('💾 Saturatie Slider SAVE - SIMPLE UPDATE of global variables');
                                     
-                                    // Get existing target ranges and merge with respiratory changes
-                                    const existingTargetRanges = window.sharedDataManager.getPatientTargetRanges(currentPatientId) || {};
-                                    const updatedTargetRanges = {
-                                        ...existingTargetRanges, // Preserve existing HR, BP_Mean, etc.
-                                        Saturatie: { min: Math.round(data.min), max: Math.round(data.max), unit: '%' },
-                                        // Preserve existing AF target ranges instead of using defaults
-                                        AF: existingTargetRanges.AF || { 
-                                            min: Math.round(currentSettings.af?.min || 12), 
-                                            max: Math.round(currentSettings.af?.max || 25), 
-                                            unit: '/min' 
-                                        }
-                                    };
-                                    window.sharedDataManager.updateGlobalTargetRanges(currentPatientId, updatedTargetRanges);
-                                    console.log('🎯 Updated target ranges after Saturatie slider change:', updatedTargetRanges);
+                                    // SIMPLE APPROACH: Direct update of global variables
+                                    window.SAT_MIN = Math.round(data.min);
+                                    window.SAT_MAX = Math.round(data.max);
+                                    
+                                    // Save to localStorage
+                                    if (window.sharedDataManager) {
+                                        window.sharedDataManager.saveGlobalParameterVariables();
+                                        console.log('💾 Saved global variables to localStorage');
+                                    }
+                                    
+                                    // Update all displays on all pages immediately
+                                    console.log('🔄 Updating displays across all pages...');
+                                    setTimeout(() => {
+                                        window.dispatchEvent(new CustomEvent('globalParametersChanged', {
+                                            detail: { parameter: 'Saturatie', min: window.SAT_MIN, max: window.SAT_MAX }
+                                        }));
+                                    }, 10);
+                                    
+                                    console.log('✅ Saturatie global variables updated:', window.SAT_MIN, '-', window.SAT_MAX);
                                 }
                             }
                         });
@@ -1811,44 +1752,35 @@
                             parameter: 'AF',
                             name: 'Ademfrequentie',
                             unit: '/min',
-                            targetRange: currentSettings.af || { min: 12, max: 25 },
+                            targetRange: { min: window.AF_MIN, max: window.AF_MAX },
                             yAxis: { min: 5, max: 35, step: 5 },
                             monitoringLevel: 'mid',
                             patientId: currentPatientId,
                             patientName: patientInfo?.name || `Patiënt ${currentPatientId}`,
                             onChange: (data) => {
                                 console.log('AF Slider changed:', data);
-                                if (window.sharedDataManager && data.type === 'save') {
-                                    // Check if pneumonie is currently active (similar to sepsis logic)
-                                    const targetRanges = window.sharedDataManager.getPatientTargetRanges(currentPatientId);
-                                    const isPneumonieActive = targetRanges && targetRanges.AF && 
-                                                             targetRanges.AF.min === 10 && targetRanges.AF.max === 30;
+                                if (data.type === 'save') {
+                                    console.log('💾 AF Slider SAVE - SIMPLE UPDATE of global variables');
                                     
-                                    if (isPneumonieActive) {
-                                        console.log('🫁 Pneumonie is active - ignoring manual AF adjustments');
-                                        // Don't save manual adjustments when pneumonie is active
-                                        return;
+                                    // SIMPLE APPROACH: Direct update of global variables
+                                    window.AF_MIN = Math.round(data.min);
+                                    window.AF_MAX = Math.round(data.max);
+                                    
+                                    // Save to localStorage
+                                    if (window.sharedDataManager) {
+                                        window.sharedDataManager.saveGlobalParameterVariables();
+                                        console.log('💾 Saved global variables to localStorage');
                                     }
                                     
-                                    // Normal case - save manual adjustments
-                                    const newSettings = { saturatie: currentSettings.saturatie, af: { min: data.min, max: data.max } };
-                                    window.sharedDataManager.savePatientRespiratorySettings(currentPatientId, newSettings);
-                                    currentSettings = newSettings;
+                                    // Update all displays on all pages immediately
+                                    console.log('🔄 Updating displays across all pages...');
+                                    setTimeout(() => {
+                                        window.dispatchEvent(new CustomEvent('globalParametersChanged', {
+                                            detail: { parameter: 'AF', min: window.AF_MIN, max: window.AF_MAX }
+                                        }));
+                                    }, 10);
                                     
-                                    // Get existing target ranges and merge with respiratory changes
-                                    const existingTargetRanges = window.sharedDataManager.getPatientTargetRanges(currentPatientId) || {};
-                                    const updatedTargetRanges = {
-                                        ...existingTargetRanges, // Preserve existing HR, BP_Mean, etc.
-                                        // Preserve existing Saturatie target ranges instead of using currentSettings
-                                        Saturatie: existingTargetRanges.Saturatie || { 
-                                            min: Math.round(currentSettings.saturatie?.min || 90), 
-                                            max: Math.round(currentSettings.saturatie?.max || 100), 
-                                            unit: '%' 
-                                        },
-                                        AF: { min: Math.round(data.min), max: Math.round(data.max), unit: '/min' }
-                                    };
-                                    window.sharedDataManager.updateGlobalTargetRanges(currentPatientId, updatedTargetRanges);
-                                    console.log('🎯 Updated target ranges after AF slider change:', updatedTargetRanges);
+                                    console.log('✅ AF global variables updated:', window.AF_MIN, '-', window.AF_MAX);
                                 }
                             }
                         });

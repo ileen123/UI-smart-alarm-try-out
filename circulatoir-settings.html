@@ -919,53 +919,95 @@
         let hrSlider = null;
         let bpSlider = null;
 
+        // ===================================================================
+        // CENTRALIZED SYNCHRONIZATION SYSTEM
+        // ===================================================================
+
+        /**
+         * Synchronize sliders with centralized target ranges
+         * Called on page load and when ranges change from other pages
+         */
+        function syncSlidersWithCentralizedRanges() {
+            if (!currentPatientId || !window.sharedDataManager) {
+                console.log('⏸️ No patient ID or SharedDataManager available for slider sync');
+                return;
+            }
+
+            console.log('📊 Syncing circulatory sliders with centralized target ranges...');
+            const currentRanges = window.sharedDataManager.getCurrentTargetRanges(currentPatientId);
+            
+            if (!currentRanges) {
+                console.log('⏸️ No centralized ranges found for patient:', currentPatientId);
+                return;
+            }
+
+            // Update HR slider
+            if (hrSlider && currentRanges.HR) {
+                console.log('📊 Syncing HR slider:', currentRanges.HR.min, '-', currentRanges.HR.max);
+                
+                // Update slider config
+                hrSlider.config.targetRange.min = currentRanges.HR.min;
+                hrSlider.config.targetRange.max = currentRanges.HR.max;
+                
+                // Update current positions
+                hrSlider.currentMin = currentRanges.HR.min;
+                hrSlider.currentMax = currentRanges.HR.max;
+                
+                // Update original values so slider doesn't think these are user changes
+                hrSlider.originalMin = currentRanges.HR.min;
+                hrSlider.originalMax = currentRanges.HR.max;
+                
+                // Force re-render
+                if (hrSlider.updateSliderPosition) {
+                    hrSlider.updateSliderPosition();
+                    console.log('✅ HR slider synced and re-rendered');
+                }
+            }
+
+            // Update BP slider  
+            if (bpSlider && currentRanges.BP_Mean) {
+                console.log('📊 Syncing BP slider:', currentRanges.BP_Mean.min, '-', currentRanges.BP_Mean.max);
+                
+                // Update slider config
+                bpSlider.config.targetRange.min = currentRanges.BP_Mean.min;
+                bpSlider.config.targetRange.max = currentRanges.BP_Mean.max;
+                
+                // Update current positions
+                bpSlider.currentMin = currentRanges.BP_Mean.min;
+                bpSlider.currentMax = currentRanges.BP_Mean.max;
+                
+                // Update original values
+                bpSlider.originalMin = currentRanges.BP_Mean.min;
+                bpSlider.originalMax = currentRanges.BP_Mean.max;
+                
+                // Force re-render
+                if (bpSlider.updateSliderPosition) {
+                    bpSlider.updateSliderPosition();
+                    console.log('✅ BP slider synced and re-rendered');
+                }
+            }
+
+            console.log('✅ All circulatory sliders synced with centralized ranges');
+        }
+
         // Initialize page when DOM is loaded
         document.addEventListener('DOMContentLoaded', function() {
             initializePage();
             setupEventListeners();
             initializeSepsisTagState(); // Initialize sepsis state FIRST
-            loadCurrentSettings(); // Then load settings (which will respect sepsis state)
+            
+            // Initialize global variables system (simple approach)
+            if (window.sharedDataManager) {
+                window.sharedDataManager.loadGlobalParameterVariables();
+                console.log('✅ Global variables loaded for circulatoir page');
+            }
 
             // Initialize heart circle component (same as alarm overview)
             setTimeout(() => {
                 initializeHeartCircleComponent();
                 initializeSliders();
-                
-                // Always update sliders from current target ranges on page load
-                setTimeout(() => {
-                    if (currentPatientId && window.sharedDataManager) {
-                        const targetRanges = window.sharedDataManager.getPatientTargetRanges(currentPatientId);
-                        console.log('🔍 Loading target ranges on page load:', targetRanges);
-                        if (targetRanges && targetRanges.HR) {
-                            console.log('🔄 Updating sliders to current target ranges:', targetRanges.HR.min, '-', targetRanges.HR.max);
-                            // Set global values and update sliders (with safety check)
-                            window.HR_low = targetRanges.HR.min;
-                            window.HR_high = targetRanges.HR.max;
-                            if (typeof updateHRSliderFromGlobalValues === 'function') {
-                                updateHRSliderFromGlobalValues();
-                            } else {
-                                console.log('⏳ updateHRSliderFromGlobalValues not yet available, will be updated on slider initialization');
-                            }
-                            
-                            // Also update BP if available
-                            if (targetRanges.BP_Mean) {
-                                window.BP_low = targetRanges.BP_Mean.min;
-                                window.BP_high = targetRanges.BP_Mean.max;
-                                // Update BP slider if it exists
-                                if (bpSlider && typeof bpSlider.updateConfig === 'function') {
-                                    bpSlider.updateConfig({
-                                        targetRange: {
-                                            min: window.BP_low,
-                                            max: window.BP_high
-                                        }
-                                    });
-                                    console.log('🔄 BP slider updated to:', window.BP_low, '-', window.BP_high);
-                                }
-                            }
-                        }
-                    }
-                }, 500);
             }, 1000);
+        });
         // Heart SVG content (copied from alarm overview)
         const svgContent = {
             heart: `<svg class="organ-icon" viewBox="0 0 22 26" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -1070,7 +1112,6 @@
                 console.warn(`❌ Button with data-level="${mappedLevel}" not found`);
             }
         }
-        });
 
         // Helper function to update sliders monitoring level (moved outside closure for global access)
         function updateSlidersMonitoringLevel(level) {
@@ -1197,6 +1238,12 @@
                 
                 // Update header with patient info
                 updatePatientHeader();
+                
+                // Initialize global variables for this patient (simple approach)
+                if (window.sharedDataManager) {
+                    window.sharedDataManager.initializeGlobalParameterVariables(currentPatientId);
+                    console.log('✅ Global variables initialized for patient:', currentPatientId);
+                }
             } else {
                 console.error('❌ SharedDataManager not available');
                 alert('Data manager niet beschikbaar. Herlaad de pagina.');
@@ -1270,50 +1317,44 @@
         function setupEventListeners() {
             console.log('🔧 Setting up event listeners...');
             
-            // Listen for target range changes from other pages
-            window.addEventListener('targetRangesChanged', function(event) {
-                console.log('🎯 Target ranges changed event received:', event.detail);
+            // SIMPLE APPROACH: Listen for global parameter changes from problem changes
+            window.addEventListener('globalParametersChanged', function(event) {
+                console.log('🌐 Circulatory page received global parameters changed:', event.detail);
+                console.log('🌐 Current global variables - HR:', window.HR_MIN, '-', window.HR_MAX, 'BP:', window.BP_MIN, '-', window.BP_MAX);
+                console.log('🌐 Slider availability - hrSlider:', !!hrSlider, 'bpSlider:', !!bpSlider);
                 
-                const { patientId, targetRanges } = event.detail;
+                // ROBUST APPROACH: Force complete slider refresh from global variables
+                if (hrSlider && hrSlider.config && hrSlider.config.targetRange) {
+                    console.log('🔄 Updating HR slider config and position...');
+                    console.log('   - Old HR range:', hrSlider.config.targetRange.min, '-', hrSlider.config.targetRange.max);
+                    hrSlider.config.targetRange.min = window.HR_MIN;
+                    hrSlider.config.targetRange.max = window.HR_MAX;
+                    hrSlider.currentMin = window.HR_MIN;
+                    hrSlider.currentMax = window.HR_MAX;
+                    if (hrSlider.updateSliderPosition) {
+                        hrSlider.updateSliderPosition();
+                    }
+                    console.log('✅ HR slider forced to:', window.HR_MIN, '-', window.HR_MAX);
+                } else {
+                    console.log('❌ HR slider not available or not properly initialized');
+                }
                 
-                // Only update if it's for the current patient
-                if (patientId === currentPatientId && targetRanges) {
-                    console.log('🔄 Updating sliders with new target ranges:', targetRanges);
-                    
-                    // Update currentSettings
-                    currentSettings = {
-                        hr: {
-                            min: targetRanges.HR?.min || 70,
-                            max: targetRanges.HR?.max || 110
-                        },
-                        bp: {
-                            min: targetRanges.BP_Mean?.min || 65,
-                            max: targetRanges.BP_Mean?.max || 85
-                        }
-                    };
-                    
-                    // Update sliders if they exist
-                    if (hrSlider && typeof hrSlider.updateConfig === 'function') {
-                        hrSlider.updateConfig({
-                            targetRange: {
-                                min: currentSettings.hr.min,
-                                max: currentSettings.hr.max
-                            }
-                        });
-                        console.log('✅ HR slider target range updated');
+                if (bpSlider && bpSlider.config && bpSlider.config.targetRange) {
+                    console.log('🔄 Updating BP slider config and position...');
+                    console.log('   - Old BP range:', bpSlider.config.targetRange.min, '-', bpSlider.config.targetRange.max);
+                    bpSlider.config.targetRange.min = window.BP_MIN;
+                    bpSlider.config.targetRange.max = window.BP_MAX;
+                    bpSlider.currentMin = window.BP_MIN;
+                    bpSlider.currentMax = window.BP_MAX;
+                    if (bpSlider.updateSliderPosition) {
+                        bpSlider.updateSliderPosition();
                     }
-                    
-                    if (bpSlider && typeof bpSlider.updateConfig === 'function') {
-                        bpSlider.updateConfig({
-                            targetRange: {
-                                min: currentSettings.bp.min,
-                                max: currentSettings.bp.max
-                            }
-                        });
-                        console.log('✅ BP slider target range updated');
-                    }
+                    console.log('✅ BP slider forced to:', window.BP_MIN, '-', window.BP_MAX);
+                } else {
+                    console.log('❌ BP slider not available or not properly initialized');
                 }
             });
+
             
             // Function to force update HR slider with global HR_low and HR_high values
             function updateHRSliderFromGlobalValues() {
@@ -1325,8 +1366,8 @@
                         if (typeof hrSlider.updateConfig === 'function') {
                             hrSlider.updateConfig({
                                 targetRange: {
-                                    min: window.HR_low,
-                                    max: window.HR_high
+                                    min: window.HR_MIN,
+                                    max: window.HR_MAX
                                 }
                             });
                             console.log('✅ HR slider updated via updateConfig method');
@@ -1407,11 +1448,11 @@
                             if (typeof bpSlider.updateConfig === 'function') {
                                 bpSlider.updateConfig({
                                     targetRange: {
-                                        min: window.BP_low,
-                                        max: window.BP_high
+                                        min: window.BP_MIN,
+                                        max: window.BP_MAX
                                     }
                                 });
-                                console.log('✅ BP slider updated from target ranges:', window.BP_low, '-', window.BP_high);
+                                console.log('✅ BP slider updated from target ranges:', window.BP_MIN, '-', window.BP_MAX);
                             }
                         }
                         
@@ -1452,8 +1493,8 @@
                         if (bpSlider && typeof bpSlider.updateConfig === 'function') {
                             bpSlider.updateConfig({
                                 targetRange: {
-                                    min: BP_low,
-                                    max: BP_high
+                                    min: window.BP_MIN,
+                                    max: window.BP_MAX
                                 }
                             });
                             console.log('✅ BP slider updated with new ranges');
@@ -1607,66 +1648,7 @@
         }
         
 
-        function loadCurrentSettings() {
-            console.log('📊 Loading current circulatoir settings...');
-            
-            if (currentPatientId && window.sharedDataManager) {
-                // Load patient-specific target ranges first
-                const targetRanges = window.sharedDataManager.getPatientTargetRanges(currentPatientId);
-                console.log('🎯 Loaded target ranges for patient:', currentPatientId, targetRanges);
-                
-                // Update currentSettings to use target ranges
-                if (targetRanges) {
-                    currentSettings = {
-                        hr: {
-                            min: targetRanges.HR?.min || 70,
-                            max: targetRanges.HR?.max || 110
-                        },
-                        bp: {
-                            min: targetRanges.BP_Mean?.min || 65,
-                            max: targetRanges.BP_Mean?.max || 85
-                        }
-                    };
-                }
-                
-                // Try to load existing patient-specific fine-tuned settings
-                const savedSettings = window.sharedDataManager.getPatientCirculatoirSettings(currentPatientId);
-                
-                if (savedSettings) {
-                    console.log('✅ Found saved fine-tuned settings:', savedSettings);
-                    
-                    // ALWAYS prioritize target ranges when they exist (they reflect current condition state)
-                    if (targetRanges && (targetRanges.HR || targetRanges.BP_Mean)) {
-                        console.log('🎯 Target ranges exist - using target ranges instead of saved fine-tuned settings');
-                        // Keep currentSettings as is (target ranges take priority)
-                        console.log('🎯 Using current target ranges:', currentSettings);
-                    } else {
-                        // Only use saved settings if no target ranges exist
-                        currentSettings = {
-                            hr: savedSettings.hr || currentSettings.hr,
-                            bp: savedSettings.bp || currentSettings.bp
-                        };
-                        console.log('✅ No target ranges found - using saved fine-tuned settings:', currentSettings);
-                    }
-                } else {
-                    // If no fine-tuned settings, check if we need to load from medical info
-                    const medicalInfo = window.sharedDataManager.getPatientMedicalInfo(currentPatientId);
-                    if (medicalInfo && medicalInfo.selectedTags && !targetRanges) {
-                        // Only apply condition-based thresholds if no target ranges exist
-                        const thresholds = window.sharedDataManager.getThresholdsByTags(medicalInfo.selectedTags);
-                        if (thresholds && thresholds.circulatoir) {
-                            currentSettings = {
-                                hr: thresholds.circulatoir.HR || { min: 70, max: 110 },
-                                bp: thresholds.circulatoir.BP_Mean || { min: 65, max: 85 }
-                            };
-                            console.log('✅ Applied condition-based thresholds:', currentSettings);
-                        }
-                    }
-                }
-                
-                console.log('✅ Final current settings loaded:', currentSettings);
-            }
-        }
+
 
         function initializeSliders() {
             console.log('🎛️ Initializing interactive sliders...');
@@ -1723,35 +1705,37 @@
                             parameter: 'HR',
                             name: 'HR',
                             unit: 'bpm',
-                            targetRange: currentSettings.hr || { min: 70, max: 110 },
+                            targetRange: { min: window.HR_MIN, max: window.HR_MAX },
                             yAxis: { min: 40, max: 140, step: 20 },
                             monitoringLevel: 'mid',
                             patientId: currentPatientId,
                             patientName: patientInfo?.name || `Patiënt ${currentPatientId}`,
                             onChange: (data) => {
                                 console.log('HR Slider changed:', data);
-                                if (window.sharedDataManager && data.type === 'save') {
-                                    // Allow saving regardless of sepsis state
-                                    // Save to SharedDataManager
-                                    const newSettings = { hr: { min: data.min, max: data.max }, bp: currentSettings.bp };
-                                    window.sharedDataManager.savePatientCirculatoirSettings(currentPatientId, newSettings);
-                                    currentSettings = newSettings;
-                                    // Also update target ranges to reflect the slider changes
+                                if (data.type === 'save') {
+                                    console.log('💾 HR Slider SAVE - SIMPLE UPDATE of global variables');
                                     
-                                    // Get existing target ranges and merge with circulatory changes
-                                    const existingTargetRanges = window.sharedDataManager.getPatientTargetRanges(currentPatientId) || {};
-                                    const updatedTargetRanges = {
-                                        ...existingTargetRanges, // Preserve existing Saturatie, AF, etc.
-                                        HR: { min: Math.round(data.min), max: Math.round(data.max), unit: 'bpm' },
-                                        // Preserve existing BP_Mean target ranges instead of using currentSettings
-                                        BP_Mean: existingTargetRanges.BP_Mean || { 
-                                            min: Math.round(currentSettings.bp?.min || 65), 
-                                            max: Math.round(currentSettings.bp?.max || 85), 
-                                            unit: 'mmHg' 
-                                        }
-                                    };
-                                    window.sharedDataManager.updateGlobalTargetRanges(currentPatientId, updatedTargetRanges);
-                                    console.log('🎯 Updated target ranges after HR slider change:', updatedTargetRanges);
+                                    // SIMPLE APPROACH: Direct update of global variables
+                                    window.HR_MIN = Math.round(data.min);
+                                    window.HR_MAX = Math.round(data.max);
+                                    
+                                    // Save to localStorage
+                                    if (window.sharedDataManager) {
+                                        window.sharedDataManager.saveGlobalParameterVariables();
+                                        console.log('💾 Saved global variables to localStorage');
+                                    }
+                                    
+                                    // Update all displays on all pages immediately
+                                    console.log('🔄 Updating displays across all pages...');
+                                    // Update displays on this page
+                                    setTimeout(() => {
+                                        // Trigger display updates on other pages by dispatching a simple event
+                                        window.dispatchEvent(new CustomEvent('globalParametersChanged', {
+                                            detail: { parameter: 'HR', min: window.HR_MIN, max: window.HR_MAX }
+                                        }));
+                                    }, 10);
+                                    
+                                    console.log('✅ HR global variables updated:', window.HR_MIN, '-', window.HR_MAX);
                                 }
                             }
                         });
@@ -1796,35 +1780,35 @@
                             parameter: 'BP_Mean',
                             name: 'BP Mean',
                             unit: 'mmHg',
-                            targetRange: currentSettings.bp || { min: 65, max: 85 },
+                            targetRange: { min: window.BP_MIN, max: window.BP_MAX },
                             yAxis: { min: 30, max: 100, step: 10 },
                             monitoringLevel: 'mid',
                             patientId: currentPatientId,
                             patientName: patientInfo?.name || `Patiënt ${currentPatientId}`,
                             onChange: (data) => {
                                 console.log('BP Slider changed:', data);
-                                if (window.sharedDataManager && data.type === 'save') {
-                                    // Allow saving regardless of sepsis state
-                                    // Save to SharedDataManager
-                                    const newSettings = { hr: currentSettings.hr, bp: { min: data.min, max: data.max } };
-                                    window.sharedDataManager.savePatientCirculatoirSettings(currentPatientId, newSettings);
-                                    currentSettings = newSettings;
-                                    // Also update target ranges to reflect the slider changes
+                                if (data.type === 'save') {
+                                    console.log('💾 BP Slider SAVE - SIMPLE UPDATE of global variables');
                                     
-                                    // Get existing target ranges and merge with circulatory changes
-                                    const existingTargetRanges = window.sharedDataManager.getPatientTargetRanges(currentPatientId) || {};
-                                    const updatedTargetRanges = {
-                                        ...existingTargetRanges, // Preserve existing Saturatie, AF, etc.
-                                        // Preserve existing HR target ranges instead of using currentSettings
-                                        HR: existingTargetRanges.HR || { 
-                                            min: Math.round(currentSettings.hr?.min || 70), 
-                                            max: Math.round(currentSettings.hr?.max || 110), 
-                                            unit: 'bpm' 
-                                        },
-                                        BP_Mean: { min: Math.round(data.min), max: Math.round(data.max), unit: 'mmHg' }
-                                    };
-                                    window.sharedDataManager.updateGlobalTargetRanges(currentPatientId, updatedTargetRanges);
-                                    console.log('🎯 Updated target ranges after BP slider change:', updatedTargetRanges);
+                                    // SIMPLE APPROACH: Direct update of global variables
+                                    window.BP_MIN = Math.round(data.min);
+                                    window.BP_MAX = Math.round(data.max);
+                                    
+                                    // Save to localStorage
+                                    if (window.sharedDataManager) {
+                                        window.sharedDataManager.saveGlobalParameterVariables();
+                                        console.log('💾 Saved global variables to localStorage');
+                                    }
+                                    
+                                    // Update all displays on all pages immediately
+                                    console.log('🔄 Updating displays across all pages...');
+                                    setTimeout(() => {
+                                        window.dispatchEvent(new CustomEvent('globalParametersChanged', {
+                                            detail: { parameter: 'BP_Mean', min: window.BP_MIN, max: window.BP_MAX }
+                                        }));
+                                    }, 10);
+                                    
+                                    console.log('✅ BP global variables updated:', window.BP_MIN, '-', window.BP_MAX);
                                 }
                             }
                         });

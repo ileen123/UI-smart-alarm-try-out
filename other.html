@@ -969,24 +969,20 @@
             initializePage();
             setupEventListeners();
             initializeConditionStates(); // Initialize condition button states from SharedDataManager
-            loadCurrentSettings(); // Then load settings (which will respect sepsis state)
+            
+            // Initialize global variables system (simple approach)
+            if (window.sharedDataManager) {
+                window.sharedDataManager.loadGlobalParameterVariables();
+                console.log('✅ Global variables loaded for other page');
+            }
 
             // Initialize heart circle component (same as alarm overview)
             setTimeout(() => {
                 initializeHeartCircleComponent();
                 initializeSliders();
                 
-                // Check if sepsis is active and force slider update after everything is loaded
-                setTimeout(() => {
-                    if (currentPatientId && window.sharedDataManager) {
-                        const targetRanges = window.sharedDataManager.getPatientTargetRanges(currentPatientId);
-                        console.log('🔍 Checking target ranges on page load:', targetRanges);
-                        if (targetRanges && targetRanges.HR && targetRanges.HR.min === 90 && targetRanges.HR.max === 130) {
-                            console.log('🦠 SEPSIS DETECTED ON PAGE LOAD - forcing slider to 90-130');
-                            testSepsisRange();
-                        }
-                    }
-                }, 500);
+                // SIMPLE APPROACH: Global variables are automatically loaded and used
+                console.log('✅ Sliders initialized - using global variables approach');
             }, 1000);
         // Heart, Lung, and Temperature SVG content
         const svgContent = {
@@ -1211,6 +1207,12 @@
                 
                 // Update header with patient info
                 updatePatientHeader();
+                
+                // Initialize global variables for this patient (simple approach)
+                if (window.sharedDataManager) {
+                    window.sharedDataManager.initializeGlobalParameterVariables(currentPatientId);
+                    console.log('✅ Global variables initialized for patient:', currentPatientId);
+                }
             } else {
                 console.error('❌ SharedDataManager not available');
                 alert('Data manager niet beschikbaar. Herlaad de pagina.');
@@ -1298,133 +1300,22 @@
         function setupEventListeners() {
             console.log('🔧 Setting up event listeners...');
             
-            // Listen for target range changes from other pages
-            window.addEventListener('targetRangesChanged', function(event) {
-                console.log('🎯 Target ranges changed event received:', event.detail);
-                
-                const { patientId, targetRanges } = event.detail;
-                
-                // Only update if it's for the current patient
-                if (patientId === currentPatientId && targetRanges) {
-                    console.log('🔄 Updating sliders with new target ranges:', targetRanges);
-                    
-                    // Update currentSettings
-                    currentSettings = {
-                        hr: {
-                            min: targetRanges.HR?.min || 70,
-                            max: targetRanges.HR?.max || 110
-                        },
-                        bp: {
-                            min: targetRanges.BP_Mean?.min || 65,
-                            max: targetRanges.BP_Mean?.max || 85
-                        }
-                    };
-                    
-                    // Update sliders if they exist
-                    if (hrSlider && typeof hrSlider.updateConfig === 'function') {
-                        hrSlider.updateConfig({
-                            targetRange: {
-                                min: currentSettings.hr.min,
-                                max: currentSettings.hr.max
-                            }
-                        });
-                        console.log('✅ HR slider target range updated');
+            // SIMPLE APPROACH: Listen for global parameter changes
+            window.addEventListener('globalParametersChanged', function(event) {
+                console.log('� Global parameters changed event received:', event.detail);
+                // Update temperature slider with new global variables
+                if (tempSlider && typeof tempSlider.updateConfig === 'function') {
+                    tempSlider.updateConfig({
+                        targetRange: { min: window.TEMP_MIN, max: window.TEMP_MAX }
+                    });
+                    // Force visual position refresh
+                    if (tempSlider.updateSliderPosition) {
+                        tempSlider.updateSliderPosition();
                     }
-                    
-                    if (bpSlider && typeof bpSlider.updateConfig === 'function') {
-                        bpSlider.updateConfig({
-                            targetRange: {
-                                min: currentSettings.bp.min,
-                                max: currentSettings.bp.max
-                            }
-                        });
-                        console.log('✅ BP slider target range updated');
-                    }
+                    console.log('✅ Temperature slider updated from global parameters:', window.TEMP_MIN, '-', window.TEMP_MAX);
                 }
             });
-            
-            // Function to force update HR slider with global HR_low and HR_high values
-            function updateHRSliderFromGlobalValues() {
-                if (typeof window.HR_low !== 'undefined' && typeof window.HR_high !== 'undefined') {
-                    console.log('🔄 Forcing HR slider update with global values:', window.HR_low, '-', window.HR_high);
-                    
-                    if (hrSlider) {
-                        // Directly update slider internal values
-                        hrSlider.currentMin = window.HR_low;
-                        hrSlider.currentMax = window.HR_high;
-                        hrSlider.config.targetRange.min = window.HR_low;
-                        hrSlider.config.targetRange.max = window.HR_high;
-                        
-                        // Update the visual elements directly
-                        const maxValueElement = hrSlider.container.querySelector('.sliding-value-outside.max-value');
-                        const minValueElement = hrSlider.container.querySelector('.sliding-value-outside.min-value');
-                        if (maxValueElement) maxValueElement.textContent = Math.round(window.HR_high);
-                        if (minValueElement) minValueElement.textContent = Math.round(window.HR_low);
-                        
-                        // Update slider positions
-                        hrSlider.updateSliderPosition();
-                        
-                        console.log('✅ HR slider FORCE updated from globals:', window.HR_low, '-', window.HR_high);
-                    } else {
-                        console.warn('⚠️ HR slider not available for global update');
-                    }
-                } else {
-                    console.warn('⚠️ Global HR_low or HR_high not available');
-                }
-            }
-            
-            // Test function to force sepsis range (90-130) - for debugging
-            function testSepsisRange() {
-                window.HR_low = 90;
-                window.HR_high = 130;
-                console.log('🧪 TEST: Set globals to sepsis range 90-130');
-                updateHRSliderFromGlobalValues();
-            }
-            
-            // Make test function available globally for debugging
-            window.testSepsisRange = testSepsisRange;
-            
-            
-            // Listen for HR range changes from sepsis selection/deselection
-            window.addEventListener('hrRangesChanged', function(event) {
-                console.log('💓 HR ranges changed event received in circulatoir-settings:', event.detail);
-                
-                const { patientId, HR_low, HR_high, BP_low, BP_high, source } = event.detail;
-                
-                // Only update if it's for the current patient
-                if (patientId === currentPatientId) {
-                    console.log('🔄 Updating HR slider with new ranges:', HR_low, '-', HR_high, 'source:', source);
-                    
-                    // Update currentSettings
-                    currentSettings.hr = {
-                        min: HR_low,
-                        max: HR_high
-                    };
-                    
-                    // Update BP settings if BP ranges are provided
-                    if (typeof BP_low !== 'undefined' && typeof BP_high !== 'undefined') {
-                        console.log('🩸 Updating BP slider with new ranges:', BP_low, '-', BP_high, 'source:', source);
-                        currentSettings.bp = {
-                            min: BP_low,
-                            max: BP_high
-                        };
-                        
-                        // Update BP slider if it exists
-                        if (bpSlider && typeof bpSlider.updateConfig === 'function') {
-                            bpSlider.updateConfig({
-                                targetRange: {
-                                    min: BP_low,
-                                    max: BP_high
-                                }
-                            });
-                            console.log('✅ BP slider updated with new ranges');
-                        }
-                    }
-                    
-                    // Force update HR slider using global values
-                    updateHRSliderFromGlobalValues();
-                }
-            });
+
             
             // Set up circulatory tag button listeners
             const circulatoryTagButtons = document.querySelectorAll('.circulatory-tag');
@@ -1584,45 +1475,7 @@
         }
         
 
-        function loadCurrentSettings() {
-            console.log('📊 Loading current temperature settings...');
-            
-            if (currentPatientId && window.sharedDataManager) {
-                // Load patient-specific target ranges first
-                const targetRanges = window.sharedDataManager.getPatientTargetRanges(currentPatientId);
-                console.log('🎯 Loaded target ranges for patient:', currentPatientId, targetRanges);
-                
-                // Update currentSettings to use target ranges
-                if (targetRanges && targetRanges.Temperature) {
-                    currentSettings = {
-                        temperature: {
-                            min: targetRanges.Temperature.min || 36.5,
-                            max: targetRanges.Temperature.max || 39.0
-                        }
-                    };
-                    console.log('✅ Loaded temperature settings from target ranges:', currentSettings.temperature);
-                } else {
-                    // Load default temperature settings if no target ranges exist
-                    currentSettings.temperature = currentSettings.temperature || { min: 36.0, max: 38.5 };
-                    console.log('📊 Using default temperature settings:', currentSettings.temperature);
-                }
-                
-                // Try to load existing patient-specific fine-tuned settings
-                const savedSettings = window.sharedDataManager.getPatientOtherSettings(currentPatientId);
-                
-                if (savedSettings && savedSettings.temperature) {
-                    console.log('✅ Found saved fine-tuned temperature settings:', savedSettings.temperature);
-                    // Use manually adjusted settings if they exist
-                    currentSettings.temperature = savedSettings.temperature;
-                } else {
-                    console.log('ℹ️ No saved temperature settings found, using defaults');
-                }
-                
-                console.log('✅ Final current temperature settings loaded:', currentSettings);
-            } else {
-                console.log('⚠️ No patient ID or SharedDataManager available');
-            }
-        }
+
 
         function initializeSliders() {
             console.log('🎛️ Initializing temperature slider...');
@@ -1667,7 +1520,7 @@
                             parameter: 'Temperature',
                             name: 'Temperatuur',
                             unit: '°C',
-                            targetRange: currentSettings.temperature || { min: 36.0, max: 38.5 },
+                            targetRange: { min: window.TEMP_MIN, max: window.TEMP_MAX },
                             yAxis: { min: 35, max: 42, step: 0.5 },
                             monitoringLevel: 'mid',
                             patientId: currentPatientId,
@@ -1679,14 +1532,25 @@
                                     window.sharedDataManager.savePatientOtherSettings(currentPatientId, newSettings);
                                     currentSettings = newSettings;
                                     
-                                    // Get existing target ranges and merge with temperature changes
-                                    const existingTargetRanges = window.sharedDataManager.getPatientTargetRanges(currentPatientId) || {};
-                                    const updatedTargetRanges = {
-                                        ...existingTargetRanges, // Preserve existing HR, BP_Mean, Saturatie, AF, etc.
-                                        Temperature: { min: Math.round(data.min * 10) / 10, max: Math.round(data.max * 10) / 10, unit: '°C' }
-                                    };
-                                    window.sharedDataManager.updateGlobalTargetRanges(currentPatientId, updatedTargetRanges);
-                                    console.log('🎯 Updated target ranges after Temperature slider change:', updatedTargetRanges);
+                                    // SIMPLE APPROACH: Direct update of global variables
+                                    window.TEMP_MIN = Math.round(data.min * 10) / 10;
+                                    window.TEMP_MAX = Math.round(data.max * 10) / 10;
+                                    
+                                    // Save to localStorage
+                                    if (window.sharedDataManager) {
+                                        window.sharedDataManager.saveGlobalParameterVariables();
+                                        console.log('💾 Saved global variables to localStorage');
+                                    }
+                                    
+                                    // Update all displays on all pages immediately
+                                    console.log('🔄 Updating displays across all pages...');
+                                    setTimeout(() => {
+                                        window.dispatchEvent(new CustomEvent('globalParametersChanged', {
+                                            detail: { parameter: 'Temperature', min: window.TEMP_MIN, max: window.TEMP_MAX }
+                                        }));
+                                    }, 10);
+                                    
+                                    console.log('✅ Temperature global variables updated:', window.TEMP_MIN, '-', window.TEMP_MAX);
                                 }
                             }
                         });

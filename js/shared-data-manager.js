@@ -17,6 +17,118 @@ class SharedDataManager {
         
         this.initializeAppData();
         this.initializeGlobalHRVariables();
+        this.initializeGlobalParameterVariables();
+    }
+
+    /**
+     * Initialize global parameter variables - single source of truth for all target ranges
+     * These variables are used consistently across all pages for displays and sliders
+     */
+    initializeGlobalParameterVariables() {
+        // Initialize with default values if not already set
+        if (typeof window.HR_MIN === 'undefined') window.HR_MIN = 70;
+        if (typeof window.HR_MAX === 'undefined') window.HR_MAX = 110;
+        if (typeof window.BP_MIN === 'undefined') window.BP_MIN = 65;
+        if (typeof window.BP_MAX === 'undefined') window.BP_MAX = 85;
+        if (typeof window.AF_MIN === 'undefined') window.AF_MIN = 12;
+        if (typeof window.AF_MAX === 'undefined') window.AF_MAX = 18;
+        if (typeof window.SAT_MIN === 'undefined') window.SAT_MIN = 92;
+        if (typeof window.SAT_MAX === 'undefined') window.SAT_MAX = 100;
+        if (typeof window.TEMP_MIN === 'undefined') window.TEMP_MIN = 36.0;
+        if (typeof window.TEMP_MAX === 'undefined') window.TEMP_MAX = 38.5;
+
+        // Load existing values from localStorage if available
+        this.loadGlobalParameterVariables();
+
+        console.log('🌐 Global parameter variables initialized:');
+        console.log(`  HR: ${window.HR_MIN}-${window.HR_MAX} bpm`);
+        console.log(`  BP: ${window.BP_MIN}-${window.BP_MAX} mmHg`);
+        console.log(`  AF: ${window.AF_MIN}-${window.AF_MAX} /min`);
+        console.log(`  Saturatie: ${window.SAT_MIN}-${window.SAT_MAX}%`);
+        console.log(`  Temperature: ${window.TEMP_MIN}-${window.TEMP_MAX}°C`);
+    }
+
+    /**
+     * Load global parameter variables from localStorage
+     */
+    loadGlobalParameterVariables() {
+        const saved = localStorage.getItem('globalParameterVariables');
+        if (saved) {
+            try {
+                const params = JSON.parse(saved);
+                window.HR_MIN = params.HR_MIN || window.HR_MIN;
+                window.HR_MAX = params.HR_MAX || window.HR_MAX;
+                window.BP_MIN = params.BP_MIN || window.BP_MIN;
+                window.BP_MAX = params.BP_MAX || window.BP_MAX;
+                window.AF_MIN = params.AF_MIN || window.AF_MIN;
+                window.AF_MAX = params.AF_MAX || window.AF_MAX;
+                window.SAT_MIN = params.SAT_MIN || window.SAT_MIN;
+                window.SAT_MAX = params.SAT_MAX || window.SAT_MAX;
+                window.TEMP_MIN = params.TEMP_MIN || window.TEMP_MIN;
+                window.TEMP_MAX = params.TEMP_MAX || window.TEMP_MAX;
+                console.log('📥 Loaded global parameter variables from localStorage');
+            } catch (error) {
+                console.warn('⚠️ Error loading global parameters:', error);
+            }
+        }
+    }
+
+    /**
+     * Save global parameter variables to localStorage
+     */
+    saveGlobalParameterVariables() {
+        const params = {
+            HR_MIN: window.HR_MIN,
+            HR_MAX: window.HR_MAX,
+            BP_MIN: window.BP_MIN,
+            BP_MAX: window.BP_MAX,
+            AF_MIN: window.AF_MIN,
+            AF_MAX: window.AF_MAX,
+            SAT_MIN: window.SAT_MIN,
+            SAT_MAX: window.SAT_MAX,
+            TEMP_MIN: window.TEMP_MIN,
+            TEMP_MAX: window.TEMP_MAX
+        };
+        localStorage.setItem('globalParameterVariables', JSON.stringify(params));
+        console.log('💾 Saved global parameter variables to localStorage');
+    }
+
+    /**
+     * Clear all manual adjustments for a specific patient (when switching patients or resetting)
+     */
+    clearPatientManualAdjustments(patientId) {
+        if (!patientId) return;
+        
+        console.log('🗑️ Clearing ALL manual adjustments for patient:', patientId);
+        
+        // Clear all slider custom thresholds
+        const parameterTypes = ['HR', 'BP_Mean', 'AF', 'Saturatie', 'Temperature'];
+        parameterTypes.forEach(type => {
+            localStorage.removeItem(`patient-${patientId}-${type}-custom-threshold`);
+        });
+        
+        // Clear all global parameter manual overrides
+        const globalParams = ['HR_MIN', 'HR_MAX', 'BP_MIN', 'BP_MAX', 'AF_MIN', 'AF_MAX', 'SAT_MIN', 'SAT_MAX', 'TEMP_MIN', 'TEMP_MAX'];
+        globalParams.forEach(param => {
+            localStorage.removeItem(`patient-${patientId}-${param}-manual`);
+        });
+        
+        console.log('✅ All manual adjustments cleared for patient:', patientId);
+    }
+
+    /**
+     * Mark that user is manually changing main problem (should overwrite manual slider adjustments)
+     */
+    setUserChangingProblem(isChanging = true) {
+        window.isUserChangingProblem = isChanging;
+        console.log(`🎯 User changing problem flag set to: ${isChanging}`);
+    }
+
+    /**
+     * Check if user is currently changing problem manually
+     */
+    isUserManuallyChangingProblem() {
+        return window.isUserChangingProblem === true;
     }
 
     /**
@@ -232,6 +344,18 @@ class SharedDataManager {
      */
     saveSessionData(sessionData) {
         try {
+            // PATIENT SWITCH DETECTION: Check if patient is changing
+            const previousPatient = localStorage.getItem(this.storageKeys.CURRENT_PATIENT);
+            const newPatient = sessionData.currentPatient;
+            
+            if (previousPatient && newPatient && previousPatient !== newPatient) {
+                console.log('👤 Patient switching detected:', previousPatient, '→', newPatient);
+                // Clear manual adjustments for the previous patient
+                this.clearPatientManualAdjustments(previousPatient);
+                // Also clear manual adjustments for the new patient to start fresh
+                this.clearPatientManualAdjustments(newPatient);
+            }
+            
             // Save individual session items (legacy compatibility)
             if (sessionData.currentPatient) {
                 localStorage.setItem(this.storageKeys.CURRENT_PATIENT, sessionData.currentPatient);
@@ -796,8 +920,8 @@ class SharedDataManager {
      * @param {string} overallRiskLevel - The patient's overall risk level ('low', 'mid', 'high') (optional)
      * @returns {Object} - Object containing organStates, targetRanges, and reasoning
      */
-    applyProblemSpecificMonitoring(problemValue, organComponents = null, patientId = null, overallRiskLevel = null) {
-        console.log('🎯 Applying problem-specific monitoring for:', problemValue);
+    applyProblemSpecificMonitoring(problemValue, organComponents = null, patientId = null, overallRiskLevel = null, shouldOverwriteManualAdjustments = true) {
+        console.log('🎯 Applying problem-specific monitoring for:', problemValue, '- Should overwrite manual adjustments:', shouldOverwriteManualAdjustments);
         
         // Get current risk level from localStorage if not provided
         if (!overallRiskLevel) {
@@ -810,6 +934,7 @@ class SharedDataManager {
         let targetRanges = {};
         
         // Define target ranges for each problem (organ states now come from the matrix!)
+        console.log('🎯 Setting target ranges for problem:', problemValue);
         switch(problemValue) {
             case 'respiratoire-insufficientie':
                 targetRanges = {
@@ -821,6 +946,7 @@ class SharedDataManager {
                     Saturatie: { min: 92, max: 100, unit: '%' },
                     Temperature: { min: 36.0, max: 38.5, unit: '°C' }
                 };
+                console.log('📊 Respiratoire-insufficiëntie ranges - HR:', targetRanges.HR.min + '-' + targetRanges.HR.max, 'AF:', targetRanges.AF.min + '-' + targetRanges.AF.max);
                 break;
                 
             case 'hart-falen':
@@ -833,6 +959,7 @@ class SharedDataManager {
                     Saturatie: { min: 92, max: 100, unit: '%' },
                     Temperature: { min: 36.0, max: 38.5, unit: '°C' }
                 };
+                console.log('📊 Hart-falen ranges - HR:', targetRanges.HR.min + '-' + targetRanges.HR.max, 'AF:', targetRanges.AF.min + '-' + targetRanges.AF.max);
                 break;
                 
             case 'sepsis':
@@ -845,6 +972,7 @@ class SharedDataManager {
                     Saturatie: { min: 92, max: 100, unit: '%' },
                     Temperature: { min: 36.0, max: 38.5, unit: '°C' }
                 };
+                console.log('📊 Sepsis ranges - HR:', targetRanges.HR.min + '-' + targetRanges.HR.max, 'AF:', targetRanges.AF.min + '-' + targetRanges.AF.max);
                 break;
                 
             default:
@@ -904,6 +1032,66 @@ class SharedDataManager {
         if (patientId && targetRanges) {
             this.savePatientTargetRanges(patientId, targetRanges);
             console.log('✅ Saved target ranges for patient:', patientId);
+            
+            // UPDATE GLOBAL VARIABLES: Simple approach - update global variables directly
+            if (shouldOverwriteManualAdjustments) {
+                console.log('🔄 Updating global variables with problem-specific defaults (overwriting manual adjustments)');
+                
+                // CLEAR SAVED CUSTOM SETTINGS: When problem changes, clear all saved manual adjustments
+                // so sliders will use the new global defaults instead of old localStorage settings
+                if (patientId) {
+                    console.log('🗑️ Clearing saved custom slider settings for patient:', patientId);
+                    // Clear HR settings
+                    localStorage.removeItem(`patient-${patientId}-HR-custom-threshold`);
+                    localStorage.removeItem(`patient-${patientId}-HR_MIN-manual`);
+                    localStorage.removeItem(`patient-${patientId}-HR_MAX-manual`);
+                    // Clear BP settings  
+                    localStorage.removeItem(`patient-${patientId}-BP_Mean-custom-threshold`);
+                    localStorage.removeItem(`patient-${patientId}-BP_MIN-manual`);
+                    localStorage.removeItem(`patient-${patientId}-BP_MAX-manual`);
+                    // Clear AF settings
+                    localStorage.removeItem(`patient-${patientId}-AF-custom-threshold`);
+                    localStorage.removeItem(`patient-${patientId}-AF_MIN-manual`);
+                    localStorage.removeItem(`patient-${patientId}-AF_MAX-manual`);
+                    // Clear Saturatie settings
+                    localStorage.removeItem(`patient-${patientId}-Saturatie-custom-threshold`);
+                    localStorage.removeItem(`patient-${patientId}-SAT_MIN-manual`);
+                    localStorage.removeItem(`patient-${patientId}-SAT_MAX-manual`);
+                    // Clear Temperature settings
+                    localStorage.removeItem(`patient-${patientId}-Temperature-custom-threshold`);
+                    localStorage.removeItem(`patient-${patientId}-TEMP_MIN-manual`);
+                    localStorage.removeItem(`patient-${patientId}-TEMP_MAX-manual`);
+                }
+                
+                // Update global variables with problem defaults
+                if (targetRanges.HR && targetRanges.HR.min !== '-') {
+                    window.HR_MIN = targetRanges.HR.min;
+                    window.HR_MAX = targetRanges.HR.max;
+                }
+                if (targetRanges.BP_Mean && targetRanges.BP_Mean.min !== '-') {
+                    window.BP_MIN = targetRanges.BP_Mean.min;
+                    window.BP_MAX = targetRanges.BP_Mean.max;
+                }
+                if (targetRanges.AF && targetRanges.AF.min !== '-') {
+                    window.AF_MIN = targetRanges.AF.min;
+                    window.AF_MAX = targetRanges.AF.max;
+                }
+                if (targetRanges.Saturatie && targetRanges.Saturatie.min !== '-') {
+                    window.SAT_MIN = targetRanges.Saturatie.min;
+                    window.SAT_MAX = targetRanges.Saturatie.max;
+                }
+                if (targetRanges.Temperature && targetRanges.Temperature.min !== '-') {
+                    window.TEMP_MIN = targetRanges.Temperature.min;
+                    window.TEMP_MAX = targetRanges.Temperature.max;
+                }
+                
+                // Save to localStorage
+                this.saveGlobalParameterVariables();
+                console.log('📊 Global variables updated with main problem defaults');
+                console.log('🗑️ Cleared saved custom settings - sliders will use new defaults');
+            } else {
+                console.log('🔒 Preserving existing manual adjustments - not overwriting global variables');
+            }
         }
         
         // Store the applied states for other pages to access
@@ -912,6 +1100,30 @@ class SharedDataManager {
             appData.currentOrganStates = organStates;
             appData.currentTargetRanges = targetRanges;
             this.saveAppData(appData);
+        }
+        
+        // Dispatch global parameters changed event to notify all pages
+        if (shouldOverwriteManualAdjustments) {
+            setTimeout(() => {
+                console.log('🔄 About to dispatch globalParametersChanged event');
+                console.log('📊 Current global variables after problem change:');
+                console.log('   HR:', window.HR_MIN, '-', window.HR_MAX);
+                console.log('   BP:', window.BP_MIN, '-', window.BP_MAX);
+                console.log('   AF:', window.AF_MIN, '-', window.AF_MAX);
+                console.log('   SAT:', window.SAT_MIN, '-', window.SAT_MAX);
+                console.log('   TEMP:', window.TEMP_MIN, '-', window.TEMP_MAX);
+                
+                window.dispatchEvent(new CustomEvent('globalParametersChanged', {
+                    detail: { 
+                        source: 'problemChange',
+                        problem: problemValue,
+                        riskLevel: overallRiskLevel
+                    }
+                }));
+                console.log('🔄 Dispatched globalParametersChanged event for problem change');
+            }, 10);
+        } else {
+            console.log('⏸️ NOT dispatching globalParametersChanged - shouldOverwriteManualAdjustments is false');
         }
         
         console.log('🎯 Problem-specific monitoring applied:', { organStates, targetRanges, reasoning: riskCalculation.reasoning });
@@ -1347,6 +1559,86 @@ class SharedDataManager {
         return normalThresholds;
     }
 
+    // ===================================================================
+    // CENTRALIZED TARGET RANGE MANAGEMENT
+    // ===================================================================
+
+    /**
+     * Get current target ranges for a patient (centralized source of truth)
+     * @param {string} patientId - Patient identifier
+     * @returns {Object} - Current target ranges for all parameters
+     */
+    getCurrentTargetRanges(patientId) {
+        const key = `${this.storageKeys.PATIENT_PREFIX}${patientId}_current_target_ranges`;
+        const stored = localStorage.getItem(key);
+        
+        if (stored) {
+            const ranges = JSON.parse(stored);
+            console.log('📊 Retrieved current target ranges for patient:', patientId, ranges);
+            return ranges;
+        }
+        
+        // If no current ranges exist, initialize with defaults
+        const defaultRanges = this.getDefaultTargetRanges();
+        this.setCurrentTargetRanges(patientId, defaultRanges);
+        console.log('📊 Initialized default target ranges for patient:', patientId, defaultRanges);
+        return defaultRanges;
+    }
+
+    /**
+     * Set current target ranges for a patient (centralized source of truth)
+     * @param {string} patientId - Patient identifier
+     * @param {Object} targetRanges - Target ranges object
+     * @param {string} source - Source of the change ('main-problem-change', 'slider-adjustment', etc.)
+     */
+    setCurrentTargetRanges(patientId, targetRanges, source = 'unknown') {
+        const key = `${this.storageKeys.PATIENT_PREFIX}${patientId}_current_target_ranges`;
+        localStorage.setItem(key, JSON.stringify(targetRanges));
+        
+        console.log('📊 Updated current target ranges for patient:', patientId, 'Source:', source, targetRanges);
+        
+        // Fire event to notify all pages of the change (but only for valid sources)
+        if (source === 'main-problem-change' || source === 'slider-adjustment') {
+            this.fireTargetRangesChangedEvent(patientId, targetRanges, source);
+        }
+    }
+
+    /**
+     * Update specific parameter in current target ranges
+     * @param {string} patientId - Patient identifier
+     * @param {string} parameter - Parameter name (HR, BP_Mean, AF, Saturatie, Temperature)
+     * @param {Object} range - New range {min, max, unit}
+     * @param {string} source - Source of the change
+     */
+    updateCurrentTargetRange(patientId, parameter, range, source = 'slider-adjustment') {
+        const currentRanges = this.getCurrentTargetRanges(patientId);
+        currentRanges[parameter] = range;
+        this.setCurrentTargetRanges(patientId, currentRanges, source);
+        
+        console.log(`📊 Updated ${parameter} range for patient ${patientId}: ${range.min}-${range.max} ${range.unit}`);
+    }
+
+    /**
+     * Fire targetRangesChanged event to notify all pages
+     * @param {string} patientId - Patient identifier
+     * @param {Object} targetRanges - Target ranges object
+     * @param {string} source - Source of the change
+     */
+    fireTargetRangesChangedEvent(patientId, targetRanges, source) {
+        console.log('🚀 ABOUT TO FIRE targetRangesChanged event:', { patientId, source });
+        const event = new CustomEvent('targetRangesChanged', {
+            detail: { 
+                patientId, 
+                targetRanges,
+                source,
+                timestamp: Date.now()
+            }
+        });
+        console.log('🚀 Event created, dispatching now...');
+        window.dispatchEvent(event);
+        console.log('� Event DISPATCHED successfully:', { patientId, source, targetRanges });
+    }
+
     /**
      * Save patient-specific circulatoir settings
      */
@@ -1513,12 +1805,9 @@ class SharedDataManager {
                 this.saveAppData(appData);
             }
             
-            // Emit event for cross-page synchronization
-            const event = new CustomEvent('targetRangesChanged', {
-                detail: { patientId, targetRanges }
-            });
-            window.dispatchEvent(event);
-            
+            // NOTE: Old event system - now handled by centralized fireTargetRangesChangedEvent
+            // This method is called by the centralized system, so no need to fire additional events
+            console.log('💾 Target ranges saved to storage for patient:', patientId);
             console.log('✅ Target ranges saved for patient:', patientId, targetRanges);
             return true;
         } catch (error) {
@@ -1602,22 +1891,20 @@ class SharedDataManager {
     /**
      * Emit global target ranges update event
      */
-    updateGlobalTargetRanges(patientId, targetRanges) {
+    updateGlobalTargetRanges(patientId, targetRanges, source = 'legacy') {
         this.savePatientTargetRanges(patientId, targetRanges);
         
         // Set a timestamp for manual changes (to prioritize over automatic updates)
         sessionStorage.setItem('manualTargetRangesChange', Date.now().toString());
         
-        // Dispatch event to notify all pages of target range changes
-        window.dispatchEvent(new CustomEvent('targetRangesChanged', {
-            detail: {
-                patientId: patientId,
-                targetRanges: targetRanges
-            }
-        }));
+        // Use centralized event firing system with proper source tracking
+        console.log('⚠️ DEPRECATED: updateGlobalTargetRanges called - use centralized system instead');
+        console.log('🌐 Legacy global target ranges updated for patient:', patientId, 'Source:', source);
         
-        console.log('🌐 Global target ranges updated for patient:', patientId);
-        console.log('📡 Dispatched targetRangesChanged event');
+        // Only fire event for valid sources to maintain compatibility with centralized system
+        if (source === 'main-problem-change' || source === 'slider-adjustment' || source === 'legacy') {
+            this.fireTargetRangesChangedEvent(patientId, targetRanges, source);
+        }
     }
 
     /**
