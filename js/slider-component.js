@@ -46,6 +46,7 @@ class VitalParameterSlider {
         // Load existing settings from SharedDataManager after initial render
         setTimeout(() => {
             this.loadExistingSettings();
+            this.initializeAlarmToggle();
         }, 100);
     }
 
@@ -107,7 +108,13 @@ class VitalParameterSlider {
     render() {
         const sliderHTML = `
             <div class="vital-slider" data-vital="${this.config.parameter}">
-                <div class="slider-title">${this.config.name}</div>
+                <div class="slider-title-container">
+                    <div class="slider-title">${this.config.name}</div>
+                    <label class="alarm-toggle detailed-page-toggle">
+                        <input type="checkbox" id="alarm-toggle-${this.config.parameter.toLowerCase()}" data-parameter="${this.config.parameter}">
+                        <span class="slider"></span>
+                    </label>
+                </div>
                 <div class="value-display"></div>
 
                 <div class="chart-container">
@@ -717,6 +724,80 @@ class VitalParameterSlider {
             console.log('⚠️ SharedDataManager or patientId not available');
             return false;
         }
+    }
+
+    /**
+     * Initialize alarm toggle functionality
+     */
+    initializeAlarmToggle() {
+        const expectedId = `alarm-toggle-${this.config.parameter.toLowerCase()}`;
+        const toggleInput = this.container.querySelector(`#${expectedId}`);
+        
+        console.log(`🔍 Initializing toggle for ${this.config.parameter}, looking for ID: ${expectedId}`);
+        console.log(`🔍 Toggle input found:`, !!toggleInput);
+        
+        if (!toggleInput) {
+            console.error(`❌ Toggle input not found for ${this.config.parameter}`);
+            console.log('🔍 Available inputs in container:', this.container.querySelectorAll('input'));
+            return;
+        }
+
+        // Load current alarm state from SharedDataManager
+        if (window.sharedDataManager && this.config.patientId) {
+            const isEnabled = window.sharedDataManager.getParameterAlarmEnabled(this.config.patientId, this.config.parameter);
+            toggleInput.checked = isEnabled;
+            console.log(`✅ Loaded alarm state for ${this.config.parameter}: ${isEnabled ? 'ON' : 'OFF'}`);
+        } else {
+            console.warn(`⚠️ SharedDataManager or patientId not available for ${this.config.parameter}`);
+        }
+
+        // Remove any existing event listeners to prevent duplicates
+        const newToggleInput = toggleInput.cloneNode(true);
+        toggleInput.parentNode.replaceChild(newToggleInput, toggleInput);
+
+        // Add change event listener to the new element
+        newToggleInput.addEventListener('change', (e) => {
+            const isEnabled = e.target.checked;
+            console.log(`🔔 Alarm toggle CHANGED for ${this.config.parameter}: ${isEnabled ? 'ON' : 'OFF'}`);
+            console.log(`🔔 Patient ID: ${this.config.patientId}`);
+            
+            // Update SharedDataManager
+            if (window.sharedDataManager && this.config.patientId) {
+                console.log(`📞 Calling setParameterAlarmEnabled(${this.config.patientId}, ${this.config.parameter}, ${isEnabled})`);
+                window.sharedDataManager.setParameterAlarmEnabled(this.config.patientId, this.config.parameter, isEnabled);
+            } else {
+                console.error(`❌ Cannot save alarm state - missing SharedDataManager or patientId`);
+            }
+        });
+
+        // Add click handler to the toggle label for additional debugging and activation
+        const toggleLabel = newToggleInput.closest('.alarm-toggle');
+        if (toggleLabel) {
+            toggleLabel.addEventListener('click', (e) => {
+                // Let the default behavior handle the toggle, just add logging
+                console.log(`👆 Toggle label CLICKED for ${this.config.parameter}`);
+                console.log(`👆 Current input state before click: ${newToggleInput.checked}`);
+                
+                // The click will trigger the change event above
+            });
+        }
+
+        // Store reference for synchronization
+        this.toggleInput = newToggleInput;
+
+        // Listen for alarm state changes from other pages
+        const syncHandler = (e) => {
+            if (e.detail.parameter === this.config.parameter && e.detail.patientId === this.config.patientId) {
+                if (this.toggleInput) {
+                    this.toggleInput.checked = e.detail.isEnabled;
+                    console.log(`🔄 Synchronized alarm state for ${this.config.parameter}: ${e.detail.isEnabled ? 'ON' : 'OFF'}`);
+                }
+            }
+        };
+
+        // Remove existing listener and add new one
+        window.removeEventListener('parameterAlarmToggled', syncHandler);
+        window.addEventListener('parameterAlarmToggled', syncHandler);
     }
 
     /**

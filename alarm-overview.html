@@ -673,22 +673,34 @@
          */
         function setupAlarmToggleEventListeners() {
             window.addEventListener('parameterAlarmToggled', function(event) {
+                console.log(`📡 OVERVIEW: Received parameterAlarmToggled event:`, event.detail);
+                
                 const { patientId, parameter, isEnabled } = event.detail;
                 
+                console.log(`📡 OVERVIEW: Event patient: ${patientId}, Current patient: ${currentPatientId}`);
+                console.log(`📡 OVERVIEW: Patient match:`, patientId === currentPatientId);
+                
                 if (patientId === currentPatientId) {
-                    console.log(`📡 Received alarm toggle event for ${parameter}:`, isEnabled);
+                    console.log(`📡 OVERVIEW: Processing alarm toggle for ${parameter}:`, isEnabled);
                     
                     // Update toggle switch state
                     const parameterRow = document.querySelector(`[data-parameter="${parameter}"]`);
+                    console.log(`📡 OVERVIEW: Found parameter row for ${parameter}:`, !!parameterRow);
+                    
                     if (parameterRow) {
                         const toggleInput = parameterRow.querySelector('input[type="checkbox"]');
+                        console.log(`📡 OVERVIEW: Found toggle input for ${parameter}:`, !!toggleInput);
+                        
                         if (toggleInput) {
+                            console.log(`📡 OVERVIEW: Setting ${parameter} toggle to:`, isEnabled);
                             toggleInput.checked = isEnabled;
                         }
                         
                         // Update visual state
                         updateParameterVisualState(parameter, isEnabled);
                     }
+                } else {
+                    console.log(`📡 OVERVIEW: Ignoring event for different patient`);
                 }
             });
         }
