@@ -888,10 +888,15 @@
                 shouldOverwriteManualAdjustments // Pass user intent flag
             );
 
-            // SIMPLE SYNC: Update displays with global variables after problem change
-            setTimeout(() => {
-                syncDisplaysWithCentralizedRanges();
-            }, 50);
+            // CONDITIONAL SYNC: Only update displays with global variables if they were actually updated
+            if (shouldOverwriteManualAdjustments) {
+                console.log('🔄 Global variables were updated - syncing displays');
+                setTimeout(() => {
+                    syncDisplaysWithCentralizedRanges();
+                }, 50);
+            } else {
+                console.log('🚫 Manual adjustments preserved - skipping global variables sync to prevent override');
+            }
 
             const finalOrganStates = result.organStates;
                             const targetRanges = result.targetRanges;
