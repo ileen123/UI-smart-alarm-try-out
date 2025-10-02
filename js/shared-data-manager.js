@@ -518,64 +518,9 @@ class SharedDataManager {
         }
     }
 
-    /**
-     * Debug: List all localStorage keys and values (limited for performance)
-     */
-    debugLocalStorage() {
-        console.log('🔍 DEBUG: All localStorage data:');
-        console.log('📊 App Data:', this.getAppData());
-        console.log('👥 All Patients:', this.getAllPatients());
-        console.log('🏥 Bed States:', this.getBedStates());
-        console.log('📝 Session Data:', this.getSessionData());
-        
-        console.log('\n📋 Raw localStorage keys (limited to first 20 for performance):');
-        const maxItems = Math.min(localStorage.length, 20);
-        for (let i = 0; i < maxItems; i++) {
-            const key = localStorage.key(i);
-            const value = localStorage.getItem(key);
-            // Truncate long values for readability
-            const displayValue = value && value.length > 100 ? value.substring(0, 100) + '...' : value;
-            console.log(`  - ${key}:`, displayValue);
-        }
-        if (localStorage.length > 20) {
-            console.log(`  ... and ${localStorage.length - 20} more items`);
-        }
-    }
 
-    /**
-     * Export all data for backup
-     */
-    exportData() {
-        try {
-            const exportData = {
-                appData: this.getAppData(),
-                timestamp: new Date().toISOString(),
-                version: '1.0'
-            };
-            return JSON.stringify(exportData, null, 2);
-        } catch (error) {
-            console.error('❌ Error exporting data:', error);
-            return null;
-        }
-    }
 
-    /**
-     * Import data from backup
-     */
-    importData(importString) {
-        try {
-            const importData = JSON.parse(importString);
-            if (importData.appData) {
-                this.saveAppData(importData.appData);
-                console.log('✅ Data imported successfully');
-                return true;
-            }
-            return false;
-        } catch (error) {
-            console.error('❌ Error importing data:', error);
-            return false;
-        }
-    }
+
 
     /**
      * Initialize data for index.html (patient setup page)
@@ -699,22 +644,8 @@ class SharedDataManager {
                         "heart": "high",
                         "lung": "high",
                         "temp": "high"
-                    },
-                    "neurologische-aandoening": {
-                        "heart": "mid",
-                        "lung": "mid",
-                        "temp": "mid"
-                    },
-                    "nierinsuffcientie": {
-                        "heart": "mid",
-                        "lung": "low",
-                        "temp": "mid"
-                    },
-                    "leverfalen": {
-                        "heart": "mid",
-                        "lung": "low",
-                        "temp": "mid"
                     }
+                    // Removed: neurologische-aandoening, nierinsuffcientie, leverfalen (disabled in UI)
                 },
                 riskAdjustments: {
                     "low": -1,
@@ -1141,80 +1072,9 @@ class SharedDataManager {
         };
     }
 
-    /**
-     * DEBUG: Test Risk Matrix Function
-     * Call this from browser console to test if the matrix is working
-     * Example: dataManager.testRiskMatrix('hart-falen', 'high')
-     */
-    testRiskMatrix(problemValue, riskLevel) {
-        console.log('\n🧪 === TESTING RISK MATRIX ===');
-        console.log(`Testing: ${problemValue} + ${riskLevel}`);
-        
-        // Test the matrix calculation
-        const result = this.calculateAdvancedOrganStates(problemValue, riskLevel);
-        console.log('Matrix result:', result);
-        
-        // Test with organ components if available
-        if (window.organComponents) {
-            console.log('\n🔧 Testing with actual organ components...');
-            const fullResult = this.applyProblemSpecificMonitoring(
-                problemValue, 
-                window.organComponents, 
-                null, 
-                riskLevel
-            );
-            console.log('Full result with components:', fullResult);
-        } else {
-            console.log('❌ No window.organComponents available for testing');
-        }
-        
-        console.log('=== END TEST ===\n');
-        return result;
-    }
 
-    /**
-     * DEBUG: Test Visual Changes
-     * Call this to test if visual changes are working
-     * Example: dataManager.testVisualChanges()
-     */
-    testVisualChanges() {
-        console.log('\n🎨 === TESTING VISUAL CHANGES ===');
-        
-        if (!window.organComponents) {
-            console.log('❌ No organ components available');
-            return;
-        }
-        
-        console.log('🔄 Cycling through all risk levels every 2 seconds...');
-        console.log('Watch the circles carefully for size changes!');
-        
-        const levels = ['low', 'mid', 'high'];
-        let currentIndex = 0;
-        
-        const interval = setInterval(() => {
-            const level = levels[currentIndex];
-            console.log(`\n🎯 Setting all components to: ${level.toUpperCase()}`);
-            
-            // Set all components to the same level for easy comparison
-            window.organComponents.heart?.setRiskLevel(level);
-            window.organComponents.lung?.setRiskLevel(level);
-            window.organComponents.temp?.setRiskLevel(level);
-            
-            console.log('Current states:');
-            console.log('  Heart:', window.organComponents.heart?.getRiskLevel());
-            console.log('  Lung:', window.organComponents.lung?.getRiskLevel()); 
-            console.log('  Temp:', window.organComponents.temp?.getRiskLevel());
-            
-            currentIndex++;
-            if (currentIndex >= levels.length) {
-                clearInterval(interval);
-                console.log('\n🏁 Visual test complete!');
-                console.log('Did you see the circles change size? If not, there may be a CSS or DOM issue.');
-            }
-        }, 2000);
-        
-        return 'Visual test started - watch the circles!';
-    }
+
+
 
     /**
      * Get Risk Management Overview
