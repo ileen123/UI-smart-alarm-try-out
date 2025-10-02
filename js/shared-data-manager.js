@@ -628,47 +628,7 @@ class SharedDataManager {
     getConfigData() {
         // Return the config data structure that matches config.json
         return {
-            organMappings: {
-                problems: {
-                    "respiratoire-insufficientie": {
-                        "heart": "mid",
-                        "lung": "high", 
-                        "temp": "low"
-                    },
-                    "hart-falen": {
-                        "heart": "high",
-                        "lung": "mid",
-                        "temp": "low"
-                    },
-                    "sepsis": {
-                        "heart": "high",
-                        "lung": "high",
-                        "temp": "high"
-                    }
-                    // Removed: neurologische-aandoening, nierinsuffcientie, leverfalen (disabled in UI)
-                },
-                riskAdjustments: {
-                    "low": -1,
-                    "mid": 0,
-                    "high": 1
-                }
-            },
-            thresholds: {
-                normal: {
-                    circulatoir: { 
-                        HR: { min: 60, max: 100, unit: "bpm" }, 
-                        BP_Mean: { min: 60, max: 90, unit: "mmHg" } 
-                    },
-                    respiratoir: { 
-                        Saturatie: { min: 90, max: 100, unit: "%" }, 
-                        AF: { min: 10, max: 25, unit: "/min" } 
-                    },
-                    overig: { 
-                        Temp: { min: 36.0, max: 38.5, unit: "°C" } 
-                    }
-                }
-                // REMOVED: sepsis conditions no longer modify ranges
-            },
+            
             circleConfigurations: {
                 "low": {
                     "darkerBlueSize": 0.9,
