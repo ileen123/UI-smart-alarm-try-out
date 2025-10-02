@@ -1605,19 +1605,19 @@ body {
     box-shadow: 0 0 8px rgba(255, 107, 53, 0.3);
 }
 
-/* When parameter is disabled, grey out the text */
-.parameter-disabled .value-label,
-.parameter-disabled .value-number {
-    color: #999 !important;
-    opacity: 0.6;
+/* When parameter is disabled on alarm overview page, grey out the text */
+.alarm-overview-page .parameter-disabled .value-label,
+.alarm-overview-page .parameter-disabled .value-number {
+    color: #cbcbcb !important;
+    opacity: 0.5;
 }
 
-/* Visual indicator for disabled state */
-.parameter-disabled {
+/* Visual indicator for disabled state - only for alarm overview page */
+.alarm-overview-page .parameter-disabled {
     position: relative;
 }
 
-.parameter-disabled::before {
+.alarm-overview-page .parameter-disabled::before {
     content: '';
     position: absolute;
     top: 50%;

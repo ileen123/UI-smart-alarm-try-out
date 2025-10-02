@@ -761,6 +761,9 @@ class VitalParameterSlider {
             console.log(`🔔 Alarm toggle CHANGED for ${this.config.parameter}: ${isEnabled ? 'ON' : 'OFF'}`);
             console.log(`🔔 Patient ID: ${this.config.patientId}`);
             
+            // Update visual state immediately
+            this.updateParameterVisualState(isEnabled);
+            
             // Update SharedDataManager
             if (window.sharedDataManager && this.config.patientId) {
                 console.log(`📞 Calling setParameterAlarmEnabled(${this.config.patientId}, ${this.config.parameter}, ${isEnabled})`);
@@ -785,11 +788,16 @@ class VitalParameterSlider {
         // Store reference for synchronization
         this.toggleInput = newToggleInput;
 
+        // Set initial visual state
+        this.updateParameterVisualState(newToggleInput.checked);
+
         // Listen for alarm state changes from other pages
         const syncHandler = (e) => {
             if (e.detail.parameter === this.config.parameter && e.detail.patientId === this.config.patientId) {
                 if (this.toggleInput) {
                     this.toggleInput.checked = e.detail.isEnabled;
+                    // Update visual state when synchronized
+                    this.updateParameterVisualState(e.detail.isEnabled);
                     console.log(`🔄 Synchronized alarm state for ${this.config.parameter}: ${e.detail.isEnabled ? 'ON' : 'OFF'}`);
                 }
             }
@@ -798,6 +806,23 @@ class VitalParameterSlider {
         // Remove existing listener and add new one
         window.removeEventListener('parameterAlarmToggled', syncHandler);
         window.addEventListener('parameterAlarmToggled', syncHandler);
+    }
+
+    /**
+     * Update visual state of parameter based on alarm enabled/disabled
+     * @param {boolean} isEnabled - Whether the alarm is enabled
+     */
+    updateParameterVisualState(isEnabled) {
+        const vitalSlider = this.container.querySelector('.vital-slider');
+        if (vitalSlider) {
+            if (isEnabled) {
+                vitalSlider.classList.remove('parameter-disabled');
+                console.log(`✅ ${this.config.parameter} visual state: ENABLED`);
+            } else {
+                vitalSlider.classList.add('parameter-disabled');
+                console.log(`🔒 ${this.config.parameter} visual state: DISABLED`);
+            }
+        }
     }
 
     /**
@@ -816,6 +841,13 @@ class VitalParameterSlider {
     }
 
     saveChanges() {
+        // Check if parameter is disabled (alarm OFF)
+        const vitalSlider = this.container.querySelector('.vital-slider');
+        if (vitalSlider && vitalSlider.classList.contains('parameter-disabled')) {
+            console.log(`⚠️ Cannot save ${this.config.parameter} - parameter is disabled (alarm OFF)`);
+            return;
+        }
+
         const button = this.container.querySelector('.save-button');
         const originalText = button.textContent;
         

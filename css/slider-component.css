@@ -431,6 +431,60 @@
     box-shadow: 0 0 8px rgba(255, 107, 53, 0.3);
 }
 
+/* Clean disabled parameter state styling - opacity based */
+.vital-slider.parameter-disabled .slider-title {
+    opacity: 0.3;
+    color: #888;
+    transition: all 0.3s ease;
+}
+
+.vital-slider.parameter-disabled .chart-container {
+    opacity: 0.6;
+    filter: grayscale(100%);
+    transition: all 0.3s ease;
+}
+
+.vital-slider.parameter-disabled .unit-label {
+    opacity: 0.3;
+    color: #aaa;
+    transition: all 0.3s ease;
+}
+
+.vital-slider.parameter-disabled .sliding-values-outside {
+    opacity: 0.3;
+    color: #888;
+    transition: all 0.3s ease;
+}
+
+/* Hide target range overlay and handles when disabled */
+.vital-slider.parameter-disabled .target-range-overlay,
+.vital-slider.parameter-disabled .range-handle {
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+/* Keep toggle switch fully visible and functional */
+.vital-slider.parameter-disabled .detailed-page-toggle {
+    opacity: 1;
+    position: relative;
+}
+
+/* Disabled state for save button - clean and simple */
+.vital-slider.parameter-disabled .save-button {
+    opacity: 0.4;
+    background-color: #ddd;
+    color: #999;
+    cursor: not-allowed;
+    transition: all 0.3s ease;
+}
+
+.vital-slider.parameter-disabled .save-button:hover {
+    opacity: 0.4;
+    background-color: #ddd;
+    transform: none;
+    box-shadow: none;
+}
+
 /* Reduced motion */
 @media (prefers-reduced-motion: reduce) {
     .graph-areas,
