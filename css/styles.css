@@ -724,7 +724,12 @@ body {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 15px; /* Add spacing between elements */
+    gap: 12px; /* Slightly reduced spacing since titles moved inside cards */
+}
+
+/* Alarm overview specific adjustments - more compact layout */
+.alarm-overview-page .monitor-item {
+    gap: 10px; /* Tighter spacing for alarm overview */
 }
 
 /* Monitoring labels and status */
@@ -851,18 +856,29 @@ body {
 
 /* Alarm overview page specific adjustments for parameter cards */
 .alarm-overview-page .value-card {
-    justify-content: center; /* Center content vertically */
+    justify-content: flex-start; /* Start from top to accommodate title */
     align-items: stretch; /* Allow full width for parameter rows */
-    padding: 20px 16px; /* More padding for better centering */
+    padding: 16px; /* Consistent padding all around */
 }
 
 /* Additional spacing adjustments for alarm overview parameter content */
 .alarm-overview-page .parameter-row:first-child {
-    margin-top: 20px; /* Add some top spacing */
+    margin-top: 8px; /* Add some top spacing */
 }
 
 .alarm-overview-page .parameter-row:last-of-type {
     margin-bottom: 16px; /* Add bottom spacing before button */
+}
+
+/* Organ titles inside value cards */
+.organ-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: #1961AB; /* Same blue as "Monitoring op Orgaan Niveau" */
+    margin: 0 0 12px 0; /* Bottom margin only */
+    text-align: center;
+    border-bottom: 1px solid #e0e0e0; /* Subtle separator line */
+    padding-bottom: 8px;
 }
 
 .alarm-overview-page .parameter-group {
