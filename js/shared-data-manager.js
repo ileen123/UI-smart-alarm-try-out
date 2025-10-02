@@ -132,6 +132,70 @@ class SharedDataManager {
     }
 
     /**
+     * Parameter Alarm Toggle Management
+     * Controls whether alarms are active/inactive for each parameter (HR, BP, Saturatie, AF, Temperature)
+     */
+    
+    /**
+     * Set parameter alarm state (enabled/disabled)
+     * @param {string} patientId - Patient ID
+     * @param {string} parameter - Parameter name (HR, BP_Mean, Saturatie, AF, Temperature)
+     * @param {boolean} isEnabled - Whether alarms are enabled for this parameter
+     */
+    setParameterAlarmEnabled(patientId, parameter, isEnabled) {
+        const key = `patient-${patientId}-alarm-${parameter}`;
+        localStorage.setItem(key, isEnabled.toString());
+        
+        // Trigger event for cross-page synchronization
+        window.dispatchEvent(new CustomEvent('parameterAlarmToggled', {
+            detail: { patientId, parameter, isEnabled }
+        }));
+        
+        console.log(`🔔 Parameter alarm ${parameter} for patient ${patientId}:`, isEnabled ? 'ENABLED' : 'DISABLED');
+    }
+
+    /**
+     * Get parameter alarm state (enabled/disabled)
+     * @param {string} patientId - Patient ID  
+     * @param {string} parameter - Parameter name (HR, BP_Mean, Saturatie, AF, Temperature)
+     * @returns {boolean} - True if alarms are enabled (default: true)
+     */
+    getParameterAlarmEnabled(patientId, parameter) {
+        const key = `patient-${patientId}-alarm-${parameter}`;
+        const stored = localStorage.getItem(key);
+        // Default to enabled (true) if not set
+        return stored === null ? true : stored === 'true';
+    }
+
+    /**
+     * Get all parameter alarm states for a patient
+     * @param {string} patientId - Patient ID
+     * @returns {Object} - Object with parameter names as keys and enabled state as values
+     */
+    getAllParameterAlarmStates(patientId) {
+        const parameters = ['HR', 'BP_Mean', 'Saturatie', 'AF', 'Temperature'];
+        const states = {};
+        
+        parameters.forEach(param => {
+            states[param] = this.getParameterAlarmEnabled(patientId, param);
+        });
+        
+        return states;
+    }
+
+    /**
+     * Reset all parameter alarms to enabled for a patient
+     * @param {string} patientId - Patient ID
+     */
+    resetParameterAlarms(patientId) {
+        const parameters = ['HR', 'BP_Mean', 'Saturatie', 'AF', 'Temperature'];
+        parameters.forEach(param => {
+            this.setParameterAlarmEnabled(patientId, param, true);
+        });
+        console.log('🔄 Reset all parameter alarms to ENABLED for patient:', patientId);
+    }
+
+    /**
      * Initialize the main app data structure if it doesn't exist
      */
     initializeAppData() {

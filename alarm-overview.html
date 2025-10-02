@@ -134,10 +134,22 @@
                 <div id="heart-status" class="monitor-status inactive-text">los</div>
                 <!-- Circulatory parameters -->
                 <div class="value-card">
-                    <div class="value-label inactive-text">HR</div>
-                    <div class="value-number inactive-text">70 - 110 bpm</div>
-                    <div class="value-label inactive-text">BP Mean</div>
-                    <div class="value-number inactive-text">65 - 85 mmHg</div>
+                    <div class="parameter-row" data-parameter="HR">
+                        <div class="value-label inactive-text">HR</div>
+                        <div class="value-number inactive-text">70 - 110 bpm</div>
+                        <label class="alarm-toggle">
+                            <input type="checkbox" checked onchange="toggleParameterAlarm('HR', this.checked)">
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                    <div class="parameter-row" data-parameter="BP_Mean">
+                        <div class="value-label inactive-text">BP Mean</div>
+                        <div class="value-number inactive-text">65 - 85 mmHg</div>
+                        <label class="alarm-toggle">
+                            <input type="checkbox" checked onchange="toggleParameterAlarm('BP_Mean', this.checked)">
+                            <span class="slider"></span>
+                        </label>
+                    </div>
                     <button class="adjust-btn" onclick="adjustOrganSettings('circulatoir')">Aanpassen</button>
                 </div>
             </div>
@@ -148,10 +160,22 @@
                 <div id="lung-status" class="monitor-status inactive-text">los</div>
                 <!-- Respiratory parameters -->
                 <div class="value-card">
-                    <div class="value-label inactive-text">Saturatie</div>
-                    <div class="value-number inactive-text">90 - 100 %</div>
-                    <div class="value-label inactive-text">AF</div>
-                    <div class="value-number inactive-text" id="af-range-display-overview">10 - 25 /min</div>
+                    <div class="parameter-row" data-parameter="Saturatie">
+                        <div class="value-label inactive-text">Saturatie</div>
+                        <div class="value-number inactive-text">90 - 100 %</div>
+                        <label class="alarm-toggle">
+                            <input type="checkbox" checked onchange="toggleParameterAlarm('Saturatie', this.checked)">
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                    <div class="parameter-row" data-parameter="AF">
+                        <div class="value-label inactive-text">AF</div>
+                        <div class="value-number inactive-text" id="af-range-display-overview">10 - 25 /min</div>
+                        <label class="alarm-toggle">
+                            <input type="checkbox" checked onchange="toggleParameterAlarm('AF', this.checked)">
+                            <span class="slider"></span>
+                        </label>
+                    </div>
                     <button class="adjust-btn" onclick="adjustOrganSettings('respiratoir')">Aanpassen</button>
                 </div>
             </div>
@@ -162,8 +186,14 @@
                 <div id="temp-status" class="monitor-status inactive-text">los</div>
                 <!-- Temperature parameters -->
                 <div class="value-card">
-                    <div class="value-label inactive-text">Temp.</div>
-                    <div class="value-number inactive-text">36.0 - 38.5 °C</div>
+                    <div class="parameter-row" data-parameter="Temperature">
+                        <div class="value-label inactive-text">Temp.</div>
+                        <div class="value-number inactive-text">36.0 - 38.5 °C</div>
+                        <label class="alarm-toggle">
+                            <input type="checkbox" checked onchange="toggleParameterAlarm('Temperature', this.checked)">
+                            <span class="slider"></span>
+                        </label>
+                    </div>
                     <button class="adjust-btn" onclick="adjustOrganSettings('overig')">Aanpassen</button>
                 </div>
             </div>
@@ -263,12 +293,19 @@
             // CENTRALIZED SYSTEM: Sync displays with current target ranges
             syncDisplaysWithCentralizedRanges();
             
+            // Initialize alarm toggle functionality
+            setupAlarmToggleEventListeners();
+            
             // Load existing settings after components are initialized
             loadExistingSettings();
             
             // Load saved heart monitoring level and apply it
             setTimeout(() => {
                 // loadSavedHeartMonitoringLevel(); // Disabled - let matrix control organ levels
+                
+                // Initialize alarm toggles after patient is loaded
+                initializeAlarmToggles();
+                
                 // Update monitoring status after everything is loaded
                 setTimeout(() => updateMonitoringStatus(), 200);
             }, 1000); // Increased delay to ensure it runs after loadExistingSettings
@@ -553,6 +590,98 @@
                 default:
                     return 'los';
             }
+        }
+
+        // ===================================================================
+        // PARAMETER ALARM TOGGLE FUNCTIONALITY
+        // ===================================================================
+
+        /**
+         * Toggle parameter alarm on/off
+         * @param {string} parameter - Parameter name (HR, BP_Mean, Saturatie, AF, Temperature)
+         * @param {boolean} isEnabled - Whether alarm is enabled
+         */
+        function toggleParameterAlarm(parameter, isEnabled) {
+            if (!currentPatientId) {
+                console.warn('No patient selected for alarm toggle');
+                return;
+            }
+
+            // Save state to SharedDataManager
+            window.sharedDataManager.setParameterAlarmEnabled(currentPatientId, parameter, isEnabled);
+            
+            // Update visual state immediately
+            updateParameterVisualState(parameter, isEnabled);
+            
+            console.log(`🔔 Alarm for ${parameter}:`, isEnabled ? 'ENABLED' : 'DISABLED');
+        }
+
+        /**
+         * Update visual state of parameter based on alarm state
+         * @param {string} parameter - Parameter name
+         * @param {boolean} isEnabled - Whether alarm is enabled
+         */
+        function updateParameterVisualState(parameter, isEnabled) {
+            const parameterRow = document.querySelector(`[data-parameter="${parameter}"]`);
+            if (parameterRow) {
+                if (isEnabled) {
+                    parameterRow.classList.remove('parameter-disabled');
+                } else {
+                    parameterRow.classList.add('parameter-disabled');
+                }
+            }
+        }
+
+        /**
+         * Initialize alarm toggle states for current patient
+         */
+        function initializeAlarmToggles() {
+            if (!currentPatientId || !window.sharedDataManager) return;
+
+            const parameters = ['HR', 'BP_Mean', 'Saturatie', 'AF', 'Temperature'];
+            
+            parameters.forEach(parameter => {
+                const isEnabled = window.sharedDataManager.getParameterAlarmEnabled(currentPatientId, parameter);
+                
+                // Update toggle switch state
+                const parameterRow = document.querySelector(`[data-parameter="${parameter}"]`);
+                if (parameterRow) {
+                    const toggleInput = parameterRow.querySelector('input[type="checkbox"]');
+                    if (toggleInput) {
+                        toggleInput.checked = isEnabled;
+                    }
+                    
+                    // Update visual state
+                    updateParameterVisualState(parameter, isEnabled);
+                }
+            });
+
+            console.log('🔄 Initialized alarm toggles for patient:', currentPatientId);
+        }
+
+        /**
+         * Listen for parameter alarm toggle events from other pages
+         */
+        function setupAlarmToggleEventListeners() {
+            window.addEventListener('parameterAlarmToggled', function(event) {
+                const { patientId, parameter, isEnabled } = event.detail;
+                
+                if (patientId === currentPatientId) {
+                    console.log(`📡 Received alarm toggle event for ${parameter}:`, isEnabled);
+                    
+                    // Update toggle switch state
+                    const parameterRow = document.querySelector(`[data-parameter="${parameter}"]`);
+                    if (parameterRow) {
+                        const toggleInput = parameterRow.querySelector('input[type="checkbox"]');
+                        if (toggleInput) {
+                            toggleInput.checked = isEnabled;
+                        }
+                        
+                        // Update visual state
+                        updateParameterVisualState(parameter, isEnabled);
+                    }
+                }
+            });
         }
 
         function setupEventListeners() {
