@@ -863,22 +863,49 @@ body {
 
 /* Additional spacing adjustments for alarm overview parameter content */
 .alarm-overview-page .parameter-row:first-child {
-    margin-top: 8px; /* Add some top spacing */
+    margin-top: 12px; /* Slightly more top spacing to separate from title */
 }
 
 .alarm-overview-page .parameter-row:last-of-type {
     margin-bottom: 16px; /* Add bottom spacing before button */
 }
 
+
 /* Organ titles inside value cards */
+.organ-title-container {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin: 0 0 12px 0;
+    border-bottom: 1px solid #e0e0e0;
+    padding-bottom: 8px;
+    position: relative;
+}
+
 .organ-title {
     font-size: 16px;
     font-weight: 600;
     color: #1961AB; /* Same blue as "Monitoring op Orgaan Niveau" */
-    margin: 0 0 12px 0; /* Bottom margin only */
-    text-align: center;
-    border-bottom: 1px solid #e0e0e0; /* Subtle separator line */
-    padding-bottom: 8px;
+    margin: 0;
+    text-align: left;
+}
+
+/* Alarm bell icon - bigger and aligned with toggle center */
+.alarm-bell-icon {
+    width: 24px; /* Increased from 20px */
+    height: 24px; /* Increased from 20px */
+    filter: brightness(0) saturate(100%) invert(49%) sepia(85%) saturate(1893%) hue-rotate(349deg) brightness(103%) contrast(103%); /* Orange color filter for #ff6b35 */
+    opacity: 0.9;
+    flex-shrink: 0;
+    transition: opacity 0.3s ease;
+    position: absolute;
+    right: 12px; /* Position to align with center of 48px wide toggle switches (48/2 = 24) */
+    top: -2px; /* Fine-tune vertical alignment */
+}
+
+/* Hover effect for alarm bell */
+.alarm-bell-icon:hover {
+    opacity: 1;
 }
 
 .alarm-overview-page .parameter-group {
