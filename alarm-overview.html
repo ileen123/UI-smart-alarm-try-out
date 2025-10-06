@@ -454,8 +454,8 @@
             console.log(`🎨 Applied ${highlightClass} highlighting to parameter:`, message);
         }
 
-        // Function to highlight parameters affected by risk level changes
-        function highlightParametersForRiskLevelChange(organType, newLevel) {
+        // Function to highlight parameters affected by individual organ monitoring level changes
+        function highlightParametersForOrganLevelChange(organType, newLevel) {
             console.log(`🎨 Highlighting parameters affected by ${organType} risk level change to: ${newLevel}`);
             
             // Simply use the syncDisplaysWithCentralizedRanges to update values and add highlighting
@@ -637,7 +637,7 @@
                     setTimeout(() => updateMonitoringStatus(), 100);
                     
                     // Highlight parameters affected by heart risk level change
-                    setTimeout(() => highlightParametersForRiskLevelChange('heart', level), 150);
+                    setTimeout(() => highlightParametersForOrganLevelChange('heart', level), 150);
                 } else {
                     console.log(`⏸️ Ignoring heart level change - patient mismatch or component missing`);
                 }
@@ -655,7 +655,7 @@
                     setTimeout(() => updateMonitoringStatus(), 100);
                     
                     // Highlight parameters affected by lung risk level change
-                    setTimeout(() => highlightParametersForRiskLevelChange('lung', level), 150);
+                    setTimeout(() => highlightParametersForOrganLevelChange('lung', level), 150);
                 } else {
                     console.log(`⏸️ Ignoring lung level change - patient mismatch or component missing`);
                 }
@@ -673,7 +673,7 @@
                     setTimeout(() => updateMonitoringStatus(), 100);
                     
                     // Highlight parameters affected by temp risk level change
-                    setTimeout(() => highlightParametersForRiskLevelChange('temp', level), 150);
+                    setTimeout(() => highlightParametersForOrganLevelChange('temp', level), 150);
                 } else {
                     console.log(`⏸️ Ignoring temp level change - patient mismatch or component missing`);
                 }
@@ -1046,6 +1046,9 @@
             const riskButtons = document.querySelectorAll('.btn.risk-low, .btn.risk-mid, .btn.risk-high');
             riskButtons.forEach(button => {
                 button.addEventListener('click', function() {
+                    // Store the old risk level for comparison
+                    const oldRiskLevel = selectedRiskLevel;
+                    
                     // Remove selected class from all risk buttons
                     riskButtons.forEach(btn => btn.classList.remove('selected'));
                     // Add selected class to clicked button
@@ -1082,6 +1085,14 @@
                         
                         console.log(`✅ Applied riskMatrix calculation:`, result.organStates);
                         console.log(`📋 Medical reasoning:`, result.reasoning);
+                        
+                        // HIGHLIGHT PARAMETERS affected by risk level change
+                        if (result.targetRanges && oldRiskLevel !== riskLevel) {
+                            console.log(`🎨 Risk level changed from ${oldRiskLevel} to ${riskLevel} - highlighting affected parameters`);
+                            setTimeout(() => {
+                                highlightParametersForRiskLevelChange(selectedProblem, oldRiskLevel, riskLevel, result.targetRanges);
+                            }, 200); // Small delay to ensure displays are updated first
+                        }
                         
                         // Save the risk level to patient medical info for bed overview color updates
                         const currentMedicalInfo = window.sharedDataManager.getPatientMedicalInfo(currentPatientId) || {};

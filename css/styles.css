@@ -972,14 +972,35 @@ body {
     box-shadow: none;
 }
 
-/* Yellow highlight variant for pneumonie */
-.value-number.highlight-blue {
-    background-color: #fff3cd; /* Light yellow background */
-    color: #856404; /* Dark yellow text */
+/* Red highlight variant for sepsis */
+.value-number.highlight-red {
+    background-color: #ffe6e6; /* Light red background */
+    color: #d63384; /* Red text */
     padding: 4px 8px; /* Add padding when highlighted */
     border-radius: 20px; /* Rounded corners */
-    border: 2px solid #ffc107; /* Yellow border */
-    animation: pulse-yellow 0.6s ease-in-out; /* Yellow pulse animation */
+    border: 2px solid #ff6b6b; /* Red border */
+    animation: pulse-red 0.6s ease-in-out; /* Red pulse animation */
+    transition: all 0.3s ease-out; /* Smooth transition for fade-out */
+}
+
+/* Red fade-out animation for highlight removal */
+.value-number.highlight-red.fade-out {
+    background-color: transparent;
+    color: inherit;
+    padding: 0;
+    border: none;
+    transform: scale(1);
+    box-shadow: none;
+}
+
+/* Blue highlight variant for pneumonie */
+.value-number.highlight-blue {
+    background-color: #e6f3ff; /* Light blue background */
+    color: #0066cc; /* Blue text */
+    padding: 4px 8px; /* Add padding when highlighted */
+    border-radius: 20px; /* Rounded corners */
+    border: 2px solid #4da6ff; /* Blue border */
+    animation: pulse-blue 0.6s ease-in-out; /* Blue pulse animation */
     transition: all 0.3s ease-out; /* Smooth transition for fade-out */
 }
 
@@ -993,14 +1014,14 @@ body {
     box-shadow: none;
 }
 
-/* Yellow highlight variant for restored/positive changes */
+/* Green highlight variant for restored/positive changes */
 .value-number.highlight-green {
-    background-color: #fff3cd; /* Light yellow background */
-    color: #856404; /* Dark yellow text */
+    background-color: #e6ffe6; /* Light green background */
+    color: #006600; /* Green text */
     padding: 4px 8px; /* Add padding when highlighted */
     border-radius: 20px; /* Rounded corners */
-    border: 2px solid #ffc107; /* Yellow border */
-    animation: pulse-yellow 0.6s ease-in-out; /* Yellow pulse animation */
+    border: 2px solid #4dff4d; /* Green border */
+    animation: pulse-green 0.6s ease-in-out; /* Green pulse animation */
     transition: all 0.3s ease-out; /* Smooth transition for fade-out */
 }
 
@@ -1112,6 +1133,22 @@ body {
     100% {
         transform: scale(1);
         box-shadow: 0 0 0 0 rgba(255, 193, 7, 0);
+    }
+}
+
+/* Red pulse animation for sepsis highlighting */
+@keyframes pulse-red {
+    0% {
+        transform: scale(1);
+        box-shadow: 0 0 0 0 rgba(255, 107, 107, 0.7);
+    }
+    70% {
+        transform: scale(1.05);
+        box-shadow: 0 0 0 10px rgba(255, 107, 107, 0);
+    }
+    100% {
+        transform: scale(1);
+        box-shadow: 0 0 0 0 rgba(255, 107, 107, 0);
     }
 }
 

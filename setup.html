@@ -575,6 +575,9 @@
                                 button.addEventListener('click', function() {
                                     console.log('\n🟡 === RISK BUTTON CLICKED ===');
                                     
+                                    // Store the old risk level for highlighting comparison
+                                    const oldRiskLevel = selectedRiskLevel;
+                                    
                                     // Remove selected class from all risk buttons
                                     riskButtons.forEach(btn => btn.classList.remove('selected'));
                                     // Add selected class to clicked button
@@ -585,6 +588,7 @@
                                                      this.classList.contains('risk-high') ? 'high' : 'mid';
                                     console.log('🔵 Risk button clicked, detected risk level:', riskLevel);
                                     console.log('🔵 Current selectedProblem:', selectedProblem);
+                                    console.log('🔵 Old risk level:', oldRiskLevel, '→ New risk level:', riskLevel);
                                     
                                     // Debug organ components before update
                                     console.log('🔧 Organ components before update:', window.organComponents);
@@ -611,6 +615,18 @@
                                         };
                                         window.sharedDataManager.savePatientMedicalInfo(currentPatientId, updatedMedicalInfo);
                                         console.log('💾 Immediately saved risk level selection to SharedDataManager:', selectedRiskLevel);
+                                        
+                                        // NEW: Apply intelligent highlighting for risk level changes
+                                        if (oldRiskLevel && oldRiskLevel !== riskLevel && selectedProblem) {
+                                            console.log('🎨 Risk level changed - applying intelligent parameter highlighting');
+                                            
+                                            // Get new parameters from SharedDataManager based on new risk level
+                                            const newParameters = window.sharedDataManager.getMatrixBasedBaseRanges(selectedProblem, riskLevel);
+                                            console.log('📊 New parameters for risk level change:', newParameters);
+                                            
+                                            // Apply intelligent highlighting for parameters affected by this medical condition
+                                            highlightParametersForRiskLevelChange(selectedProblem, oldRiskLevel, riskLevel, newParameters);
+                                        }
                                     }
                                     
                                     updateOrganCirclesWithRisk(riskLevel);
@@ -1172,9 +1188,107 @@
                             console.log('✅ All displays updated with global variables');
                         }
                         
+                        // Function to check if a parameter is actually affected by a specific tag
+                        function isParameterAffectedByTag(parameter, tag) {
+                            // Based on the tagMatrix in SharedDataManager, determine which parameters are affected by each tag
+                            const tagParameterMap = {
+                                'sepsis': ['HR', 'BP_Mean'], // Sepsis affects HR and BP_Mean only
+                                'pneumonie': ['AF', 'Saturatie', 'HR', 'BP_Mean', 'Temperature'] // Pneumonie affects AF, Saturatie, HR, BP_Mean, and Temperature
+                            };
+                            
+                            return tagParameterMap[tag] && tagParameterMap[tag].includes(parameter);
+                        }
+
+                        // Function to determine which parameters are affected by risk level changes for different medical conditions
+                        function getParametersAffectedByRiskLevelChange(medicalProblem) {
+                            // Based on the medical condition matrix, determine which parameters change with risk level
+                            const problemParameterMap = {
+                                'respiratoire-insufficientie': ['AF', 'Saturatie', 'HR'], // Respiratory issues affect breathing and compensatory heart rate
+                                'hart-falen': ['HR', 'BP_Mean', 'Saturatie'], // Heart failure affects heart rate, blood pressure, and oxygen saturation
+                                'sepsis': ['HR', 'BP_Mean', 'Temperature'], // Sepsis affects circulatory system and temperature
+                                'none': ['HR', 'BP_Mean', 'AF', 'Saturatie', 'Temperature'] // Default: all parameters might change
+                            };
+                            
+                            return problemParameterMap[medicalProblem] || problemParameterMap['none'];
+                        }
+
+                        // Function to highlight parameters affected by risk level changes
+                        function highlightParametersForRiskLevelChange(medicalProblem, oldRiskLevel, newRiskLevel, newParameters) {
+                            console.log(`🎨 Highlighting parameters affected by risk level change: ${oldRiskLevel} → ${newRiskLevel} for condition: ${medicalProblem}`);
+                            
+                            // Get parameters that are affected by this medical condition's risk level changes
+                            const affectedParameters = getParametersAffectedByRiskLevelChange(medicalProblem);
+                            console.log(`📊 Parameters affected by ${medicalProblem} risk level changes:`, affectedParameters);
+                            
+                            // Get all parameter display elements
+                            const circulatoryCard = document.querySelector('.value-card');
+                            const hrRange = circulatoryCard?.querySelector('.value-number');
+                            const bpRange = circulatoryCard?.querySelectorAll('.value-number')[1];
+                            
+                            const respiratoryCards = document.querySelectorAll('.value-card');
+                            const saturatieRange = respiratoryCards[1]?.querySelector('.value-number');
+                            const afDisplay = document.getElementById('af-range-display');
+                            
+                            const temperatureCards = document.querySelectorAll('.value-card');
+                            const tempRange = temperatureCards[2]?.querySelector('.value-number');
+                            
+                            // Update all parameters but only highlight those affected by the risk level change
+                            if (newParameters.HR && hrRange) {
+                                hrRange.textContent = `${newParameters.HR.min} - ${newParameters.HR.max} ${newParameters.HR.unit}`;
+                                if (affectedParameters.includes('HR')) {
+                                    highlightParameterChange(hrRange, 'highlight', `Risk level change (${oldRiskLevel}→${newRiskLevel}) affected HR`);
+                                    console.log(`✅ Updated and HIGHLIGHTED HR for risk level change:`, hrRange.textContent);
+                                } else {
+                                    console.log(`📊 Updated HR (no highlight - not affected by ${medicalProblem} risk change):`, hrRange.textContent);
+                                }
+                            }
+                            
+                            if (newParameters.BP_Mean && bpRange) {
+                                bpRange.textContent = `${newParameters.BP_Mean.min} - ${newParameters.BP_Mean.max} ${newParameters.BP_Mean.unit}`;
+                                if (affectedParameters.includes('BP_Mean')) {
+                                    highlightParameterChange(bpRange, 'highlight', `Risk level change (${oldRiskLevel}→${newRiskLevel}) affected BP`);
+                                    console.log(`✅ Updated and HIGHLIGHTED BP for risk level change:`, bpRange.textContent);
+                                } else {
+                                    console.log(`📊 Updated BP (no highlight - not affected by ${medicalProblem} risk change):`, bpRange.textContent);
+                                }
+                            }
+                            
+                            if (newParameters.Saturatie && saturatieRange) {
+                                saturatieRange.textContent = `${newParameters.Saturatie.min} - ${newParameters.Saturatie.max}${newParameters.Saturatie.unit}`;
+                                if (affectedParameters.includes('Saturatie')) {
+                                    highlightParameterChange(saturatieRange, 'highlight', `Risk level change (${oldRiskLevel}→${newRiskLevel}) affected Saturatie`);
+                                    console.log(`✅ Updated and HIGHLIGHTED Saturatie for risk level change:`, saturatieRange.textContent);
+                                } else {
+                                    console.log(`📊 Updated Saturatie (no highlight - not affected by ${medicalProblem} risk change):`, saturatieRange.textContent);
+                                }
+                            }
+                            
+                            if (newParameters.AF && afDisplay) {
+                                afDisplay.textContent = `${newParameters.AF.min} - ${newParameters.AF.max}`;
+                                if (affectedParameters.includes('AF')) {
+                                    highlightParameterChange(afDisplay, 'highlight', `Risk level change (${oldRiskLevel}→${newRiskLevel}) affected AF`);
+                                    console.log(`✅ Updated and HIGHLIGHTED AF for risk level change:`, afDisplay.textContent);
+                                } else {
+                                    console.log(`📊 Updated AF (no highlight - not affected by ${medicalProblem} risk change):`, afDisplay.textContent);
+                                }
+                            }
+                            
+                            if (newParameters.Temperature && tempRange) {
+                                tempRange.textContent = `${newParameters.Temperature.min} - ${newParameters.Temperature.max} ${newParameters.Temperature.unit}`;
+                                if (affectedParameters.includes('Temperature')) {
+                                    highlightParameterChange(tempRange, 'highlight', `Risk level change (${oldRiskLevel}→${newRiskLevel}) affected Temperature`);
+                                    console.log(`✅ Updated and HIGHLIGHTED Temperature for risk level change:`, tempRange.textContent);
+                                } else {
+                                    console.log(`📊 Updated Temperature (no highlight - not affected by ${medicalProblem} risk change):`, tempRange.textContent);
+                                }
+                            }
+                            
+                            console.log(`✅ Completed parameter highlighting for risk level change: ${oldRiskLevel} → ${newRiskLevel}`);
+                        }
+
                         // Function to apply tag parameter changes with visual highlighting
                         function applyTagParameterChangesWithHighlighting(tag, isActive, parameters) {
-                            console.log(`🎨 Applying ${tag} parameter changes with highlighting:`, parameters);
+                            console.log(`🎨 Applying ${tag} parameter changes with highlighting on setup page:`, parameters);
                             
                             // Get all parameter display elements
                             const circulatoryCard = document.querySelector('.value-card');
@@ -1191,35 +1305,57 @@
                             // Define highlight colors for different conditions
                             const highlightClass = tag === 'sepsis' ? 'highlight-red' : 'highlight-blue';
                             
-                            // Apply parameter changes and highlight affected ones
+                            // Update ALL parameter displays (to ensure consistency)
+                            // But only highlight those that are ACTUALLY affected by this specific tag
+                            
                             if (parameters.HR && hrRange) {
                                 hrRange.textContent = `${parameters.HR.min} - ${parameters.HR.max} ${parameters.HR.unit}`;
-                                highlightParameterChange(hrRange, highlightClass, `${tag} affected HR`);
-                                console.log(`✅ Updated HR display with ${tag} delta:`, hrRange.textContent);
+                                if (isParameterAffectedByTag('HR', tag)) {
+                                    highlightParameterChange(hrRange, highlightClass, `${tag} affected HR`);
+                                    console.log(`✅ Updated and HIGHLIGHTED HR display with ${tag} delta:`, hrRange.textContent);
+                                } else {
+                                    console.log(`📊 Updated HR display (no highlight - not affected by ${tag}):`, hrRange.textContent);
+                                }
                             }
                             
                             if (parameters.BP_Mean && bpRange) {
                                 bpRange.textContent = `${parameters.BP_Mean.min} - ${parameters.BP_Mean.max} ${parameters.BP_Mean.unit}`;
-                                highlightParameterChange(bpRange, highlightClass, `${tag} affected BP`);
-                                console.log(`✅ Updated BP display with ${tag} delta:`, bpRange.textContent);
+                                if (isParameterAffectedByTag('BP_Mean', tag)) {
+                                    highlightParameterChange(bpRange, highlightClass, `${tag} affected BP`);
+                                    console.log(`✅ Updated and HIGHLIGHTED BP display with ${tag} delta:`, bpRange.textContent);
+                                } else {
+                                    console.log(`📊 Updated BP display (no highlight - not affected by ${tag}):`, bpRange.textContent);
+                                }
                             }
                             
                             if (parameters.AF && afDisplay) {
                                 afDisplay.textContent = `${parameters.AF.min} - ${parameters.AF.max}`;
-                                highlightParameterChange(afDisplay, highlightClass, `${tag} affected AF`);
-                                console.log(`✅ Updated AF display with ${tag} delta:`, afDisplay.textContent);
+                                if (isParameterAffectedByTag('AF', tag)) {
+                                    highlightParameterChange(afDisplay, highlightClass, `${tag} affected AF`);
+                                    console.log(`✅ Updated and HIGHLIGHTED AF display with ${tag} delta:`, afDisplay.textContent);
+                                } else {
+                                    console.log(`📊 Updated AF display (no highlight - not affected by ${tag}):`, afDisplay.textContent);
+                                }
                             }
                             
                             if (parameters.Saturatie && saturatieRange) {
                                 saturatieRange.textContent = `${parameters.Saturatie.min} - ${parameters.Saturatie.max}${parameters.Saturatie.unit}`;
-                                highlightParameterChange(saturatieRange, highlightClass, `${tag} affected Saturatie`);
-                                console.log(`✅ Updated Saturatie display with ${tag} delta:`, saturatieRange.textContent);
+                                if (isParameterAffectedByTag('Saturatie', tag)) {
+                                    highlightParameterChange(saturatieRange, highlightClass, `${tag} affected Saturatie`);
+                                    console.log(`✅ Updated and HIGHLIGHTED Saturatie display with ${tag} delta:`, saturatieRange.textContent);
+                                } else {
+                                    console.log(`📊 Updated Saturatie display (no highlight - not affected by ${tag}):`, saturatieRange.textContent);
+                                }
                             }
                             
                             if (parameters.Temperature && tempRange) {
                                 tempRange.textContent = `${parameters.Temperature.min} - ${parameters.Temperature.max} ${parameters.Temperature.unit}`;
-                                highlightParameterChange(tempRange, highlightClass, `${tag} affected Temperature`);
-                                console.log(`✅ Updated Temperature display with ${tag} delta:`, tempRange.textContent);
+                                if (isParameterAffectedByTag('Temperature', tag)) {
+                                    highlightParameterChange(tempRange, highlightClass, `${tag} affected Temperature`);
+                                    console.log(`✅ Updated and HIGHLIGHTED Temperature display with ${tag} delta:`, tempRange.textContent);
+                                } else {
+                                    console.log(`📊 Updated Temperature display (no highlight - not affected by ${tag}):`, tempRange.textContent);
+                                }
                             }
                         }
                         
