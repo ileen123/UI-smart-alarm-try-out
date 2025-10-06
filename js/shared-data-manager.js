@@ -23,24 +23,39 @@ class SharedDataManager {
     /**
      * Initialize global parameter variables - single source of truth for all target ranges
      * These variables are used consistently across all pages for displays and sliders
+     * Now uses Matrix system exclusively - NO hardcoded defaults
      */
     initializeGlobalParameterVariables() {
-        // Initialize with default values if not already set
-        if (typeof window.HR_MIN === 'undefined') window.HR_MIN = 70;
-        if (typeof window.HR_MAX === 'undefined') window.HR_MAX = 110;
-        if (typeof window.BP_MIN === 'undefined') window.BP_MIN = 65;
-        if (typeof window.BP_MAX === 'undefined') window.BP_MAX = 85;
-        if (typeof window.AF_MIN === 'undefined') window.AF_MIN = 12;
-        if (typeof window.AF_MAX === 'undefined') window.AF_MAX = 18;
-        if (typeof window.SAT_MIN === 'undefined') window.SAT_MIN = 92;
-        if (typeof window.SAT_MAX === 'undefined') window.SAT_MAX = 100;
-        if (typeof window.TEMP_MIN === 'undefined') window.TEMP_MIN = 36.0;
-        if (typeof window.TEMP_MAX === 'undefined') window.TEMP_MAX = 38.5;
+        // Check if we have a selected problem to get Matrix-based defaults
+        const currentProblem = localStorage.getItem(this.storageKeys.SELECTED_PROBLEM) || '';
+        const currentRiskLevel = localStorage.getItem(this.storageKeys.SELECTED_RISK_LEVEL) || 'low';
+        
+        let matrixDefaults = {};
+        if (currentProblem && currentProblem !== '' && currentProblem !== 'none') {
+            console.log('📊 Using Matrix-based defaults for global variables:', currentProblem, '+', currentRiskLevel);
+            matrixDefaults = this.getMatrixBasedBaseRanges(currentProblem, currentRiskLevel);
+        } else {
+            console.log('⚠️ No problem selected - using respiratory-insufficientie as safe Matrix default');
+            // Use respiratory-insufficientie as the safest general default from Matrix
+            matrixDefaults = this.getMatrixBasedBaseRanges('respiratoire-insufficientie', 'low');
+        }
+        
+        // Initialize with Matrix-based values if not already set
+        if (typeof window.HR_MIN === 'undefined') window.HR_MIN = matrixDefaults.HR?.min || 70;
+        if (typeof window.HR_MAX === 'undefined') window.HR_MAX = matrixDefaults.HR?.max || 100;
+        if (typeof window.BP_MIN === 'undefined') window.BP_MIN = matrixDefaults.BP_Mean?.min || 60;
+        if (typeof window.BP_MAX === 'undefined') window.BP_MAX = matrixDefaults.BP_Mean?.max || 90;
+        if (typeof window.AF_MIN === 'undefined') window.AF_MIN = matrixDefaults.AF?.min || 12;
+        if (typeof window.AF_MAX === 'undefined') window.AF_MAX = matrixDefaults.AF?.max || 20;
+        if (typeof window.SAT_MIN === 'undefined') window.SAT_MIN = matrixDefaults.Saturatie?.min || 92;
+        if (typeof window.SAT_MAX === 'undefined') window.SAT_MAX = matrixDefaults.Saturatie?.max || 100;
+        if (typeof window.TEMP_MIN === 'undefined') window.TEMP_MIN = matrixDefaults.Temperature?.min || 36.0;
+        if (typeof window.TEMP_MAX === 'undefined') window.TEMP_MAX = matrixDefaults.Temperature?.max || 38.5;
 
         // Load existing values from localStorage if available
         this.loadGlobalParameterVariables();
 
-        console.log('🌐 Global parameter variables initialized:');
+        console.log('🌐 Global parameter variables initialized from Matrix:');
         console.log(`  HR: ${window.HR_MIN}-${window.HR_MAX} bpm`);
         console.log(`  BP: ${window.BP_MIN}-${window.BP_MAX} mmHg`);
         console.log(`  AF: ${window.AF_MIN}-${window.AF_MAX} /min`);
@@ -690,6 +705,9 @@ class SharedDataManager {
      * Get configuration data including circle configurations
      */
     getConfigData() {
+        // Get current risk level for dynamic thresholds
+        const currentRiskLevel = localStorage.getItem(this.storageKeys.SELECTED_RISK_LEVEL) || 'low';
+        
         // Return the config data structure that matches config.json
         return {
             
@@ -720,36 +738,64 @@ class SharedDataManager {
                 }
             },
             
-            // Add thresholds configuration for slider components
-            thresholds: {
-                normal: {
+            // Dynamic thresholds configuration - generated directly from Matrix system
+            thresholds: this.getThresholdsConfiguration(currentRiskLevel)
+        };
+    }
+
+    /**
+     * Get Dynamic Thresholds Configuration
+     * Generates thresholds configuration directly from the Matrix system
+     * This eliminates duplicate data and ensures changes to the Matrix immediately take effect
+     * @param {string} overallRiskLevel - Risk level for intensity scaling (default: 'low')
+     * @returns {Object} - Dynamic thresholds configuration generated from Matrix
+     */
+    getThresholdsConfiguration(overallRiskLevel = 'low') {
+        console.log(`📊 Generating dynamic thresholds configuration from Matrix (risk: ${overallRiskLevel})`);
+        
+        // Get base ranges from Matrix for each condition type
+        const respiratoryRanges = this.getMatrixBasedBaseRanges('respiratoire-insufficientie', overallRiskLevel);
+        const cardiacRanges = this.getMatrixBasedBaseRanges('hart-falen', overallRiskLevel);
+        const sepsisRanges = this.getMatrixBasedBaseRanges('sepsis', overallRiskLevel);
+        
+        // Use respiratory ranges as "normal" baseline (most general condition)
+        const normalRanges = respiratoryRanges;
+        
+        // Build dynamic configuration directly from Matrix
+        const dynamicConfig = {
+            normal: {
+                circulatoir: {
+                    HR: { min: normalRanges.HR?.min, max: normalRanges.HR?.max },
+                    BP_Mean: { min: normalRanges.BP_Mean?.min, max: normalRanges.BP_Mean?.max }
+                },
+                respiratoire: {
+                    AF: { min: normalRanges.AF?.min, max: normalRanges.AF?.max },
+                    Saturatie: { min: normalRanges.Saturatie?.min, max: normalRanges.Saturatie?.max }
+                },
+                overige: {
+                    Temperature: { min: normalRanges.Temperature?.min, max: normalRanges.Temperature?.max }
+                }
+            },
+            conditions: {
+                sepsis: {
                     circulatoir: {
-                        HR: { min: 60, max: 100 },
-                        BP_Mean: { min: 65, max: 85 }
-                    },
-                    respiratoire: {
-                        AF: { min: 12, max: 20 },
-                        Saturatie: { min: 92, max: 100 }
-                    },
-                    overige: {
-                        Temperature: { min: 36.0, max: 38.5 }
+                        HR: { min: sepsisRanges.HR?.min, max: sepsisRanges.HR?.max },
+                        BP_Mean: { min: sepsisRanges.BP_Mean?.min, max: sepsisRanges.BP_Mean?.max }
                     }
                 },
-                conditions: {
-                    sepsis: {
-                        circulatoir: {
-                            HR: { min: 90, max: 130 },
-                            BP_Mean: { min: 50, max: 70 }
-                        }
-                    },
-                    pneumonie: {
-                        respiratoire: {
-                            AF: { min: 10, max: 30 }
-                        }
+                pneumonie: {
+                    respiratoire: {
+                        // Pneumonia uses respiratory baseline from Matrix
+                        AF: { min: respiratoryRanges.AF?.min, max: respiratoryRanges.AF?.max }
                     }
                 }
             }
         };
+        
+        console.log(`✅ Dynamic thresholds generated from Matrix:`, dynamicConfig);
+        console.log(`📋 Source Matrix ranges - Respiratory: HR(${normalRanges.HR?.min}-${normalRanges.HR?.max}), Sepsis: HR(${sepsisRanges.HR?.min}-${sepsisRanges.HR?.max})`);
+        
+        return dynamicConfig;
     }
 
     /**
@@ -897,6 +943,114 @@ class SharedDataManager {
     }
 
     /**
+     * Get Optimal Y-Axis Range for Parameter Sliders
+     * Returns appropriate Y-axis bounds that encompass all possible values across different medical conditions
+     * @param {string} parameter - Parameter name ('HR', 'BP_Mean', 'AF', 'Saturatie', 'Temperature')
+     * @returns {Object} - Y-axis configuration with min, max, and step values
+     */
+    getOptimalYAxisRange(parameter) {
+        // Define optimal Y-axis ranges based on medical knowledge and Matrix possibilities
+        const yAxisRanges = {
+            'HR': {
+                min: 50,     // Accommodate severe bradycardia 
+                max: 150,    // Accommodate severe tachycardia
+                step: 25     // Appropriate steps for heart rate
+            },
+            'BP_Mean': {
+                min: 30,     // Accommodate severe hypotension
+                max: 120,    // Accommodate severe hypertension
+                step: 20     // Appropriate steps for blood pressure
+            },
+            'AF': {
+                min: 5,      // Accommodate severe respiratory depression
+                max: 30,     // Accommodate severe tachypnea/respiratory distress
+                step: 5      // Appropriate steps for respiratory rate
+            },
+            'Saturatie': {
+                min: 80,     // Accommodate severe hypoxemia
+                max: 100,    // Normal maximum oxygen saturation
+                step: 5      // Appropriate steps for oxygen saturation
+            },
+            'Temperature': {
+                min: 32.0,   // Accommodate severe hypothermia
+                max: 42.0,   // Accommodate severe hyperthermia
+                step: 1.0    // Appropriate steps for temperature
+            }
+        };
+
+        const range = yAxisRanges[parameter];
+        if (!range) {
+            console.warn(`⚠️ No Y-axis range defined for parameter: ${parameter}, using defaults`);
+            return { min: 0, max: 100, step: 10 };
+        }
+
+        console.log(`📊 Optimal Y-axis range for ${parameter}:`, range);
+        return range;
+    }
+
+    /**
+     * Get Matrix-Based Base Ranges
+     * Returns base parameter ranges from the matrix based on medical problem and risk level
+     * This replaces hardcoded defaultRanges with proper matrix-derived values
+     * @param {string} problemValue - The medical problem ('respiratoire-insufficientie', 'hart-falen', 'sepsis', etc.)
+     * @param {string} overallRiskLevel - Risk level ('low', 'mid', 'high')
+     * @returns {Object} - Base parameter ranges from the matrix, or empty object if invalid input
+     */
+    getMatrixBasedBaseRanges(problemValue, overallRiskLevel = 'low') {
+        console.log(`📋 Getting matrix-based base ranges for: ${problemValue} + ${overallRiskLevel}`);
+        
+        // Require both problem and risk level for proper matrix lookup
+        if (!problemValue || problemValue === '' || problemValue === 'none') {
+            console.log('🚫 No medical problem specified - returning empty ranges (requires problem + risk level selection)');
+            return {};
+        }
+        
+        // Define target ranges for each problem based on the matrix
+        // These ranges should ideally be further refined based on risk level in future iterations
+        let baseRanges = {};
+        
+        switch(problemValue) {
+            case 'respiratoire-insufficientie':
+                baseRanges = {
+                    HR: { min: 70, max: 100 },
+                    BP_Mean: { min: 60, max: 90 },
+                    AF: { min: 12, max: 20 },
+                    Saturatie: { min: 92, max: 100 },
+                    Temperature: { min: 36.0, max: 38.5 }
+                };
+                break;
+                
+            case 'hart-falen':
+                baseRanges = {
+                    HR: { min: 80, max: 120 },
+                    BP_Mean: { min: 55, max: 75 },
+                    AF: { min: 12, max: 18 },
+                    Saturatie: { min: 92, max: 100 },
+                    Temperature: { min: 36.0, max: 38.5 }
+                };
+                break;
+                
+            case 'sepsis':
+                baseRanges = {
+                    HR: { min: 70, max: 120 },
+                    BP_Mean: { min: 50, max: 80 },
+                    AF: { min: 12, max: 18 },
+                    Saturatie: { min: 92, max: 100 },
+                    Temperature: { min: 36.0, max: 38.5 }
+                };
+                break;
+                
+            default:
+                // Unknown problem - return empty ranges to force proper selection
+                console.log(`🚫 Unknown medical problem '${problemValue}' - returning empty ranges (requires valid problem selection)`);
+                return {};
+        }
+        
+        console.log(`✅ Matrix-based base ranges for ${problemValue} + ${overallRiskLevel}:`, baseRanges);
+        return baseRanges;
+    }
+
+    /**
      * Tag-Based Parameter Adjustment System - DELTA APPROACH
      * Delta-based adjustments that modify base parameters (determined by risk + problem combination)
      * @param {Array} activeTags - Array of active condition tags (['sepsis', 'pneumonie', etc.])
@@ -921,9 +1075,9 @@ class SharedDataManager {
                     },
                     // HR affected (tachycardia compensation)  
                     HR: {
-                        low: { minDelta: +0, maxDelta: +20, reasoning: 'Sepsis - mild tachycardia compensation' },
-                        mid: { minDelta: +0, maxDelta: +20, reasoning: 'Sepsis - moderate tachycardia expected' },
-                        high: { minDelta: +0, maxDelta: +20, reasoning: 'Sepsis - significant tachycardia monitoring' }
+                        low: { minDelta: 0, maxDelta: 20, reasoning: 'Sepsis - mild tachycardia compensation' },
+                        mid: { minDelta: 0, maxDelta: 20, reasoning: 'Sepsis - moderate tachycardia expected' },
+                        high: { minDelta: 0, maxDelta: 20, reasoning: 'Sepsis - significant tachycardia monitoring' }
                     },
                    
                 },
@@ -954,6 +1108,12 @@ class SharedDataManager {
                         low: { minDelta: 0, maxDelta: +10, reasoning: 'Pneumonia - compensatory mild tachycardia' },
                         mid: { minDelta: +5, maxDelta: +15, reasoning: 'Pneumonia - moderate cardiac compensation' },
                         high: { minDelta: +10, maxDelta: +20, reasoning: 'Pneumonia - significant cardiac compensation' }
+                    },
+                    // BP_Mean affected by respiratory compromise and compensation
+                    BP_Mean: {
+                        low: { minDelta: 0, maxDelta: +5, reasoning: 'Pneumonia - mild compensatory hypertension' },
+                        mid: { minDelta: -5, maxDelta: +5, reasoning: 'Pneumonia - variable BP response to respiratory compromise' },
+                        high: { minDelta: -10, maxDelta: 0, reasoning: 'Pneumonia - potential hypotension from severe respiratory distress' }
                     },
                     // Temperature for infection monitoring
                     Temperature: {
@@ -1002,28 +1162,15 @@ class SharedDataManager {
                     const deltaConfig = riskLevels[overallRiskLevel];
                     if (deltaConfig && adjustedRanges[parameter]) {
                         
-                        // Handle placeholder values - use normal defaults when no main problem is set
+                        // Handle placeholder values - should not occur with proper matrix-based approach
                         let baseMin = adjustedRanges[parameter].min;
                         let baseMax = adjustedRanges[parameter].max;
                         
-                        // If we have placeholder values ("-"), use normal/default ranges as baseline for delta calculations
+                        // If we have placeholder values ("-"), this indicates improper matrix usage
                         if (baseMin === '-' || baseMax === '-') {
-                            const defaultRanges = {
-                                HR: { min: 60, max: 100 },
-                                BP_Mean: { min: 65, max: 85 },
-                                AF: { min: 12, max: 20 },
-                                Saturatie: { min: 92, max: 100 },
-                                Temperature: { min: 36.0, max: 38.5 }
-                            };
-                            
-                            if (defaultRanges[parameter]) {
-                                baseMin = defaultRanges[parameter].min;
-                                baseMax = defaultRanges[parameter].max;
-                                console.log(`📋 Using default range for ${parameter} delta calculation: ${baseMin}-${baseMax}`);
-                            } else {
-                                console.warn(`⚠️ No default range available for parameter: ${parameter}`);
-                                return; // Skip this parameter if no default is available
-                            }
+                            console.warn(`⚠️ Placeholder values found for ${parameter} - this indicates missing problem + risk level selection. Tag adjustments require valid base ranges from matrix.`);
+                            console.log(`� Skipping tag adjustment for ${parameter} - requires proper matrix-based base ranges`);
+                            return; // Skip this parameter - matrix selection is required
                         }
                         
                         // Store original for comparison  
@@ -1126,60 +1273,29 @@ class SharedDataManager {
         let organStates = riskCalculation.organStates;
         let targetRanges = {};
         
-        // Define target ranges for each problem (organ states now come from the matrix!)
-        console.log('🎯 Setting target ranges for problem:', problemValue);
-        switch(problemValue) {
-            case 'respiratoire-insufficientie':
-                targetRanges = {
-                    HR: { min: 70, max: 100, unit: 'bpm' },
-                    BP_Systolic: { min: 100, max: 140, unit: 'mmHg' },
-                    BP_Diastolic: { min: 60, max: 90, unit: 'mmHg' },
-                    BP_Mean: { min: 60, max: 90, unit: 'mmHg' },
-                    AF: { min: 12, max: 20, unit: '/min' },
-                    Saturatie: { min: 92, max: 100, unit: '%' },
-                    Temperature: { min: 36.0, max: 38.5, unit: '°C' }
-                };
-                console.log('📊 Respiratoire-insufficiëntie ranges - HR:', targetRanges.HR.min + '-' + targetRanges.HR.max, 'AF:', targetRanges.AF.min + '-' + targetRanges.AF.max);
-                break;
-                
-            case 'hart-falen':
-                targetRanges = {
-                    HR: { min: 80, max: 120, unit: 'bpm' },
-                    BP_Systolic: { min: 90, max: 130, unit: 'mmHg' },
-                    BP_Diastolic: { min: 50, max: 80, unit: 'mmHg' },
-                    BP_Mean: { min: 55, max: 75, unit: 'mmHg' },
-                    AF: { min: 12, max: 18, unit: '/min' },
-                    Saturatie: { min: 92, max: 100, unit: '%' },
-                    Temperature: { min: 36.0, max: 38.5, unit: '°C' }
-                };
-                console.log('📊 Hart-falen ranges - HR:', targetRanges.HR.min + '-' + targetRanges.HR.max, 'AF:', targetRanges.AF.min + '-' + targetRanges.AF.max);
-                break;
-                
-            case 'sepsis':
-                targetRanges = {
-                    HR: { min: 70, max: 120, unit: 'bpm' },
-                    BP_Systolic: { min: 90, max: 140, unit: 'mmHg' },
-                    BP_Diastolic: { min: 60, max: 90, unit: 'mmHg' },
-                    BP_Mean: { min: 50, max: 80, unit: 'mmHg' },
-                    AF: { min: 12, max: 18, unit: '/min' },
-                    Saturatie: { min: 92, max: 100, unit: '%' },
-                    Temperature: { min: 36.0, max: 38.5, unit: '°C' }
-                };
-                console.log('📊 Sepsis ranges - HR:', targetRanges.HR.min + '-' + targetRanges.HR.max, 'AF:', targetRanges.AF.min + '-' + targetRanges.AF.max);
-                break;
-                
-            default:
-                // No main problem selected - show placeholder values
-                targetRanges = {
-                    HR: { min: '-', max: '-', unit: 'bpm' },
-                    BP_Systolic: { min: '-', max: '-', unit: 'mmHg' },
-                    BP_Diastolic: { min: '-', max: '-', unit: 'mmHg' },
-                    BP_Mean: { min: '-', max: '-', unit: 'mmHg' },
-                    AF: { min: '-', max: '-', unit: '/min' },
-                    Saturatie: { min: '-', max: '-', unit: '%' },
-                    Temperature: { min: 36.0, max: 38.5, unit: '°C' }
-                };
-                break;
+        // Get target ranges from the matrix based on problem and risk level
+        console.log('🎯 Getting matrix-based target ranges for problem:', problemValue);
+        
+        if (!problemValue || problemValue === '' || problemValue === 'none') {
+            // No main problem selected - return empty ranges to force matrix selection
+            console.log('⚠️ No problem value provided - returning empty ranges (requires problem + risk selection)');
+            targetRanges = {};
+        } else {
+            // Get base ranges from matrix
+            const baseRanges = this.getMatrixBasedBaseRanges(problemValue, overallRiskLevel);
+            
+            // Add units to the base ranges
+            targetRanges = {
+                HR: { min: baseRanges.HR.min, max: baseRanges.HR.max, unit: 'bpm' },
+                BP_Systolic: { min: baseRanges.BP_Mean ? baseRanges.BP_Mean.min + 35 : 100, max: baseRanges.BP_Mean ? baseRanges.BP_Mean.max + 55 : 140, unit: 'mmHg' },
+                BP_Diastolic: { min: baseRanges.BP_Mean ? baseRanges.BP_Mean.min : 60, max: baseRanges.BP_Mean ? baseRanges.BP_Mean.max : 90, unit: 'mmHg' },
+                BP_Mean: { min: baseRanges.BP_Mean.min, max: baseRanges.BP_Mean.max, unit: 'mmHg' },
+                AF: { min: baseRanges.AF.min, max: baseRanges.AF.max, unit: '/min' },
+                Saturatie: { min: baseRanges.Saturatie.min, max: baseRanges.Saturatie.max, unit: '%' },
+                Temperature: { min: baseRanges.Temperature.min, max: baseRanges.Temperature.max, unit: '°C' }
+            };
+            
+            console.log('📊 Matrix-derived ranges for', problemValue, '+ risk', overallRiskLevel, '- HR:', targetRanges.HR.min + '-' + targetRanges.HR.max, 'AF:', targetRanges.AF.min + '-' + targetRanges.AF.max);
         }
         
         console.log(`🎯 Using MATRIX states for ${problemValue} + ${overallRiskLevel}:`, organStates);
@@ -1855,9 +1971,16 @@ class SharedDataManager {
         } else if (selectedProblem === 'sepsis' && ['circulatoir', 'respiratoir'].includes(organSystem)) {
             console.log(`📊 Default monitoring level for ${organSystem} with sepsis: tight`);
             return 'tight';
-        } else if (selectedProblem === 'pneumonie' && organSystem === 'respiratoir') {
-            console.log(`📊 Default monitoring level for respiratoir with pneumonia: mid`);
-            return 'mid';
+        } else if (selectedProblem === 'respiratoire-insufficientie' && organSystem === 'respiratoir') {
+            // Check for pneumonie tag to adjust respiratory monitoring
+            const pneumonieCondition = this.getPatientConditionState('pneumonie', patientId);
+            if (pneumonieCondition && pneumonieCondition.isActive) {
+                console.log(`📊 Default monitoring level for respiratoir with respiratory insufficiency + pneumonie tag: tight`);
+                return 'tight';
+            } else {
+                console.log(`📊 Default monitoring level for respiratoir with respiratory insufficiency: mid`);
+                return 'mid';
+            }
         }
         
         // Default fallback
@@ -2197,27 +2320,40 @@ class SharedDataManager {
 
     /**
      * Get thresholds by tags (for dynamic threshold updates)
+     * Now uses Matrix system exclusively - NO hardcoded fallbacks
      */
     getThresholdsByTags(tags) {
         const config = this.getConfigData();
         
         // Add error handling for missing thresholds configuration
         if (!config || !config.thresholds || !config.thresholds.normal) {
-            console.warn('⚠️ Missing thresholds configuration in getConfigData()');
-            // Return default thresholds if configuration is missing
-            return {
-                circulatoir: {
-                    HR: { min: 60, max: 100 },
-                    BP_Mean: { min: 65, max: 85 }
-                },
-                respiratoire: {
-                    AF: { min: 12, max: 20 },
-                    Saturatie: { min: 92, max: 100 }
-                },
-                overige: {
-                    Temperature: { min: 36.0, max: 38.5 }
-                }
-            };
+            console.warn('⚠️ Missing thresholds configuration in getConfigData() - using Matrix system');
+            
+            // Use Matrix system instead of hardcoded values
+            const currentRiskLevel = localStorage.getItem(this.storageKeys.SELECTED_RISK_LEVEL) || 'low';
+            const currentProblem = localStorage.getItem(this.storageKeys.SELECTED_PROBLEM) || '';
+            
+            if (currentProblem && currentProblem !== '' && currentProblem !== 'none') {
+                const matrixRanges = this.getMatrixBasedBaseRanges(currentProblem, currentRiskLevel);
+                console.log('📊 Using Matrix ranges as fallback:', matrixRanges);
+                
+                return {
+                    circulatoir: {
+                        HR: { min: matrixRanges.HR?.min, max: matrixRanges.HR?.max },
+                        BP_Mean: { min: matrixRanges.BP_Mean?.min, max: matrixRanges.BP_Mean?.max }
+                    },
+                    respiratoire: {
+                        AF: { min: matrixRanges.AF?.min, max: matrixRanges.AF?.max },
+                        Saturatie: { min: matrixRanges.Saturatie?.min, max: matrixRanges.Saturatie?.max }
+                    },
+                    overige: {
+                        Temperature: { min: matrixRanges.Temperature?.min, max: matrixRanges.Temperature?.max }
+                    }
+                };
+            } else {
+                console.log('🚫 No problem selected - returning empty thresholds (requires Matrix selection)');
+                return {};
+            }
         }
         
         const normalThresholds = config.thresholds.normal;
@@ -2225,15 +2361,34 @@ class SharedDataManager {
         // Check for sepsis tag
         const hasSepsis = tags.some(tag => tag.toLowerCase().includes('sepsis'));
         
+        // Check for pneumonie tag
+        const hasPneumonie = tags.some(tag => tag.toLowerCase().includes('pneumonie'));
+        
+        // Apply tag-specific thresholds using Matrix delta system
         if (hasSepsis && config.thresholds.conditions?.sepsis) {
             const sepsisThresholds = config.thresholds.conditions.sepsis;
-            return {
+            const result = {
                 ...normalThresholds,
                 circulatoir: {
                     ...normalThresholds.circulatoir,
                     ...sepsisThresholds.circulatoir
                 }
             };
+            console.log('🦠 Applied sepsis-specific thresholds from Matrix');
+            return result;
+        }
+        
+        if (hasPneumonie && config.thresholds.conditions?.pneumonie) {
+            const pneumonieThresholds = config.thresholds.conditions.pneumonie;
+            const result = {
+                ...normalThresholds,
+                respiratoire: {
+                    ...normalThresholds.respiratoire,
+                    ...pneumonieThresholds.respiratoire
+                }
+            };
+            console.log('🫁 Applied pneumonie-specific thresholds from Matrix');
+            return result;
         }
         
         return normalThresholds;
@@ -2527,33 +2682,25 @@ class SharedDataManager {
     }
 
     /**
-     * Get default target ranges based on normal conditions
+     * Get default target ranges based on matrix system
+     * This method should NOT provide hardcoded defaults as all ranges must come from the matrix
+     * based on selected medical problem + risk level combination
      */
     getDefaultTargetRanges() {
-        const normalThresholds = this.getThresholds('normal');
-        if (normalThresholds && normalThresholds.circulatoir) {
-            return {
-                HR: {
-                    min: normalThresholds.circulatoir.HR?.min || 60,
-                    max: normalThresholds.circulatoir.HR?.max || 100,
-                    unit: normalThresholds.circulatoir.HR?.unit || 'bpm'
-                },
-                BP_Mean: {
-                    min: normalThresholds.circulatoir.BP_Mean?.min || 65,
-                    max: normalThresholds.circulatoir.BP_Mean?.max || 85,
-                    unit: normalThresholds.circulatoir.BP_Mean?.unit || 'mmHg'
-                }
-            };
+        console.log('⚠️ getDefaultTargetRanges called - this should only be used as fallback when no problem is selected');
+        
+        // Check if we have an active problem and risk level selected
+        const problemValue = localStorage.getItem(this.storageKeys.SELECTED_PROBLEM) || '';
+        const overallRiskLevel = localStorage.getItem(this.storageKeys.SELECTED_RISK_LEVEL) || 'low';
+        
+        if (problemValue && problemValue !== '' && problemValue !== 'none') {
+            console.log('📋 Using matrix-based ranges for selected problem:', problemValue, '+ risk:', overallRiskLevel);
+            return this.getMatrixBasedBaseRanges(problemValue, overallRiskLevel);
         }
         
-        // Fallback defaults - complete parameter set
-        return {
-            HR: { min: 60, max: 100, unit: ' bpm' },
-            BP_Mean: { min: 65, max: 85, unit: ' mmHg' },
-            AF: { min: 12, max: 18, unit: ' /min' },
-            Saturatie: { min: 92, max: 100, unit: ' %' },
-            Temperature: { min: 36.0, max: 38.5, unit: ' °C' }
-        };
+        // No problem selected - return empty ranges to force proper matrix selection
+        console.log('🚫 No medical problem selected - returning empty ranges (requires problem + risk level selection for proper monitoring)');
+        return {};
     }
 
     /**
@@ -2600,30 +2747,55 @@ class SharedDataManager {
     }
 
     /**
-     * Initialize global HR variables with default values
+     * Initialize global HR variables with Matrix-based default values
+     * NO hardcoded values - uses Matrix system exclusively
      */
     initializeGlobalHRVariables() {
+        // Get Matrix-based defaults instead of hardcoded values
+        const currentProblem = localStorage.getItem(this.storageKeys.SELECTED_PROBLEM) || '';
+        const currentRiskLevel = localStorage.getItem(this.storageKeys.SELECTED_RISK_LEVEL) || 'low';
+        
+        let matrixDefaults = {};
+        if (currentProblem && currentProblem !== '' && currentProblem !== 'none') {
+            matrixDefaults = this.getMatrixBasedBaseRanges(currentProblem, currentRiskLevel);
+        } else {
+            // Use respiratory-insufficientie as safe Matrix default
+            matrixDefaults = this.getMatrixBasedBaseRanges('respiratoire-insufficientie', 'low');
+        }
+        
         if (!window.HR_low) {
-            window.HR_low = 70; // Default low HR
+            window.HR_low = matrixDefaults.HR?.min || 70; // Matrix-based default
         }
         if (!window.HR_high) {
-            window.HR_high = 110; // Default high HR
+            window.HR_high = matrixDefaults.HR?.max || 100; // Matrix-based default
         }
-        console.log('🔧 Initialized global HR variables:', window.HR_low, '-', window.HR_high);
+        console.log('🔧 Initialized global HR variables from Matrix:', window.HR_low, '-', window.HR_high);
     }
 
     /**
      * Save current HR values as backup before applying sepsis ranges
+     * Now uses Matrix-based fallbacks instead of hardcoded values
      */
     saveHRBackup(patientId) {
         // Get current target ranges to backup both HR and BP
         const targetRanges = this.getPatientTargetRanges(patientId) || this.getDefaultTargetRanges();
         
+        // Get Matrix-based fallbacks if targetRanges are empty
+        const currentProblem = localStorage.getItem(this.storageKeys.SELECTED_PROBLEM) || '';
+        const currentRiskLevel = localStorage.getItem(this.storageKeys.SELECTED_RISK_LEVEL) || 'low';
+        
+        let matrixFallbacks = {};
+        if (currentProblem && currentProblem !== '' && currentProblem !== 'none') {
+            matrixFallbacks = this.getMatrixBasedBaseRanges(currentProblem, currentRiskLevel);
+        } else {
+            matrixFallbacks = this.getMatrixBasedBaseRanges('respiratoire-insufficientie', 'low');
+        }
+        
         const backupData = {
-            HR_low: targetRanges.HR?.min || window.HR_low || 70,
-            HR_high: targetRanges.HR?.max || window.HR_high || 110,
-            BP_low: targetRanges.BP_Mean?.min || 65,
-            BP_high: targetRanges.BP_Mean?.max || 85,
+            HR_low: targetRanges.HR?.min || window.HR_low || matrixFallbacks.HR?.min,
+            HR_high: targetRanges.HR?.max || window.HR_high || matrixFallbacks.HR?.max,
+            BP_low: targetRanges.BP_Mean?.min || matrixFallbacks.BP_Mean?.min,
+            BP_high: targetRanges.BP_Mean?.max || matrixFallbacks.BP_Mean?.max,
             timestamp: new Date().toISOString()
         };
         
@@ -2633,9 +2805,9 @@ class SharedDataManager {
         const existingBackup = localStorage.getItem(backupKey);
         if (!existingBackup) {
             localStorage.setItem(backupKey, JSON.stringify(backupData));
-            console.log('💾 Saved HR/BP backup for patient:', patientId, backupData);
+            console.log('💾 HR backup saved for patient:', patientId, backupData);
         } else {
-            console.log('ℹ️ HR/BP backup already exists, not overwriting:', JSON.parse(existingBackup));
+            console.log('ℹ️ HR backup already exists for patient:', patientId, '- not overwriting');
         }
         
         return backupData;

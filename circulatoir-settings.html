@@ -79,6 +79,9 @@
                     <button class="btn tag-btn circulatory-tag" data-condition="sepsis">
                         Sepsis <img src="svg's/sepsis.svg" alt="Sepsis" class="sepsis-icon">
                     </button>
+                    <button class="btn tag-btn circulatory-tag" data-condition="pneumonie">
+                        Pneumonie <img src="svg's/lung.svg" alt="Pneumonie" class="condition-icon">
+                    </button>
                     <button class="circulatory-more-btn">⋯</button>
                 </div>
             </div>
@@ -911,37 +914,93 @@
         let currentBed = null;
         let currentSettings = {};
 
-        // Initialize currentSettings from SharedDataManager
+        // Initialize currentSettings from Matrix-based system
         function initializeCurrentSettings() {
             if (currentPatientId && window.sharedDataManager) {
-                // Get current target ranges from SharedDataManager
+                console.log('💓 Initializing currentSettings using Matrix-based approach for patient:', currentPatientId);
+                
+                // Get current target ranges from SharedDataManager (Matrix-based)
                 const targetRanges = window.sharedDataManager.getPatientTargetRanges(currentPatientId);
-                if (targetRanges) {
+                if (targetRanges && targetRanges.HR && targetRanges.BP_Mean) {
+                    // Use existing Matrix-calculated ranges
                     currentSettings = {
                         hr: {
-                            min: targetRanges.HR?.min || window.HR_MIN || 60,
-                            max: targetRanges.HR?.max || window.HR_MAX || 100
+                            min: targetRanges.HR.min,
+                            max: targetRanges.HR.max
                         },
                         bp: {
-                            min: targetRanges.BP_Mean?.min || window.BP_MIN || 65,
-                            max: targetRanges.BP_Mean?.max || window.BP_MAX || 85
+                            min: targetRanges.BP_Mean.min,
+                            max: targetRanges.BP_Mean.max
+                        }
+                    };
+                    console.log('✅ Using existing Matrix-based target ranges:', currentSettings);
+                } else {
+                    // Generate Matrix-based defaults using patient's medical profile
+                    console.log('🎯 No existing target ranges - generating from Matrix system...');
+                    
+                    const medicalInfo = window.sharedDataManager.getPatientMedicalInfo(currentPatientId);
+                    const selectedProblem = medicalInfo?.selectedProblem || 'respiratoire-insufficientie'; // Safe default
+                    const overallRiskLevel = medicalInfo?.selectedRiskLevel || 'low'; // Safe default
+                    
+                    console.log(`🎯 Using Matrix generation with problem: ${selectedProblem}, risk: ${overallRiskLevel}`);
+                    
+                    // Use Matrix-based range generation
+                    const matrixRanges = window.sharedDataManager.getMatrixBasedBaseRanges(selectedProblem, overallRiskLevel);
+                    
+                    if (matrixRanges && matrixRanges.HR && matrixRanges.BP_Mean) {
+                        currentSettings = {
+                            hr: {
+                                min: matrixRanges.HR.min,
+                                max: matrixRanges.HR.max
+                            },
+                            bp: {
+                                min: matrixRanges.BP_Mean.min,
+                                max: matrixRanges.BP_Mean.max
+                            }
+                        };
+                        console.log('✅ Generated Matrix-based currentSettings:', currentSettings);
+                    } else {
+                        // Ultimate fallback using Matrix default (respiratory-insufficientie + low)
+                        console.log('⚠️ Matrix generation failed - using safe Matrix fallback');
+                        const fallbackRanges = window.sharedDataManager.getMatrixBasedBaseRanges('respiratoire-insufficientie', 'low');
+                        currentSettings = {
+                            hr: {
+                                min: fallbackRanges?.HR?.min || 60,
+                                max: fallbackRanges?.HR?.max || 100
+                            },
+                            bp: {
+                                min: fallbackRanges?.BP_Mean?.min || 65,
+                                max: fallbackRanges?.BP_Mean?.max || 85
+                            }
+                        };
+                        console.log('🔄 Matrix fallback currentSettings:', currentSettings);
+                    }
+                }
+                
+                console.log('💓 Circulatory currentSettings initialized from Matrix system:', currentSettings);
+            } else {
+                // Emergency fallback - use Matrix default when SharedDataManager unavailable
+                console.warn('⚠️ SharedDataManager not available - using emergency Matrix defaults');
+                if (window.sharedDataManager) {
+                    const emergencyRanges = window.sharedDataManager.getMatrixBasedBaseRanges('respiratoire-insufficientie', 'low');
+                    currentSettings = {
+                        hr: {
+                            min: emergencyRanges?.HR?.min || 60,
+                            max: emergencyRanges?.HR?.max || 100
+                        },
+                        bp: {
+                            min: emergencyRanges?.BP_Mean?.min || 65,
+                            max: emergencyRanges?.BP_Mean?.max || 85
                         }
                     };
                 } else {
-                    // Fallback to global variables
+                    // Absolute emergency fallback
                     currentSettings = {
-                        hr: { min: window.HR_MIN || 60, max: window.HR_MAX || 100 },
-                        bp: { min: window.BP_MIN || 65, max: window.BP_MAX || 85 }
+                        hr: { min: 60, max: 100 },
+                        bp: { min: 65, max: 85 }
                     };
                 }
-                console.log('💓 Circulatory currentSettings initialized from SharedDataManager:', currentSettings);
-            } else {
-                // Default fallback
-                currentSettings = {
-                    hr: { min: 60, max: 100 },
-                    bp: { min: 65, max: 85 }
-                };
-                console.log('💓 Circulatory currentSettings initialized with defaults:', currentSettings);
+                console.log('💓 Emergency currentSettings:', currentSettings);
             }
         }
 
@@ -1026,6 +1085,7 @@
             initializePage();
             setupEventListeners();
             initializeSepsisTagState(); // Initialize sepsis state FIRST
+            initializePneumonieTagState(); // Initialize pneumonie state
             
             // Initialize global variables system (simple approach)
             if (window.sharedDataManager) {
@@ -1347,6 +1407,7 @@
                 if (medicalInfo?.selectedProblem) {
                     const problemMapping = {
                         'sepsis': 'Sepsis',
+                        'pneumonie': 'Pneumonie',
                         'pneumonia': 'Pneumonie',
                         'cardiac': 'Hartproblemen',
                         'surgery': 'Chirurgie',
@@ -1391,6 +1452,33 @@
                     } else {
                         sepsisButton.classList.remove('selected');
                         console.log('✅ Initialized sepsis button as deselected');
+                    }
+                }
+            }
+        }
+
+        function initializePneumonieTagState() {
+            console.log('🫁 Initializing pneumonie tag state...');
+            
+            if (currentPatientId && window.sharedDataManager) {
+                // Ensure patient has clean state for new setup (but don't force clean existing states)
+                window.sharedDataManager.ensureCleanPatientState(currentPatientId, false);
+                
+                // Check if pneumonie is currently selected using the new condition state method
+                const pneumonieState = window.sharedDataManager.getPatientConditionState('pneumonie', currentPatientId);
+                
+                console.log('🔍 DEBUG CIRCULATORY: Pneumonie state:', pneumonieState);
+                
+                const pneumonieButton = document.querySelector('.circulatory-tag[data-condition="pneumonie"]');
+                console.log('🔍 DEBUG CIRCULATORY: Button found:', !!pneumonieButton);
+                
+                if (pneumonieButton) {
+                    if (pneumonieState && pneumonieState.isActive) {
+                        pneumonieButton.classList.add('selected');
+                        console.log('✅ Initialized pneumonie button as selected');
+                    } else {
+                        pneumonieButton.classList.remove('selected');
+                        console.log('✅ Initialized pneumonie button as deselected');
                     }
                 }
             }
@@ -1639,175 +1727,39 @@
                         // Deselect tag
                         this.classList.remove('selected');
                         
-                        // Handle sepsis deselection using matrix-based reversion
+                        // Handle tag deselection using the toggleConditionTag system
                         if (tagCondition === 'sepsis' && currentPatientId && window.sharedDataManager) {
-                            window.sharedDataManager.setPatientConditionState('sepsis', {
-                                isActive: false,
-                                patientId: currentPatientId,
-                                timestamp: Date.now(),
-                                source: 'circulatory-settings'
-                            });
+                            console.log('🏷️ Deactivating sepsis tag with parameter adjustments (circulatory-settings)');
+                            window.sharedDataManager.toggleConditionTag(currentPatientId, 'sepsis', false);
                             
-                            // Auto-revert to matrix-based ranges that match main issue and overall risk level
-                            const matrixReversionResult = window.sharedDataManager.revertToMatrixBasedRanges(currentPatientId, 'sepsis');
+                            console.log('🦠 Sepsis deselected - automatic matrix-based reversion handled by toggleConditionTag');
+                        } else if (tagCondition === 'pneumonie' && currentPatientId && window.sharedDataManager) {
+                            console.log('🏷️ Deactivating pneumonie tag with parameter adjustments (circulatory-settings)');
+                            window.sharedDataManager.toggleConditionTag(currentPatientId, 'pneumonie', false);
                             
-                            if (matrixReversionResult && matrixReversionResult.targetRanges) {
-                                // Save the matrix-based ranges to circulatory settings
-                                setTimeout(() => {
-                                    const revertedRanges = matrixReversionResult.targetRanges;
-                                    if (revertedRanges.HR && revertedRanges.BP_Mean) {
-                                        const existingCirculatorySettings = window.sharedDataManager.getPatientCirculatoirSettings(currentPatientId) || {};
-                                        const newCirculatorySettings = {
-                                            ...existingCirculatorySettings,
-                                            hr: { min: revertedRanges.HR.min, max: revertedRanges.HR.max },
-                                            bp: { min: revertedRanges.BP_Mean.min, max: revertedRanges.BP_Mean.max }
-                                        };
-                                        
-                                        // Save the matrix-based HR and BP ranges automatically
-                                        window.sharedDataManager.savePatientCirculatoirSettings(currentPatientId, newCirculatorySettings);
-                                        console.log('🦠 Sepsis deselected - auto-reverted to matrix-based HR & BP ranges:', {
-                                            reasoning: matrixReversionResult.reasoning,
-                                            settings: newCirculatorySettings
-                                        });
-                                        
-                                        // Refresh sliders to show the matrix-based ranges
-                                        setTimeout(() => {
-                                            refreshSlidersFromTargetRanges();
-                                            
-                                            // Explicitly update HR slider positions with the reverted values
-                                            if (revertedRanges.HR) {
-                                                window.HR_MIN = revertedRanges.HR.min;
-                                                window.HR_MAX = revertedRanges.HR.max;
-                                                updateHRSliderFromGlobalValues();
-                                                
-                                                // Also try direct HR slider update for immediate positioning
-                                                if (hrSlider && typeof hrSlider.updateConfig === 'function') {
-                                                    hrSlider.updateConfig({
-                                                        targetRange: {
-                                                            min: revertedRanges.HR.min,
-                                                            max: revertedRanges.HR.max
-                                                        }
-                                                    });
-                                                    if (hrSlider.updateSliderPosition) {
-                                                        hrSlider.updateSliderPosition();
-                                                    }
-                                                    console.log('✅ HR slider explicitly repositioned after sepsis deselection:', revertedRanges.HR);
-                                                }
-                                            }
-                                            
-                                            // Explicitly update BP slider if available
-                                            if (bpSlider && bpSlider.container && revertedRanges.BP_Mean) {
-                                                if (typeof bpSlider.updateConfig === 'function') {
-                                                    bpSlider.updateConfig({
-                                                        targetRange: {
-                                                            min: revertedRanges.BP_Mean.min,
-                                                            max: revertedRanges.BP_Mean.max
-                                                        }
-                                                    });
-                                                    // Force visual position refresh if method exists
-                                                    if (bpSlider.updateSliderPosition) {
-                                                        bpSlider.updateSliderPosition();
-                                                    }
-                                                    console.log('✅ BP slider explicitly updated after sepsis deselection:', revertedRanges.BP_Mean);
-                                                }
-                                            }
-                                            
-                                            console.log('🎚️ All sliders repositioned after sepsis deselection to matrix-based ranges');
-                                        }, 50);
-                                    }
-                                }, 100); // Small delay to ensure matrix reversion is complete
-                            }
-                            
-                            console.log('🦠 Sepsis deselected - auto-reverted to matrix-based ranges matching main issue and risk level');
+                            console.log('🫁 Pneumonie deselected - automatic matrix-based reversion handled by toggleConditionTag');
                         }
                     } else {
                         // Select tag
                         this.classList.add('selected');
                         
-                        // Handle sepsis selection using new condition state system
+                        // Handle tag selection using the toggleConditionTag system
                         if (tagCondition === 'sepsis' && currentPatientId && window.sharedDataManager) {
-                            window.sharedDataManager.setPatientConditionState('sepsis', {
-                                isActive: true,
-                                patientId: currentPatientId,
-                                timestamp: Date.now(),
-                                source: 'circulatory-settings'
-                            });
+                            console.log('🏷️ Activating sepsis tag with parameter adjustments (circulatory-settings)');
+                            window.sharedDataManager.toggleConditionTag(currentPatientId, 'sepsis', true);
                             
-                            // Automatically save the sepsis HR and BP ranges
-                            const sepsisHRRanges = { min: 90, max: 130 };
-                            const sepsisBPRanges = { min: 65, max: 85 };
-                            const existingCirculatorySettings = window.sharedDataManager.getPatientCirculatoirSettings(currentPatientId) || {};
-                            const newCirculatorySettings = {
-                                ...existingCirculatorySettings,
-                                hr: sepsisHRRanges,
-                                bp: sepsisBPRanges
-                            };
+                            console.log('🦠 Sepsis selected - automatic matrix-based adjustments handled by toggleConditionTag');
+                        } else if (tagCondition === 'pneumonie' && currentPatientId && window.sharedDataManager) {
+                            console.log('🏷️ Activating pneumonie tag with parameter adjustments (circulatory-settings)');
+                            window.sharedDataManager.toggleConditionTag(currentPatientId, 'pneumonie', true);
                             
-                            // Save the HR and BP ranges automatically
-                            window.sharedDataManager.savePatientCirculatoirSettings(currentPatientId, newCirculatorySettings);
-                            
-                            // Update target ranges as well
-                            const existingTargetRanges = window.sharedDataManager.getPatientTargetRanges(currentPatientId) || {};
-                            const updatedTargetRanges = {
-                                ...existingTargetRanges,
-                                HR: { min: 90, max: 130, unit: 'bpm' },
-                                BP_Mean: { min: 65, max: 85, unit: 'mmHg' }
-                            };
-                            window.sharedDataManager.setPatientTargetRanges(currentPatientId, updatedTargetRanges);
-                            
-                            console.log('🦠 Sepsis selected and HR (90-130) & BP (65-85) ranges automatically saved');
-                            
-                            // UPDATE SLIDERS: Refresh sliders to reflect the new sepsis ranges
-                            setTimeout(() => {
-                                // Update global HR variables to sepsis values first
-                                window.HR_MIN = 90;
-                                window.HR_MAX = 130;
-                                window.BP_MIN = 65;
-                                window.BP_MAX = 85;
-                                
-                                refreshSlidersFromTargetRanges();
-                                
-                                // Explicitly ensure HR slider moves to sepsis position
-                                updateHRSliderFromGlobalValues();
-                                
-                                // Also try direct HR slider update for immediate positioning
-                                if (hrSlider && typeof hrSlider.updateConfig === 'function') {
-                                    hrSlider.updateConfig({
-                                        targetRange: {
-                                            min: 90,
-                                            max: 130
-                                        }
-                                    });
-                                    if (hrSlider.updateSliderPosition) {
-                                        hrSlider.updateSliderPosition();
-                                    }
-                                    console.log('✅ HR slider explicitly positioned for sepsis selection: 90-130');
-                                }
-                                
-                                // Explicitly ensure BP slider moves to sepsis position
-                                if (bpSlider && bpSlider.container) {
-                                    if (typeof bpSlider.updateConfig === 'function') {
-                                        bpSlider.updateConfig({
-                                            targetRange: {
-                                                min: 65,
-                                                max: 85
-                                            }
-                                        });
-                                        // Force visual position refresh if method exists
-                                        if (bpSlider.updateSliderPosition) {
-                                            bpSlider.updateSliderPosition();
-                                        }
-                                    }
-                                }
-                                
-                                console.log('🎚️ Sliders updated and repositioned to reflect sepsis tag ranges');
-                            }, 50);
+                            console.log('🫁 Pneumonie selected - automatic matrix-based adjustments handled by toggleConditionTag');
                         }
                     }
                 });
             });
             
-            // Listen for sepsis state changes from other pages to update our button
+            // Listen for tag state changes from other pages to update our buttons
             window.addEventListener('hrRangesChanged', function(event) {
                 console.log('💓 Updating circulatory tag state from external change:', event.detail);
                 
@@ -1816,6 +1768,8 @@
                 // Only update if it's for the current patient
                 if (patientId === currentPatientId) {
                     const sepsisButton = document.querySelector('.circulatory-tag[data-condition="sepsis"]');
+                    const pneumonieButton = document.querySelector('.circulatory-tag[data-condition="pneumonie"]');
+                    
                     if (sepsisButton) {
                         if (source === 'sepsis') {
                             sepsisButton.classList.add('selected');
@@ -1823,6 +1777,18 @@
                         } else if (source === 'restore') {
                             sepsisButton.classList.remove('selected');
                             console.log('✅ Marked sepsis button as deselected due to external deselection');
+                        }
+                    }
+                    
+                    // Also check for pneumonie state changes via SharedDataManager
+                    if (pneumonieButton && window.sharedDataManager) {
+                        const pneumonieState = window.sharedDataManager.getPatientConditionState('pneumonie', currentPatientId);
+                        if (pneumonieState && pneumonieState.isActive) {
+                            pneumonieButton.classList.add('selected');
+                            console.log('✅ Marked pneumonie button as selected due to external selection');
+                        } else {
+                            pneumonieButton.classList.remove('selected');
+                            console.log('✅ Marked pneumonie button as deselected due to external deselection');
                         }
                     }
                 }
@@ -1909,13 +1875,18 @@
                     hrContainer.innerHTML = '<p style="color: blue;">Loading HR slider...</p>';
                     
                     try {
+                        // Get Matrix-based yAxis ranges for optimal slider bounds
+                        const hrYAxisRange = window.sharedDataManager ? 
+                            window.sharedDataManager.getOptimalYAxisRange('HR') : 
+                            { min: 40, max: 140, step: 20 }; // Fallback
+                        
                         // Try direct instantiation first
                         hrSlider = new window.VitalParameterSlider(hrContainer, {
                             parameter: 'HR',
                             name: 'HR',
                             unit: 'bpm',
                             targetRange: { min: window.HR_MIN, max: window.HR_MAX },
-                            yAxis: { min: 40, max: 140, step: 20 },
+                            yAxis: hrYAxisRange,
                             monitoringLevel: 'mid',
                             patientId: currentPatientId,
                             patientName: patientInfo?.name || `Patiënt ${currentPatientId}`,
@@ -1984,13 +1955,18 @@
                     bpContainer.innerHTML = '<p style="color: blue;">Loading BP slider...</p>';
                     
                     try {
+                        // Get Matrix-based yAxis ranges for optimal slider bounds
+                        const bpYAxisRange = window.sharedDataManager ? 
+                            window.sharedDataManager.getOptimalYAxisRange('BP_Mean') : 
+                            { min: 30, max: 100, step: 10 }; // Fallback
+                        
                         // Try direct instantiation
                         bpSlider = new window.VitalParameterSlider(bpContainer, {
                             parameter: 'BP_Mean',
                             name: 'BP Mean',
                             unit: 'mmHg',
                             targetRange: { min: window.BP_MIN, max: window.BP_MAX },
-                            yAxis: { min: 30, max: 100, step: 10 },
+                            yAxis: bpYAxisRange,
                             monitoringLevel: 'mid',
                             patientId: currentPatientId,
                             patientName: patientInfo?.name || `Patiënt ${currentPatientId}`,

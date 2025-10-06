@@ -77,6 +77,9 @@
                 <h3 class="info-title">Overige additionele informatie:</h3>
                 <div class="circulatory-tags-section">
                 <!-- Temperature monitoring tags could go here in the future -->
+                    <button class="btn tag-btn circulatory-tag" data-condition="pneumonie">
+                        Pneumonie <img src="svg's/lung.svg" alt="Pneumonie" class="condition-icon">
+                    </button>
                     <button class="btn tag-btn" data-condition="herstellende">
                         Herstellende <img src="svg's/patient_icon.svg" alt="Herstellende" class="condition-icon">
                     </button>
@@ -1449,29 +1452,23 @@
                         // Deselect tag
                         this.classList.remove('selected');
                         
-                        // Handle pneumonie deselection
+                        // Handle pneumonie deselection using Matrix-based system
                         if (tagCondition === 'pneumonie' && currentPatientId && window.sharedDataManager) {
-                            window.sharedDataManager.setPatientConditionState('pneumonie', {
-                                isActive: false,
-                                patientId: currentPatientId,
-                                timestamp: Date.now(),
-                                source: 'respiratory-settings'
-                            });
-                            console.log('🫁 Pneumonie deselected in respiratory settings');
+                            console.log('🏷️ Deactivating pneumonie tag with parameter adjustments (other-settings)');
+                            window.sharedDataManager.toggleConditionTag(currentPatientId, 'pneumonie', false);
+                            
+                            console.log('🫁 Pneumonie deselected - automatic matrix-based reversion handled by toggleConditionTag');
                         }
                     } else {
                         // Select tag
                         this.classList.add('selected');
                         
-                        // Handle pneumonie selection
+                        // Handle pneumonie selection using Matrix-based system
                         if (tagCondition === 'pneumonie' && currentPatientId && window.sharedDataManager) {
-                            window.sharedDataManager.setPatientConditionState('pneumonie', {
-                                isActive: true,
-                                patientId: currentPatientId,
-                                timestamp: Date.now(),
-                                source: 'respiratory-settings'
-                            });
-                            console.log('🫁 Pneumonie selected in respiratory settings');
+                            console.log('🏷️ Activating pneumonie tag with parameter adjustments (other-settings)');
+                            window.sharedDataManager.toggleConditionTag(currentPatientId, 'pneumonie', true);
+                            
+                            console.log('🫁 Pneumonie selected - automatic matrix-based adjustments handled by toggleConditionTag');
                         }
                     }
                 });

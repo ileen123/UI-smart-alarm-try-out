@@ -512,6 +512,97 @@
         let availablePatients = [];
         let selectedBed = null;
         let selectedPatient = null;
+        
+        // WebSocket configuration
+        const WEBSOCKET_URL = 'ws://localhost:8080';
+        let websocket = null;
+        let reconnectInterval = null;
+
+        // WebSocket connection management
+        function initializeWebSocket() {
+            try {
+                console.log('🔌 Attempting to connect to WebSocket at:', WEBSOCKET_URL);
+                websocket = new WebSocket(WEBSOCKET_URL);
+                
+                websocket.onopen = function(event) {
+                    console.log('✅ WebSocket connected successfully');
+                    clearInterval(reconnectInterval);
+                    reconnectInterval = null;
+                };
+                
+                websocket.onmessage = function(event) {
+                    console.log('📨 WebSocket message received:', event.data);
+                    try {
+                        const data = JSON.parse(event.data);
+                        handleWebSocketMessage(data);
+                    } catch (error) {
+                        console.error('❌ Error parsing WebSocket message:', error);
+                    }
+                };
+                
+                websocket.onclose = function(event) {
+                    console.log('🔌 WebSocket connection closed. Code:', event.code, 'Reason:', event.reason);
+                    websocket = null;
+                    
+                    // Attempt to reconnect after 5 seconds
+                    if (!reconnectInterval) {
+                        console.log('🔄 Will attempt to reconnect in 5 seconds...');
+                        reconnectInterval = setInterval(initializeWebSocket, 5000);
+                    }
+                };
+                
+                websocket.onerror = function(error) {
+                    console.error('❌ WebSocket error:', error);
+                };
+                
+            } catch (error) {
+                console.error('❌ Error creating WebSocket connection:', error);
+                // Attempt to reconnect after 5 seconds
+                if (!reconnectInterval) {
+                    console.log('🔄 Will attempt to reconnect in 5 seconds...');
+                    reconnectInterval = setInterval(initializeWebSocket, 5000);
+                }
+            }
+        }
+
+        // Handle incoming WebSocket messages
+        function handleWebSocketMessage(data) {
+            console.log('📥 Handling WebSocket message:', data);
+            // Handle different message types from server if needed
+            switch (data.type) {
+                case 'acknowledgment':
+                    console.log('✅ Server acknowledged patient data:', data.message);
+                    break;
+                case 'error':
+                    console.error('❌ Server error:', data.message);
+                    break;
+                default:
+                    console.log('ℹ️ Unknown message type:', data.type);
+            }
+        }
+
+        // Send patient data via WebSocket
+        function sendPatientDataViaWebSocket(patientData) {
+            if (!websocket || websocket.readyState !== WebSocket.OPEN) {
+                console.warn('⚠️ WebSocket not connected. Cannot send patient data:', patientData);
+                return false;
+            }
+            
+            try {
+                const message = {
+                    type: 'patient_selected',
+                    timestamp: new Date().toISOString(),
+                    data: patientData
+                };
+                
+                console.log('📤 Sending patient data via WebSocket:', message);
+                websocket.send(JSON.stringify(message));
+                return true;
+            } catch (error) {
+                console.error('❌ Error sending WebSocket message:', error);
+                return false;
+            }
+        }
 
         // Function to save bed states using shared data manager
         function saveBedStatesToStorage() {
@@ -868,6 +959,25 @@
                 return;
             }
             
+            // Prepare patient data for WebSocket transmission
+            const patientData = {
+                id: patientExists.id,
+                name: patientExists.name,
+                age: patientExists.age,
+                gender: patientExists.gender, // Using 'gender' instead of 'sexe' for clarity
+                weight: patientExists.weight,
+                bedNumber: selectedBed,
+                timestamp: new Date().toISOString()
+            };
+            
+            // Send patient data via WebSocket
+            const webSocketSent = sendPatientDataViaWebSocket(patientData);
+            if (webSocketSent) {
+                console.log('✅ Patient data sent to server via WebSocket');
+            } else {
+                console.warn('⚠️ Failed to send patient data via WebSocket');
+            }
+            
             // Generate VPK code
             const vpkCodes = ['FG', 'AM', 'IB', 'GT'];
             const vpkCode = vpkCodes[Math.floor(Math.random() * vpkCodes.length)];
@@ -1051,6 +1161,9 @@
         document.addEventListener('DOMContentLoaded', function() {
             console.log('🚀 DOMContentLoaded event fired');
             
+            // Initialize WebSocket connection
+            initializeWebSocket();
+            
             // Initialize using shared data manager
             const initData = window.sharedDataManager.initializeBedOverviewPage();
             console.log('📊 Initialized bed overview data:', initData);
@@ -1076,6 +1189,22 @@
                 loadData();
             } else {
                 console.log('⏭️ Skipped loadData() because state was restored');
+            }
+        });
+
+        // Clean up WebSocket connection when page is unloaded
+        window.addEventListener('beforeunload', function() {
+            console.log('🧹 Page unloading - cleaning up WebSocket connection');
+            
+            // Clear reconnection interval
+            if (reconnectInterval) {
+                clearInterval(reconnectInterval);
+                reconnectInterval = null;
+            }
+            
+            // Close WebSocket connection
+            if (websocket && websocket.readyState === WebSocket.OPEN) {
+                websocket.close(1000, 'Page unloading');
             }
         });
 

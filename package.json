@@ -1,0 +1,24 @@
+{
+  "name": "smart-alarm-websocket-server",
+  "version": "1.0.0",
+  "description": "WebSocket server for receiving patient data from Smart Alarm UI",
+  "main": "websocket-server.js",
+  "scripts": {
+    "start": "node websocket-server.js",
+    "dev": "nodemon websocket-server.js"
+  },
+  "dependencies": {
+    "ws": "^8.13.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.0"
+  },
+  "keywords": [
+    "websocket",
+    "patient-data",
+    "smart-alarm",
+    "healthcare"
+  ],
+  "author": "Smart Alarm Team",
+  "license": "MIT"
+}
