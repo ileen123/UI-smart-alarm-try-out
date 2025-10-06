@@ -718,6 +718,36 @@ class SharedDataManager {
                     "whiteCenterSize": 0.3,
                     "whiteCenterOffset": 0.35
                 }
+            },
+            
+            // Add thresholds configuration for slider components
+            thresholds: {
+                normal: {
+                    circulatoir: {
+                        HR: { min: 60, max: 100 },
+                        BP_Mean: { min: 65, max: 85 }
+                    },
+                    respiratoire: {
+                        AF: { min: 12, max: 20 },
+                        Saturatie: { min: 92, max: 100 }
+                    },
+                    overige: {
+                        Temperature: { min: 36.0, max: 38.5 }
+                    }
+                },
+                conditions: {
+                    sepsis: {
+                        circulatoir: {
+                            HR: { min: 90, max: 130 },
+                            BP_Mean: { min: 50, max: 70 }
+                        }
+                    },
+                    pneumonie: {
+                        respiratoire: {
+                            AF: { min: 10, max: 30 }
+                        }
+                    }
+                }
             }
         };
     }
@@ -867,6 +897,129 @@ class SharedDataManager {
     }
 
     /**
+     * Tag-Based Parameter Adjustment System
+     * Explicit lookup table for individual parameter modifications based on condition tags
+     * @param {Array} activeTags - Array of active condition tags (['sepsis', 'pneumonie', etc.])
+     * @param {Object} baseTargetRanges - Base target ranges to modify
+     * @param {string} overallRiskLevel - Current overall risk level for intensity scaling
+     * @returns {Object} - Modified target ranges and reasoning
+     */
+    calculateTagBasedParameterAdjustments(activeTags = [], baseTargetRanges = {}, overallRiskLevel = 'low') {
+        console.log(`🏷️ Tag-Based Parameter Calculation: Tags=${JSON.stringify(activeTags)}, Risk=${overallRiskLevel}`);
+        
+        // TAG PARAMETER MATRIX - Define exact parameter modifications for each tag
+        const tagMatrix = {
+            'sepsis': {
+                description: 'Sepsis-specific parameter adjustments',
+                parameters: {
+                    HR: {
+                        low: { min: 70, max: 110, reasoning: 'Sepsis - mild tachycardia expected' },
+                        mid: { min: 80, max: 120, reasoning: 'Sepsis - moderate tachycardia monitoring' },
+                        high: { min: 90, max: 130, reasoning: 'Sepsis - intensive cardiac monitoring for severe tachycardia' }
+                    },
+                    BP_Mean: {
+                        low: { min: 60, max: 80, reasoning: 'Sepsis - mild hypotension risk' },
+                        mid: { min: 55, max: 75, reasoning: 'Sepsis - moderate hypotension monitoring' },
+                        high: { min: 50, max: 70, reasoning: 'Sepsis - severe hypotension risk, intensive monitoring' }
+                    },
+                    Temperature: {
+                        low: { min: 35.5, max: 39.0, reasoning: 'Sepsis - fever/hypothermia monitoring' },
+                        mid: { min: 35.0, max: 39.5, reasoning: 'Sepsis - enhanced temperature range for complications' },
+                        high: { min: 34.5, max: 40.0, reasoning: 'Sepsis - extreme temperature variations possible' }
+                    },
+                    AF: {
+                        low: { min: 14, max: 22, reasoning: 'Sepsis - mild respiratory compensation' },
+                        mid: { min: 16, max: 25, reasoning: 'Sepsis - moderate respiratory changes' },
+                        high: { min: 18, max: 30, reasoning: 'Sepsis - severe respiratory compensation' }
+                    }
+                }
+            },
+            'pneumonie': {
+                description: 'Pneumonia-specific parameter adjustments',
+                parameters: {
+                    AF: {
+                        low: { min: 14, max: 22, reasoning: 'Pneumonia - mild respiratory distress' },
+                        mid: { min: 16, max: 26, reasoning: 'Pneumonia - moderate respiratory compromise' },
+                        high: { min: 18, max: 30, reasoning: 'Pneumonia - severe respiratory distress' }
+                    },
+                    Saturatie: {
+                        low: { min: 90, max: 100, reasoning: 'Pneumonia - mild oxygenation compromise' },
+                        mid: { min: 88, max: 100, reasoning: 'Pneumonia - moderate oxygenation monitoring' },
+                        high: { min: 85, max: 100, reasoning: 'Pneumonia - severe oxygenation compromise possible' }
+                    },
+                    HR: {
+                        low: { min: 70, max: 110, reasoning: 'Pneumonia - compensatory mild tachycardia' },
+                        mid: { min: 75, max: 115, reasoning: 'Pneumonia - moderate cardiac compensation' },
+                        high: { min: 80, max: 120, reasoning: 'Pneumonia - significant cardiac compensation' }
+                    },
+                    Temperature: {
+                        low: { min: 36.0, max: 39.0, reasoning: 'Pneumonia - fever monitoring' },
+                        mid: { min: 35.5, max: 39.5, reasoning: 'Pneumonia - enhanced fever range' },
+                        high: { min: 35.0, max: 40.0, reasoning: 'Pneumonia - extreme fever/hypothermia risk' }
+                    }
+                }
+            }
+        };
+        
+        // Start with base ranges
+        let adjustedRanges = JSON.parse(JSON.stringify(baseTargetRanges));
+        let appliedAdjustments = [];
+        let reasoning = [];
+        
+        // Apply adjustments for each active tag
+        activeTags.forEach(tag => {
+            const tagConfig = tagMatrix[tag];
+            if (!tagConfig) {
+                console.warn(`⚠️ No parameter adjustments defined for tag: ${tag}`);
+                return;
+            }
+            
+            console.log(`🏷️ Applying ${tag} adjustments for risk level: ${overallRiskLevel}`);
+            
+            // Apply parameter modifications for this tag
+            Object.entries(tagConfig.parameters).forEach(([parameter, riskLevels]) => {
+                const adjustment = riskLevels[overallRiskLevel];
+                if (adjustment && adjustedRanges[parameter]) {
+                    // Store original for comparison
+                    const original = { ...adjustedRanges[parameter] };
+                    
+                    // Apply the tag-specific adjustment
+                    adjustedRanges[parameter].min = adjustment.min;
+                    adjustedRanges[parameter].max = adjustment.max;
+                    
+                    appliedAdjustments.push({
+                        tag: tag,
+                        parameter: parameter,
+                        original: original,
+                        adjusted: { ...adjustedRanges[parameter] },
+                        reasoning: adjustment.reasoning
+                    });
+                    
+                    reasoning.push(`${parameter}: ${adjustment.reasoning}`);
+                    
+                    console.log(`✅ ${tag} → ${parameter}: ${original.min}-${original.max} → ${adjustment.min}-${adjustment.max}`);
+                }
+            });
+        });
+        
+        const summary = {
+            approach: activeTags.length > 0 ? `Tag-based adjustments for: ${activeTags.join(', ')}` : 'No tag adjustments',
+            details: reasoning.join('; '),
+            tagsProcessed: activeTags,
+            adjustmentsCount: appliedAdjustments.length
+        };
+        
+        console.log(`✅ Tag adjustments applied:`, summary);
+        
+        return {
+            adjustedRanges,
+            appliedAdjustments,
+            reasoning: summary,
+            originalRanges: baseTargetRanges
+        };
+    }
+
+    /**
      * Apply problem-specific monitoring levels and target ranges
      * This function is used by both setup.html and alarm-overview.html for consistency
      * @param {string} problemValue - The selected problem ('respiratoire-insufficientie', 'hart-falen', 'sepsis')
@@ -946,36 +1099,98 @@ class SharedDataManager {
         
         console.log(`🎯 Using MATRIX states for ${problemValue} + ${overallRiskLevel}:`, organStates);
         
+        // APPLY TAG-BASED PARAMETER ADJUSTMENTS
+        // Get active condition tags from patient data
+        const patientData = patientId ? this.getPatientMedicalInfo(patientId) : null;
+        const activeTags = [];
+        
+        // Check for active condition tags
+        if (patientData) {
+            // Check for sepsis tag
+            const sepsisCondition = this.getPatientConditionState('sepsis', patientId);
+            if (sepsisCondition && sepsisCondition.isActive) {
+                activeTags.push('sepsis');
+            }
+            
+            // Check for pneumonie tag  
+            const pneumonieCondition = this.getPatientConditionState('pneumonie', patientId);
+            if (pneumonieCondition && pneumonieCondition.isActive) {
+                activeTags.push('pneumonie');
+            }
+            
+            console.log(`🏷️ Active condition tags found:`, activeTags);
+        }
+        
+        // Apply tag-based parameter adjustments to target ranges
+        if (activeTags.length > 0) {
+            const tagAdjustments = this.calculateTagBasedParameterAdjustments(activeTags, targetRanges, overallRiskLevel);
+            targetRanges = tagAdjustments.adjustedRanges;
+            
+            console.log(`🏷️ Target ranges adjusted by tags:`, {
+                originalProblem: problemValue,
+                activeTags: activeTags,
+                adjustmentsApplied: tagAdjustments.appliedAdjustments.length,
+                reasoning: tagAdjustments.reasoning
+            });
+        } else {
+            console.log(`🏷️ No active condition tags - using base target ranges`);
+        }
+        
         // Apply the states to organ components if provided
         if (organComponents) {
             console.log('🔧 Organ components received, applying states:', organStates);
+            console.log('🔧 Should overwrite manual adjustments:', shouldOverwriteManualAdjustments);
             
             if (organComponents.heart) {
-                console.log('🔧 Setting heart level from', organComponents.heart.getRiskLevel?.(), 'to', organStates.heart);
-                organComponents.heart.setRiskLevel(organStates.heart);
-                // Force a visual refresh
-                setTimeout(() => organComponents.heart.setRiskLevel(organStates.heart), 10);
-                console.log('✅ Applied heart level:', organStates.heart, '- New level:', organComponents.heart.getRiskLevel?.());
+                const currentHeartLevel = this.getHeartMonitoringLevel(patientId);
+                const hasExplicitHeartLevel = this.hasExplicitHeartMonitoringLevel(patientId);
+                const shouldUpdateHeart = shouldOverwriteManualAdjustments || !hasExplicitHeartLevel;
+                
+                console.log('🔧 Heart - Current level:', currentHeartLevel, 'Has explicit level:', hasExplicitHeartLevel, 'Should update:', shouldUpdateHeart);
+                
+                if (shouldUpdateHeart) {
+                    console.log('🔧 Setting heart level from', organComponents.heart.getRiskLevel?.(), 'to', organStates.heart);
+                    organComponents.heart.setRiskLevel(organStates.heart);
+                    console.log('✅ Applied heart level:', organStates.heart, '- New level:', organComponents.heart.getRiskLevel?.());
+                } else {
+                    console.log('⏭️ Skipping heart update - manual adjustment preserved:', currentHeartLevel);
+                }
             } else {
                 console.warn('❌ Heart component not found in organComponents');
             }
             
             if (organComponents.lung) {
-                console.log('🔧 Setting lung level from', organComponents.lung.getRiskLevel?.(), 'to', organStates.lung);
-                organComponents.lung.setRiskLevel(organStates.lung);
-                // Force a visual refresh
-                setTimeout(() => organComponents.lung.setRiskLevel(organStates.lung), 10);
-                console.log('✅ Applied lung level:', organStates.lung, '- New level:', organComponents.lung.getRiskLevel?.());
+                const currentLungLevel = this.getLungMonitoringLevel(patientId);
+                const hasExplicitLungLevel = this.hasExplicitLungMonitoringLevel(patientId);
+                const shouldUpdateLung = shouldOverwriteManualAdjustments || !hasExplicitLungLevel;
+                
+                console.log('🔧 Lung - Current level:', currentLungLevel, 'Has explicit level:', hasExplicitLungLevel, 'Should update:', shouldUpdateLung);
+                
+                if (shouldUpdateLung) {
+                    console.log('🔧 Setting lung level from', organComponents.lung.getRiskLevel?.(), 'to', organStates.lung);
+                    organComponents.lung.setRiskLevel(organStates.lung);
+                    console.log('✅ Applied lung level:', organStates.lung, '- New level:', organComponents.lung.getRiskLevel?.());
+                } else {
+                    console.log('⏭️ Skipping lung update - manual adjustment preserved:', currentLungLevel);
+                }
             } else {
                 console.warn('❌ Lung component not found in organComponents');
             }
             
             if (organComponents.temp) {
-                console.log('🔧 Setting temp level from', organComponents.temp.getRiskLevel?.(), 'to', organStates.temp);
-                organComponents.temp.setRiskLevel(organStates.temp);
-                // Force a visual refresh
-                setTimeout(() => organComponents.temp.setRiskLevel(organStates.temp), 10);
-                console.log('✅ Applied temp level:', organStates.temp, '- New level:', organComponents.temp.getRiskLevel?.());
+                const currentTempLevel = this.getTempMonitoringLevel(patientId);
+                const hasExplicitTempLevel = this.hasExplicitTempMonitoringLevel(patientId);
+                const shouldUpdateTemp = shouldOverwriteManualAdjustments || !hasExplicitTempLevel;
+                
+                console.log('🔧 Temp - Current level:', currentTempLevel, 'Has explicit level:', hasExplicitTempLevel, 'Should update:', shouldUpdateTemp);
+                
+                if (shouldUpdateTemp) {
+                    console.log('🔧 Setting temp level from', organComponents.temp.getRiskLevel?.(), 'to', organStates.temp);
+                    organComponents.temp.setRiskLevel(organStates.temp);
+                    console.log('✅ Applied temp level:', organStates.temp, '- New level:', organComponents.temp.getRiskLevel?.());
+                } else {
+                    console.log('⏭️ Skipping temp update - manual adjustment preserved:', currentTempLevel);
+                }
             } else {
                 console.warn('❌ Temp component not found in organComponents');
             }
@@ -1085,6 +1300,51 @@ class SharedDataManager {
             }, 10);
         } else {
             console.log('⏸️ NOT dispatching globalParametersChanged - shouldOverwriteManualAdjustments is false');
+        }
+        
+        // SYNC INDIVIDUAL MONITORING LEVELS: Update individual organ monitoring levels to match calculated states
+        // BUT ONLY if we should overwrite manual adjustments OR no explicit level exists
+        if (patientId && organStates) {
+            console.log('🔄 Syncing individual monitoring levels with calculated organ states...');
+            console.log('🔄 shouldOverwriteManualAdjustments:', shouldOverwriteManualAdjustments);
+            
+            // Update individual monitoring levels to match the calculated organ states
+            // BUT respect manual adjustments
+            if (organStates.heart) {
+                const hasExplicitHeart = this.hasExplicitHeartMonitoringLevel(patientId);
+                const shouldSyncHeart = shouldOverwriteManualAdjustments || !hasExplicitHeart;
+                
+                if (shouldSyncHeart) {
+                    this.setHeartMonitoringLevel(patientId, organStates.heart);
+                    console.log(`✅ Heart monitoring level synced to: ${organStates.heart}`);
+                } else {
+                    console.log(`⏭️ Skipping heart sync - manual adjustment preserved`);
+                }
+            }
+            if (organStates.lung) {
+                const hasExplicitLung = this.hasExplicitLungMonitoringLevel(patientId);
+                const shouldSyncLung = shouldOverwriteManualAdjustments || !hasExplicitLung;
+                
+                if (shouldSyncLung) {
+                    this.setLungMonitoringLevel(patientId, organStates.lung);
+                    console.log(`✅ Lung monitoring level synced to: ${organStates.lung}`);
+                } else {
+                    console.log(`⏭️ Skipping lung sync - manual adjustment preserved`);
+                }
+            }
+            if (organStates.temp) {
+                const hasExplicitTemp = this.hasExplicitTempMonitoringLevel(patientId);
+                const shouldSyncTemp = shouldOverwriteManualAdjustments || !hasExplicitTemp;
+                
+                if (shouldSyncTemp) {
+                    this.setTempMonitoringLevel(patientId, organStates.temp);
+                    console.log(`✅ Temp monitoring level synced to: ${organStates.temp}`);
+                } else {
+                    console.log(`⏭️ Skipping temp sync - manual adjustment preserved`);
+                }
+            }
+            
+            console.log('✅ Individual monitoring level sync completed (respecting manual adjustments)');
         }
         
         console.log('🎯 Problem-specific monitoring applied:', { organStates, targetRanges, reasoning: riskCalculation.reasoning });
@@ -1292,7 +1552,30 @@ class SharedDataManager {
      */
     getHeartMonitoringLevel(patientId) {
         const appData = this.getAppData();
-        return appData.patients?.[patientId]?.monitoring?.heartLevel || 'mid';
+        const result = appData.patients?.[patientId]?.monitoring?.heartLevel || 'mid';
+        console.log(`🔍 getHeartMonitoringLevel(${patientId}):`, result);
+        console.log(`🔍 Full path check:`, {
+            patients: !!appData.patients,
+            patient: !!appData.patients?.[patientId], 
+            monitoring: !!appData.patients?.[patientId]?.monitoring,
+            heartLevel: appData.patients?.[patientId]?.monitoring?.heartLevel
+        });
+        return result;
+    }
+
+    /**
+     * Check if heart monitoring level has been explicitly set (not just default)
+     */
+    hasExplicitHeartMonitoringLevel(patientId) {
+        const appData = this.getAppData();
+        const hasExplicitValue = appData.patients?.[patientId]?.monitoring?.heartLevel !== undefined;
+        const actualValue = appData.patients?.[patientId]?.monitoring?.heartLevel;
+        console.log(`🔍 hasExplicitHeartMonitoringLevel(${patientId}):`, {
+            hasExplicitValue,
+            actualValue,
+            storageCheck: JSON.stringify(appData.patients?.[patientId]?.monitoring || {})
+        });
+        return hasExplicitValue;
     }
 
     /**
@@ -1320,6 +1603,21 @@ class SharedDataManager {
     }
 
     /**
+     * Check if lung monitoring level has been explicitly set (not just default)
+     */
+    hasExplicitLungMonitoringLevel(patientId) {
+        const appData = this.getAppData();
+        const hasExplicitValue = appData.patients?.[patientId]?.monitoring?.lungLevel !== undefined;
+        const actualValue = appData.patients?.[patientId]?.monitoring?.lungLevel;
+        console.log(`🔍 hasExplicitLungMonitoringLevel(${patientId}):`, {
+            hasExplicitValue,
+            actualValue,
+            storageCheck: JSON.stringify(appData.patients?.[patientId]?.monitoring || {})
+        });
+        return hasExplicitValue;
+    }
+
+    /**
      * Set temp monitoring level (loose, mid, tight)
      */
     setTempMonitoringLevel(patientId, level) {
@@ -1341,6 +1639,21 @@ class SharedDataManager {
     getTempMonitoringLevel(patientId) {
         const appData = this.getAppData();
         return appData.patients?.[patientId]?.monitoring?.tempLevel || 'mid';
+    }
+
+    /**
+     * Check if temp monitoring level has been explicitly set (not just default)
+     */
+    hasExplicitTempMonitoringLevel(patientId) {
+        const appData = this.getAppData();
+        const hasExplicitValue = appData.patients?.[patientId]?.monitoring?.tempLevel !== undefined;
+        const actualValue = appData.patients?.[patientId]?.monitoring?.tempLevel;
+        console.log(`🔍 hasExplicitTempMonitoringLevel(${patientId}):`, {
+            hasExplicitValue,
+            actualValue,
+            storageCheck: JSON.stringify(appData.patients?.[patientId]?.monitoring || {})
+        });
+        return hasExplicitValue;
     }
 
     /**
@@ -1410,6 +1723,111 @@ class SharedDataManager {
     }
 
     /**
+     * Set organ system monitoring level
+     * @param {string} patientId - Patient ID
+     * @param {string} organSystem - Organ system (circulatoir, respiratoir, overig)
+     * @param {string} monitoringLevel - Monitoring level (los, mid, tight)
+     */
+    setOrganMonitoringLevel(patientId, organSystem, monitoringLevel) {
+        const key = `patient-${patientId}-monitoring-${organSystem}`;
+        localStorage.setItem(key, monitoringLevel);
+        
+        // Trigger event for cross-page synchronization
+        const event = new CustomEvent('organMonitoringLevelChanged', {
+            detail: { patientId, organSystem, monitoringLevel }
+        });
+        window.dispatchEvent(event);
+        
+        console.log(`📊 Monitoring level for ${organSystem} (patient ${patientId}): ${monitoringLevel}`);
+    }
+
+    /**
+     * Get organ system monitoring level
+     * @param {string} patientId - Patient ID
+     * @param {string} organSystem - Organ system (circulatoir, respiratoir, overig)
+     * @returns {string} - Monitoring level (los, mid, tight)
+     */
+    getOrganMonitoringLevel(patientId, organSystem) {
+        const key = `patient-${patientId}-monitoring-${organSystem}`;
+        const level = localStorage.getItem(key);
+        
+        if (level) {
+            console.log(`📊 Retrieved monitoring level for ${organSystem}: ${level}`);
+            return level;
+        }
+        
+        // Return default based on selected problem and organ system
+        const medicalInfo = this.getPatientMedicalInfo(patientId);
+        const selectedProblem = medicalInfo?.selectedProblem;
+        
+        // Default monitoring levels based on medical conditions
+        if (selectedProblem === 'respiratoire-insufficientie' && organSystem === 'circulatoir') {
+            console.log(`📊 Default monitoring level for circulatoir with respiratory insufficiency: los`);
+            return 'los';
+        } else if (selectedProblem === 'sepsis' && ['circulatoir', 'respiratoir'].includes(organSystem)) {
+            console.log(`📊 Default monitoring level for ${organSystem} with sepsis: tight`);
+            return 'tight';
+        } else if (selectedProblem === 'pneumonie' && organSystem === 'respiratoir') {
+            console.log(`📊 Default monitoring level for respiratoir with pneumonia: mid`);
+            return 'mid';
+        }
+        
+        // Default fallback
+        console.log(`📊 Default monitoring level for ${organSystem}: mid`);
+        return 'mid';
+    }
+
+    /**
+     * Get all organ monitoring levels for a patient
+     * @param {string} patientId - Patient ID
+     * @returns {Object} - Object with monitoring levels for each organ system
+     */
+    getAllOrganMonitoringLevels(patientId) {
+        return {
+            circulatoir: this.getOrganMonitoringLevel(patientId, 'circulatoir'),
+            respiratoir: this.getOrganMonitoringLevel(patientId, 'respiratoir'),
+            overig: this.getOrganMonitoringLevel(patientId, 'overig')
+        };
+    }
+
+    /**
+     * Update circulatory monitoring level and sync across pages
+     * @param {string} patientId - Patient ID  
+     * @param {string} level - Monitoring level (los, mid, tight)
+     */
+    updateCirculatoirMonitoringLevel(patientId, level) {
+        // Save the organ system monitoring level
+        this.setOrganMonitoringLevel(patientId, 'circulatoir', level);
+        
+        // Map to heart circle level for visual consistency
+        const heartLevelMapping = {
+            'los': 'low',
+            'mid': 'mid', 
+            'tight': 'high'
+        };
+        
+        const heartLevel = heartLevelMapping[level] || level;
+        
+        // Update heart circle components
+        if (window.organComponents?.heart) {
+            window.organComponents.heart.setRiskLevel(heartLevel);
+        }
+        if (window.circulatoirHeartCircle) {
+            window.circulatoirHeartCircle.setRiskLevel(heartLevel);
+        }
+        
+        // Also update the heart monitoring level for consistency
+        this.setHeartMonitoringLevel(patientId, heartLevel);
+        
+        // Trigger events for both monitoring levels
+        document.dispatchEvent(new CustomEvent('heartMonitoringLevelChanged', {
+            detail: { patientId, level: heartLevel }
+        }));
+        
+        console.log(`✅ Circulatoir monitoring level updated for patient ${patientId}: ${level} (heart: ${heartLevel})`);
+    }
+
+    /**
      * Get threshold data for specific conditions (compatibility with old dataManager)
      */
     getThresholds(condition = 'normal') {
@@ -1430,6 +1848,26 @@ class SharedDataManager {
      */
     getThresholdsByTags(tags) {
         const config = this.getConfigData();
+        
+        // Add error handling for missing thresholds configuration
+        if (!config || !config.thresholds || !config.thresholds.normal) {
+            console.warn('⚠️ Missing thresholds configuration in getConfigData()');
+            // Return default thresholds if configuration is missing
+            return {
+                circulatoir: {
+                    HR: { min: 60, max: 100 },
+                    BP_Mean: { min: 65, max: 85 }
+                },
+                respiratoire: {
+                    AF: { min: 12, max: 20 },
+                    Saturatie: { min: 92, max: 100 }
+                },
+                overige: {
+                    Temperature: { min: 36.0, max: 38.5 }
+                }
+            };
+        }
+        
         const normalThresholds = config.thresholds.normal;
         
         // Check for sepsis tag
@@ -1747,10 +2185,13 @@ class SharedDataManager {
             };
         }
         
-        // Fallback defaults
+        // Fallback defaults - complete parameter set
         return {
-            HR: { min: 60, max: 100, unit: 'bpm' },
-            BP_Mean: { min: 65, max: 85, unit: 'mmHg' }
+            HR: { min: 60, max: 100, unit: ' bpm' },
+            BP_Mean: { min: 65, max: 85, unit: ' mmHg' },
+            AF: { min: 12, max: 18, unit: ' /min' },
+            Saturatie: { min: 92, max: 100, unit: ' %' },
+            Temperature: { min: 36.0, max: 38.5, unit: ' °C' }
         };
     }
 

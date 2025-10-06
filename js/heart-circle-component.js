@@ -8,6 +8,8 @@ class HeartCircleComponent {
             ...options
         };
         
+        console.log(`🏗️ CONSTRUCTOR: Creating HeartCircleComponent for container: ${this.containerId} with initialState: ${this.options.initialState}`);
+        
         // Get configurations from data manager if available, otherwise use defaults
         this.configurations = this.getConfigurations();
         
@@ -66,12 +68,15 @@ class HeartCircleComponent {
     }
     
     init() {
+        console.log(`🔧 Initializing HeartCircleComponent for container: ${this.containerId} with initialState: ${this.options.initialState}`);
         this.createHTML();
         this.applyCSS();
         if (this.options.interactive) {
             this.setupInteractions();
         }
+        console.log(`🔧 About to call updateCircle(${this.options.initialState}) for ${this.containerId}`);
         this.updateCircle(this.options.initialState);
+        console.log(`🔧 Finished initializing ${this.containerId}`);
     }
     
     createHTML() {
@@ -202,7 +207,8 @@ class HeartCircleComponent {
         whiteCenter.style.left = whiteCenterOffset + 'px';
         
         this.currentState = riskLevel.toLowerCase();
-        console.log(`Heart circle updated to ${riskLevel} risk level`);
+        console.log(`Heart circle updated to ${riskLevel} risk level [Container: ${this.containerId}]`);
+        console.log(`🔍 Heart circle update called from:`, new Error().stack.split('\n')[2].trim());
     }
     
     // Public methods for external control

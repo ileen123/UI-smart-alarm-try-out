@@ -909,10 +909,42 @@
         // Global variables
         let currentPatientId = null;
         let currentBed = null;
-        let currentSettings = {
-            hr: { min: 70, max: 110 },
-            bp: { min: 65, max: 85 }
-        };
+        let currentSettings = {};
+
+        // Initialize currentSettings from SharedDataManager
+        function initializeCurrentSettings() {
+            if (currentPatientId && window.sharedDataManager) {
+                // Get current target ranges from SharedDataManager
+                const targetRanges = window.sharedDataManager.getPatientTargetRanges(currentPatientId);
+                if (targetRanges) {
+                    currentSettings = {
+                        hr: {
+                            min: targetRanges.HR?.min || window.HR_MIN || 60,
+                            max: targetRanges.HR?.max || window.HR_MAX || 100
+                        },
+                        bp: {
+                            min: targetRanges.BP_Mean?.min || window.BP_MIN || 65,
+                            max: targetRanges.BP_Mean?.max || window.BP_MAX || 85
+                        }
+                    };
+                } else {
+                    // Fallback to global variables
+                    currentSettings = {
+                        hr: { min: window.HR_MIN || 60, max: window.HR_MAX || 100 },
+                        bp: { min: window.BP_MIN || 65, max: window.BP_MAX || 85 }
+                    };
+                }
+                console.log('💓 Circulatory currentSettings initialized from SharedDataManager:', currentSettings);
+            } else {
+                // Default fallback
+                currentSettings = {
+                    hr: { min: 60, max: 100 },
+                    bp: { min: 65, max: 85 }
+                };
+                console.log('💓 Circulatory currentSettings initialized with defaults:', currentSettings);
+            }
+        }
+
         
         // Store slider references for monitoring level changes
         let hrSlider = null;
@@ -1001,6 +1033,9 @@
                 console.log('✅ Global variables loaded for circulatoir page');
             }
 
+            // Initialize button states immediately after DOM is ready
+            initializeMonitoringLevelButtons();
+
             // Initialize heart circle component (same as alarm overview)
             setTimeout(() => {
                 initializeHeartCircleComponent();
@@ -1035,6 +1070,8 @@
 
         // Initialize the heart circle component in circulatoir settings
         function initializeHeartCircleComponent() {
+            console.log('🫀 Starting initializeHeartCircleComponent...');
+            
             // Use same size as alarm overview
             const circleSize = 130;
             
@@ -1042,8 +1079,14 @@
             let initialLevel = 'mid';
             if (currentPatientId && window.sharedDataManager) {
                 initialLevel = window.sharedDataManager.getHeartMonitoringLevel(currentPatientId);
-                console.log(`Loading heart monitoring level for patient ${currentPatientId}:`, initialLevel);
+                console.log(`🫀 Heart circle initialization - Loading heart monitoring level for patient ${currentPatientId}:`, initialLevel);
+            } else {
+                console.log('🫀 Heart circle initialization - Using default level (mid) - no patient ID or SharedDataManager');
+                console.log('🫀 Current patient ID:', currentPatientId);
+                console.log('🫀 SharedDataManager available:', !!window.sharedDataManager);
             }
+            
+            console.log(`🫀 Creating heart circle component with initialState: ${initialLevel}`);
             
             window.circulatoirHeartCircle = new HeartCircleComponent('circulatoir-heart-circle-container', { 
                 size: circleSize, 
@@ -1060,8 +1103,8 @@
             
             const buttonLevel = levelMapping[initialLevel] || 'mid';
             
-            // Update button states to match loaded level
-            updateButtonStates(buttonLevel);
+            // Button states are now handled by initializeMonitoringLevelButtons() during DOM ready
+            // No need to update them here as they're already set earlier
             
             // Update sliders to match loaded level (wait for sliders to be initialized)
             setTimeout(() => {
@@ -1082,6 +1125,40 @@
                     updateSlidersMonitoringLevel(buttonLevel);
                 }
             });
+        }
+        
+        // Initialize monitoring level buttons immediately when DOM is ready
+        function initializeMonitoringLevelButtons() {
+            console.log('🔘 Initializing monitoring level buttons...');
+            console.log('🔍 Current patient ID:', currentPatientId);
+            console.log('🔍 SharedDataManager available:', !!window.sharedDataManager);
+            
+            // Get current monitoring level from SharedDataManager
+            let currentLevel = 'mid'; // default
+            if (currentPatientId && window.sharedDataManager) {
+                currentLevel = window.sharedDataManager.getHeartMonitoringLevel(currentPatientId);
+                console.log(`📱 Loaded heart monitoring level for patient ${currentPatientId}:`, currentLevel);
+            } else {
+                console.log('⚠️ Using default level (mid) - no patient ID or SharedDataManager');
+            }
+            
+            // Map heart circle levels to button levels
+            const levelMapping = {
+                'low': 'loose',
+                'mid': 'mid', 
+                'high': 'tight'
+            };
+            
+            const buttonLevel = levelMapping[currentLevel] || 'mid';
+            console.log(`🔘 Setting button state to: ${buttonLevel} (from heart level: ${currentLevel})`);
+            console.log(`🔘 Level mapping result: ${currentLevel} → ${levelMapping[currentLevel]} → fallback: ${buttonLevel}`);
+            
+            // Check if buttons exist before updating
+            const buttons = document.querySelectorAll('.button-group .btn');
+            console.log(`🔘 Found ${buttons.length} buttons in button-group`);
+            
+            // Update button states immediately
+            updateButtonStates(buttonLevel);
         }
         
         // Helper function to update button states
@@ -1158,7 +1235,10 @@
             const levelMapping = {
                 'loose': 'low',
                 'mid': 'mid',
-                'tight': 'high'
+                'tight': 'high',
+                'Los': 'low',
+                'Mid': 'mid',
+                'Strak': 'high'
             };
             
             const heartLevel = levelMapping[level] || level;
@@ -1237,6 +1317,9 @@
                 
                 // Update header with patient info
                 updatePatientHeader();
+                
+                // Initialize currentSettings from SharedDataManager
+                initializeCurrentSettings();
                 
                 // Initialize global variables for this patient (simple approach)
                 if (window.sharedDataManager) {
@@ -1747,10 +1830,10 @@
                                     const targetRanges = window.sharedDataManager.getPatientTargetRanges(currentPatientId);
                                     if (targetRanges && targetRanges.HR) {
                                         console.log('🔄 Initializing slider with current target ranges:', targetRanges.HR.min, '-', targetRanges.HR.max);
-                                        // Set global values and update sliders
-                                        window.HR_low = targetRanges.HR.min;
-                                        window.HR_high = targetRanges.HR.max;
-                                        updateHRSliderFromGlobalValues();
+                                        // Set global values - slider will automatically use these
+                                        window.HR_MIN = targetRanges.HR.min;
+                                        window.HR_MAX = targetRanges.HR.max;
+                                        console.log('✅ Global HR values set:', window.HR_MIN, '-', window.HR_MAX);
                                     }
                                 } else {
                                     // Fallback to existing global values

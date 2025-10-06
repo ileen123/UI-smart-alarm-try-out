@@ -907,10 +907,41 @@
         // Global variables
         let currentPatientId = null;
         let currentBed = null;
-        let currentSettings = {
-            saturatie: { min: 90, max: 100 },
-            af: { min: 12, max: 25 }
-        };
+        let currentSettings = {};
+
+        // Initialize currentSettings from SharedDataManager
+        function initializeCurrentSettings() {
+            if (currentPatientId && window.sharedDataManager) {
+                // Get current target ranges from SharedDataManager
+                const targetRanges = window.sharedDataManager.getPatientTargetRanges(currentPatientId);
+                if (targetRanges) {
+                    currentSettings = {
+                        saturatie: {
+                            min: targetRanges.Saturatie?.min || window.SAT_MIN || 90,
+                            max: targetRanges.Saturatie?.max || window.SAT_MAX || 100
+                        },
+                        af: {
+                            min: targetRanges.AF?.min || window.AF_MIN || 12,
+                            max: targetRanges.AF?.max || window.AF_MAX || 25
+                        }
+                    };
+                } else {
+                    // Fallback to global variables
+                    currentSettings = {
+                        saturatie: { min: window.SAT_MIN || 90, max: window.SAT_MAX || 100 },
+                        af: { min: window.AF_MIN || 12, max: window.AF_MAX || 25 }
+                    };
+                }
+                console.log('🫁 Respiratory currentSettings initialized from SharedDataManager:', currentSettings);
+            } else {
+                // Default fallback
+                currentSettings = {
+                    saturatie: { min: 90, max: 100 },
+                    af: { min: 12, max: 25 }
+                };
+                console.log('🫁 Respiratory currentSettings initialized with defaults:', currentSettings);
+            }
+        }
         
         // Store slider references for monitoring level changes
         let saturatieSlider = null;
@@ -1239,6 +1270,12 @@
                 // Update header with patient info
                 updatePatientHeader();
                 
+                // Initialize currentSettings from SharedDataManager
+                initializeCurrentSettings();
+                
+                // Initialize monitoring level buttons to show saved state
+                initializeMonitoringLevelButtons();
+                
                 // Initialize global variables for this patient (simple approach)
                 if (window.sharedDataManager) {
                     window.sharedDataManager.initializeGlobalParameterVariables(currentPatientId);
@@ -1248,6 +1285,56 @@
                 console.error('❌ SharedDataManager not available');
                 alert('Data manager niet beschikbaar. Herlaad de pagina.');
             }
+        }
+
+        function initializeMonitoringLevelButtons() {
+            console.log('🔧 Initializing respiratory monitoring level buttons...');
+            
+            if (!currentPatientId || !window.sharedDataManager) {
+                console.warn('❌ Cannot initialize monitoring buttons - missing patient ID or SharedDataManager');
+                return;
+            }
+            
+            // Get the saved lung monitoring level
+            const savedLevel = window.sharedDataManager.getLungMonitoringLevel(currentPatientId);
+            console.log('📊 Saved lung monitoring level:', savedLevel);
+            
+            // Map lung levels back to button levels
+            const levelMapping = {
+                'low': 'loose',
+                'mid': 'mid', 
+                'high': 'tight'
+            };
+            
+            const buttonLevel = levelMapping[savedLevel] || 'mid';
+            console.log('🔄 Mapped to button level:', buttonLevel);
+            
+            // Update button states - remove active/selected from all buttons
+            document.querySelectorAll('.button-group .btn').forEach(btn => {
+                btn.classList.remove('active', 'selected');
+            });
+            
+            // Add selected class to the appropriate button
+            const targetButton = document.querySelector(`[data-level="${buttonLevel}"]`);
+            if (targetButton) {
+                targetButton.classList.add('selected');
+                console.log(`✅ Button ${buttonLevel} marked as selected`);
+            } else {
+                console.warn(`❌ Button with level ${buttonLevel} not found`);
+            }
+            
+            // Update lung circle if it exists
+            if (window.respiratoryLungCircle) {
+                console.log(`🫁 Setting respiratory lung circle to: ${savedLevel}`);
+                window.respiratoryLungCircle.setRiskLevel(savedLevel);
+            } else {
+                console.log('ℹ️ respiratoryLungCircle not yet available - will be set when created');
+            }
+            
+            // Update sliders to match the level
+            updateSlidersMonitoringLevel(buttonLevel);
+            
+            console.log('✅ Respiratory monitoring level buttons initialized');
         }
 
         function updatePatientHeader() {

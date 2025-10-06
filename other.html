@@ -956,9 +956,36 @@
         // Global variables
         let currentPatientId = null;
         let currentBed = null;
-        let currentSettings = {
-            temperature: { min: 36.0, max: 38.5 }
-        };
+        let currentSettings = {};
+
+        // Initialize currentSettings from SharedDataManager
+        function initializeCurrentSettings() {
+            if (currentPatientId && window.sharedDataManager) {
+                // Get current target ranges from SharedDataManager
+                const targetRanges = window.sharedDataManager.getPatientTargetRanges(currentPatientId);
+                if (targetRanges) {
+                    currentSettings = {
+                        temperature: {
+                            min: targetRanges.Temperature?.min || window.TEMP_MIN || 36.0,
+                            max: targetRanges.Temperature?.max || window.TEMP_MAX || 38.5
+                        }
+                    };
+                } else {
+                    // Fallback to global variables
+                    currentSettings = {
+                        temperature: { min: window.TEMP_MIN || 36.0, max: window.TEMP_MAX || 38.5 }
+                    };
+                }
+                console.log('🌡️ Other currentSettings initialized from SharedDataManager:', currentSettings);
+            } else {
+                // Default fallback
+                currentSettings = {
+                    temperature: { min: 36.0, max: 38.5 }
+                };
+                console.log('🌡️ Other currentSettings initialized with defaults:', currentSettings);
+            }
+        }
+
         
         // Store slider references for monitoring level changes
         let tempSlider = null;
@@ -1207,6 +1234,12 @@
                 // Update header with patient info
                 updatePatientHeader();
                 
+                // Initialize currentSettings from SharedDataManager
+                initializeCurrentSettings();
+                
+                // Initialize monitoring level buttons to show saved state
+                initializeMonitoringLevelButtons();
+                
                 // Initialize global variables for this patient (simple approach)
                 if (window.sharedDataManager) {
                     window.sharedDataManager.initializeGlobalParameterVariables(currentPatientId);
@@ -1216,6 +1249,56 @@
                 console.error('❌ SharedDataManager not available');
                 alert('Data manager niet beschikbaar. Herlaad de pagina.');
             }
+        }
+
+        function initializeMonitoringLevelButtons() {
+            console.log('🔧 Initializing temperature monitoring level buttons...');
+            
+            if (!currentPatientId || !window.sharedDataManager) {
+                console.warn('❌ Cannot initialize monitoring buttons - missing patient ID or SharedDataManager');
+                return;
+            }
+            
+            // Get the saved temp monitoring level
+            const savedLevel = window.sharedDataManager.getTempMonitoringLevel(currentPatientId);
+            console.log('📊 Saved temp monitoring level:', savedLevel);
+            
+            // Map temp levels back to button levels
+            const levelMapping = {
+                'low': 'loose',
+                'mid': 'mid', 
+                'high': 'tight'
+            };
+            
+            const buttonLevel = levelMapping[savedLevel] || 'mid';
+            console.log('🔄 Mapped to button level:', buttonLevel);
+            
+            // Update button states - remove active/selected from all buttons
+            document.querySelectorAll('.button-group .btn').forEach(btn => {
+                btn.classList.remove('active', 'selected');
+            });
+            
+            // Add selected class to the appropriate button
+            const targetButton = document.querySelector(`[data-level="${buttonLevel}"]`);
+            if (targetButton) {
+                targetButton.classList.add('selected');
+                console.log(`✅ Button ${buttonLevel} marked as selected`);
+            } else {
+                console.warn(`❌ Button with level ${buttonLevel} not found`);
+            }
+            
+            // Update temp circle if it exists
+            if (window.tempCircle) {
+                console.log(`🌡️ Setting temp circle to: ${savedLevel}`);
+                window.tempCircle.setRiskLevel(savedLevel);
+            } else {
+                console.log('ℹ️ tempCircle not yet available - will be set when created');
+            }
+            
+            // Update sliders to match the level
+            updateSlidersMonitoringLevel(buttonLevel);
+            
+            console.log('✅ Temperature monitoring level buttons initialized');
         }
 
         function updatePatientHeader() {

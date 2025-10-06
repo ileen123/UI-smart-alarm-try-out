@@ -308,16 +308,11 @@
             // Load existing settings after components are initialized
             loadExistingSettings();
             
-            // Load saved heart monitoring level and apply it
-            setTimeout(() => {
-                // loadSavedHeartMonitoringLevel(); // Disabled - let matrix control organ levels
-                
-                // Initialize alarm toggles after patient is loaded
-                initializeAlarmToggles();
-                
-                // Update monitoring status after everything is loaded
-                setTimeout(() => updateMonitoringStatus(), 200);
-            }, 1000); // Increased delay to ensure it runs after loadExistingSettings
+            // Initialize alarm toggles after patient is loaded (no delay needed)
+            initializeAlarmToggles();
+            
+            // Update monitoring status after everything is loaded (small delay for DOM updates)
+            setTimeout(() => updateMonitoringStatus(), 100);
         });
 
         function initializeAlarmOverview() {
@@ -383,36 +378,45 @@
             // Listen for global heart monitoring level changes
             document.addEventListener('heartMonitoringLevelChanged', function(event) {
                 const { patientId, level } = event.detail;
+                console.log(`🔔 Received heart monitoring level change event:`, { patientId, level, currentPatientId });
                 if (patientId === currentPatientId && window.organComponents?.heart) {
-                    console.log(`Received heart monitoring level change for patient ${patientId}:`, level);
+                    console.log(`💓 Applying heart monitoring level change: ${level}`);
                     window.organComponents.heart.setRiskLevel(level);
                     
                     // Update monitoring status after risk level change
                     setTimeout(() => updateMonitoringStatus(), 100);
+                } else {
+                    console.log(`⏸️ Ignoring heart level change - patient mismatch or component missing`);
                 }
             });
             
             // Listen for global lung monitoring level changes
             document.addEventListener('lungMonitoringLevelChanged', function(event) {
                 const { patientId, level } = event.detail;
+                console.log(`🔔 Received lung monitoring level change event:`, { patientId, level, currentPatientId });
                 if (patientId === currentPatientId && window.organComponents?.lung) {
-                    console.log(`Received lung monitoring level change for patient ${patientId}:`, level);
+                    console.log(`🫁 Applying lung monitoring level change: ${level}`);
                     window.organComponents.lung.setRiskLevel(level);
                     
                     // Update monitoring status after risk level change
                     setTimeout(() => updateMonitoringStatus(), 100);
+                } else {
+                    console.log(`⏸️ Ignoring lung level change - patient mismatch or component missing`);
                 }
             });
             
             // Listen for global temp monitoring level changes
             document.addEventListener('tempMonitoringLevelChanged', function(event) {
                 const { patientId, level } = event.detail;
+                console.log(`🔔 Received temp monitoring level change event:`, { patientId, level, currentPatientId });
                 if (patientId === currentPatientId && window.organComponents?.temp) {
-                    console.log(`Received temp monitoring level change for patient ${patientId}:`, level);
+                    console.log(`🌡️ Applying temp monitoring level change: ${level}`);
                     window.organComponents.temp.setRiskLevel(level);
                     
                     // Update monitoring status after risk level change
                     setTimeout(() => updateMonitoringStatus(), 100);
+                } else {
+                    console.log(`⏸️ Ignoring temp level change - patient mismatch or component missing`);
                 }
             });
             
@@ -557,12 +561,15 @@
         function updateMonitoringStatus() {
             if (!window.organComponents) return;
             
+            console.log('🔄 Updating monitoring status displays...');
+            
             // Update heart status
             if (window.organComponents.heart) {
                 const heartLevel = window.organComponents.heart.getRiskLevel();
                 const heartStatusElement = document.getElementById('heart-status');
                 if (heartStatusElement) {
                     heartStatusElement.textContent = getStatusText(heartLevel);
+                    console.log(`💓 Heart status updated to: ${getStatusText(heartLevel)} (level: ${heartLevel})`);
                 }
             }
             
@@ -572,6 +579,7 @@
                 const lungStatusElement = document.getElementById('lung-status');
                 if (lungStatusElement) {
                     lungStatusElement.textContent = getStatusText(lungLevel);
+                    console.log(`🫁 Lung status updated to: ${getStatusText(lungLevel)} (level: ${lungLevel})`);
                 }
             }
             
@@ -581,7 +589,16 @@
                 const tempStatusElement = document.getElementById('temp-status');
                 if (tempStatusElement) {
                     tempStatusElement.textContent = getStatusText(tempLevel);
+                    console.log(`🌡️ Temp status updated to: ${getStatusText(tempLevel)} (level: ${tempLevel})`);
                 }
+            }
+            
+            // Log current monitoring levels from SharedDataManager for verification
+            if (currentPatientId && window.sharedDataManager) {
+                const heartLevel = window.sharedDataManager.getHeartMonitoringLevel(currentPatientId);
+                const lungLevel = window.sharedDataManager.getLungMonitoringLevel(currentPatientId);
+                const tempLevel = window.sharedDataManager.getTempMonitoringLevel(currentPatientId);
+                console.log(`📊 Current stored monitoring levels - Heart: ${heartLevel}, Lung: ${lungLevel}, Temp: ${tempLevel}`);
             }
         }
         
@@ -735,9 +752,27 @@
                     // Update monitoring status text after circles are updated
                     setTimeout(() => updateMonitoringStatus(), 100);
                     
-                    // Update global heart monitoring level
+                    // Apply riskMatrix logic based on current medical problem and new overall risk level
                     if (currentPatientId && window.sharedDataManager) {
-                        window.sharedDataManager.updateGlobalHeartMonitoringLevel(currentPatientId, riskLevel);
+                        console.log(`🔄 Updating overall risk level to: ${riskLevel} for patient ${currentPatientId}`);
+                        
+                        // Get the current medical problem
+                        const medicalInfo = window.sharedDataManager.getPatientMedicalInfo(currentPatientId);
+                        const selectedProblem = medicalInfo?.selectedProblem || 'none';
+                        
+                        console.log(`🎯 Applying riskMatrix for problem: ${selectedProblem} with risk: ${riskLevel}`);
+                        
+                        // Apply problem-specific monitoring with the new overall risk level
+                        const result = window.sharedDataManager.applyProblemSpecificMonitoring(
+                            selectedProblem,
+                            window.organComponents, // Pass the organ components for visual updates
+                            currentPatientId,
+                            riskLevel,
+                            true // shouldOverwriteManualAdjustments = true for overall risk changes
+                        );
+                        
+                        console.log(`✅ Applied riskMatrix calculation:`, result.organStates);
+                        console.log(`📋 Medical reasoning:`, result.reasoning);
                         
                         // Save the risk level to patient medical info for bed overview color updates
                         const currentMedicalInfo = window.sharedDataManager.getPatientMedicalInfo(currentPatientId) || {};
@@ -950,6 +985,41 @@
                 console.log('🔍 DEBUG: All patients data:', window.sharedDataManager.getAllPatients());
                 window.sharedDataManager.debugLocalStorage();
             }
+        }
+
+        // Comprehensive function to synchronize all monitoring levels
+        function synchronizeAllMonitoringLevels() {
+            if (!currentPatientId || !window.sharedDataManager || !window.organComponents) {
+                console.log('⏸️ Cannot synchronize monitoring levels - missing dependencies');
+                return;
+            }
+            
+            console.log('🔄 Synchronizing all monitoring levels for patient:', currentPatientId);
+            
+            // Get stored monitoring levels from SharedDataManager
+            const heartLevel = window.sharedDataManager.getHeartMonitoringLevel(currentPatientId);
+            const lungLevel = window.sharedDataManager.getLungMonitoringLevel(currentPatientId);
+            const tempLevel = window.sharedDataManager.getTempMonitoringLevel(currentPatientId);
+            
+            console.log('📊 Stored monitoring levels:', { heartLevel, lungLevel, tempLevel });
+            
+            // Apply stored levels to organ components
+            if (window.organComponents.heart && heartLevel) {
+                console.log(`💓 Applying stored heart level: ${heartLevel}`);
+                window.organComponents.heart.setRiskLevel(heartLevel);
+            }
+            
+            if (window.organComponents.lung && lungLevel) {
+                console.log(`🫁 Applying stored lung level: ${lungLevel}`);
+                window.organComponents.lung.setRiskLevel(lungLevel);
+            }
+            
+            if (window.organComponents.temp && tempLevel) {
+                console.log(`🌡️ Applying stored temp level: ${tempLevel}`);
+                window.organComponents.temp.setRiskLevel(tempLevel);
+            }
+            
+            console.log('✅ All monitoring levels synchronized');
         }
 
         // Load and apply saved heart monitoring level from circulatoir settings
@@ -1488,6 +1558,17 @@
             console.log('🎯 Current selectedProblem:', selectedProblem);
             console.log('🎯 Current selectedRiskLevel:', selectedRiskLevel);
             console.log('🎯 isActivated:', isActivated);
+            
+            // Log monitoring level synchronization that happens automatically in SharedDataManager
+            if (currentPatientId && window.sharedDataManager) {
+                console.log('📊 Monitoring levels automatically synchronized by SharedDataManager:');
+                setTimeout(() => {
+                    const heartLevel = window.sharedDataManager.getHeartMonitoringLevel(currentPatientId);
+                    const lungLevel = window.sharedDataManager.getLungMonitoringLevel(currentPatientId);
+                    const tempLevel = window.sharedDataManager.getTempMonitoringLevel(currentPatientId);
+                    console.log(`   - Heart: ${heartLevel}, Lung: ${lungLevel}, Temp: ${tempLevel}`);
+                }, 50);
+            }
             
             // Update organ settings (organ components already updated by centralized function)
             if (finalOrganStates.heart) {
