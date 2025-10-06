@@ -916,27 +916,16 @@ class SharedDataManager {
                     // BP_Mean affected significantly by sepsis (hypotension risk)
                     BP_Mean: {
                         low: { minDelta: -10, maxDelta: -10, reasoning: 'Sepsis - hypotension risk, lower BP monitoring range' },
-                        mid: { minDelta: -15, maxDelta: -15, reasoning: 'Sepsis - moderate hypotension risk' },
-                        high: { minDelta: -20, maxDelta: -20, reasoning: 'Sepsis - severe hypotension risk, significantly lower range' }
+                        mid: { minDelta: -10, maxDelta: -10, reasoning: 'Sepsis - moderate hypotension risk' },
+                        high: { minDelta: -10, maxDelta: -10, reasoning: 'Sepsis - severe hypotension risk, significantly lower range' }
                     },
                     // HR affected (tachycardia compensation)  
                     HR: {
-                        low: { minDelta: 0, maxDelta: +15, reasoning: 'Sepsis - mild tachycardia compensation' },
-                        mid: { minDelta: +5, maxDelta: +20, reasoning: 'Sepsis - moderate tachycardia expected' },
-                        high: { minDelta: +10, maxDelta: +25, reasoning: 'Sepsis - significant tachycardia monitoring' }
+                        low: { minDelta: +0, maxDelta: +20, reasoning: 'Sepsis - mild tachycardia compensation' },
+                        mid: { minDelta: +0, maxDelta: +20, reasoning: 'Sepsis - moderate tachycardia expected' },
+                        high: { minDelta: +0, maxDelta: +20, reasoning: 'Sepsis - significant tachycardia monitoring' }
                     },
-                    // Temperature range expansion for fever/hypothermia
-                    Temperature: {
-                        low: { minDelta: -0.5, maxDelta: +0.5, reasoning: 'Sepsis - fever/hypothermia monitoring range expansion' },
-                        mid: { minDelta: -1.0, maxDelta: +1.0, reasoning: 'Sepsis - enhanced temperature range for complications' },
-                        high: { minDelta: -1.5, maxDelta: +1.5, reasoning: 'Sepsis - extreme temperature variation monitoring' }
-                    },
-                    // AF affected by metabolic compensation
-                    AF: {
-                        low: { minDelta: +2, maxDelta: +4, reasoning: 'Sepsis - mild respiratory compensation' },
-                        mid: { minDelta: +4, maxDelta: +6, reasoning: 'Sepsis - moderate respiratory changes' },
-                        high: { minDelta: +6, maxDelta: +10, reasoning: 'Sepsis - severe respiratory compensation' }
-                    }
+                   
                 },
                 // Monitoring level adjustments - increase circulatory monitoring by 1 level
                 monitoringDeltas: {
