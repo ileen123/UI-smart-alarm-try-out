@@ -1417,6 +1417,27 @@
                 }
             });
 
+            // Listen for tag parameter changes (sepsis/pneumonie)
+            window.addEventListener('tagParametersChanged', function(event) {
+                console.log('🏷️ Other page received tag parameters changed:', event.detail);
+                const { patientId, parameters } = event.detail;
+                
+                // Only update if it's for the current patient
+                if (patientId === currentPatientId && parameters) {
+                    // Update Temperature slider if tag parameters include Temperature
+                    if (parameters.Temperature && tempSlider && typeof tempSlider.updateConfig === 'function') {
+                        console.log('🔄 Updating Temperature slider from tag parameters:', parameters.Temperature.min, '-', parameters.Temperature.max);
+                        tempSlider.updateConfig({
+                            targetRange: { min: parameters.Temperature.min, max: parameters.Temperature.max }
+                        });
+                        if (tempSlider.updateSliderPosition) {
+                            tempSlider.updateSliderPosition();
+                        }
+                        console.log('✅ Temperature slider updated from tag parameters');
+                    }
+                }
+            });
+
             
             // Set up circulatory tag button listeners
             const circulatoryTagButtons = document.querySelectorAll('.circulatory-tag');

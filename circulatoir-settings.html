@@ -1437,11 +1437,46 @@
                 }
             });
 
+            // Listen for tag parameter changes (sepsis/pneumonie)
+            window.addEventListener('tagParametersChanged', function(event) {
+                console.log('🏷️ Circulatory page received tag parameters changed:', event.detail);
+                const { patientId, parameters } = event.detail;
+                
+                // Only update if it's for the current patient
+                if (patientId === currentPatientId && parameters) {
+                    // Update HR slider if tag parameters include HR
+                    if (parameters.HR && hrSlider && hrSlider.config && hrSlider.config.targetRange) {
+                        console.log('🔄 Updating HR slider from tag parameters:', parameters.HR.min, '-', parameters.HR.max);
+                        hrSlider.config.targetRange.min = parameters.HR.min;
+                        hrSlider.config.targetRange.max = parameters.HR.max;
+                        hrSlider.currentMin = parameters.HR.min;
+                        hrSlider.currentMax = parameters.HR.max;
+                        if (hrSlider.updateSliderPosition) {
+                            hrSlider.updateSliderPosition();
+                        }
+                        console.log('✅ HR slider updated from tag parameters');
+                    }
+                    
+                    // Update BP slider if tag parameters include BP_Mean
+                    if (parameters.BP_Mean && bpSlider && bpSlider.config && bpSlider.config.targetRange) {
+                        console.log('🔄 Updating BP slider from tag parameters:', parameters.BP_Mean.min, '-', parameters.BP_Mean.max);
+                        bpSlider.config.targetRange.min = parameters.BP_Mean.min;
+                        bpSlider.config.targetRange.max = parameters.BP_Mean.max;
+                        bpSlider.currentMin = parameters.BP_Mean.min;
+                        bpSlider.currentMax = parameters.BP_Mean.max;
+                        if (bpSlider.updateSliderPosition) {
+                            bpSlider.updateSliderPosition();
+                        }
+                        console.log('✅ BP slider updated from tag parameters');
+                    }
+                }
+            });
+
             
-            // Function to force update HR slider with global HR_low and HR_high values
+            // Function to force update HR slider with global HR_MIN and HR_MAX values
             function updateHRSliderFromGlobalValues() {
-                if (typeof window.HR_low !== 'undefined' && typeof window.HR_high !== 'undefined') {
-                    console.log('🔄 Forcing HR slider update with global values:', window.HR_low, '-', window.HR_high);
+                if (typeof window.HR_MIN !== 'undefined' && typeof window.HR_MAX !== 'undefined') {
+                    console.log('🔄 Forcing HR slider update with global values:', window.HR_MIN, '-', window.HR_MAX);
                     
                     if (hrSlider && hrSlider.container) {
                         // Method 1: Use updateConfig if available (preferred method)
@@ -1452,23 +1487,27 @@
                                     max: window.HR_MAX
                                 }
                             });
+                            // Force visual position refresh if method exists
+                            if (hrSlider.updateSliderPosition) {
+                                hrSlider.updateSliderPosition();
+                            }
                             console.log('✅ HR slider updated via updateConfig method');
                         } else {
                             // Method 2: Direct property manipulation + position update
-                            hrSlider.currentMin = window.HR_low;
-                            hrSlider.currentMax = window.HR_high;
+                            hrSlider.currentMin = window.HR_MIN;
+                            hrSlider.currentMax = window.HR_MAX;
                             
                             // Safely update config if it exists
                             if (hrSlider.config && hrSlider.config.targetRange) {
-                                hrSlider.config.targetRange.min = window.HR_low;
-                                hrSlider.config.targetRange.max = window.HR_high;
+                                hrSlider.config.targetRange.min = window.HR_MIN;
+                                hrSlider.config.targetRange.max = window.HR_MAX;
                             }
                             
                             // Update the visual elements directly
                             const maxValueElement = hrSlider.container.querySelector('.sliding-value-outside.max-value');
                             const minValueElement = hrSlider.container.querySelector('.sliding-value-outside.min-value');
-                            if (maxValueElement) maxValueElement.textContent = Math.round(window.HR_high);
-                            if (minValueElement) minValueElement.textContent = Math.round(window.HR_low);
+                            if (maxValueElement) maxValueElement.textContent = Math.round(window.HR_MAX);
+                            if (minValueElement) minValueElement.textContent = Math.round(window.HR_MIN);
                             
                             // Update slider positions
                             if (typeof hrSlider.updateSliderPosition === 'function') {
@@ -1517,15 +1556,17 @@
                     if (targetRanges) {
                         // Update global values for HR
                         if (targetRanges.HR) {
-                            window.HR_low = targetRanges.HR.min;
-                            window.HR_high = targetRanges.HR.max;
+                            window.HR_MIN = targetRanges.HR.min;
+                            window.HR_MAX = targetRanges.HR.max;
+                            console.log('🎯 Updated HR global variables from target ranges:', window.HR_MIN, '-', window.HR_MAX);
                             updateHRSliderFromGlobalValues();
                         }
                         
                         // Update BP slider if available (similar logic)
                         if (targetRanges.BP_Mean && bpSlider && bpSlider.container) {
-                            window.BP_low = targetRanges.BP_Mean.min;
-                            window.BP_high = targetRanges.BP_Mean.max;
+                            window.BP_MIN = targetRanges.BP_Mean.min;
+                            window.BP_MAX = targetRanges.BP_Mean.max;
+                            console.log('🎯 Updated BP global variables from target ranges:', window.BP_MIN, '-', window.BP_MAX);
                             
                             if (typeof bpSlider.updateConfig === 'function') {
                                 bpSlider.updateConfig({
@@ -1598,7 +1639,7 @@
                         // Deselect tag
                         this.classList.remove('selected');
                         
-                        // Handle sepsis deselection using new condition state system
+                        // Handle sepsis deselection using matrix-based reversion
                         if (tagCondition === 'sepsis' && currentPatientId && window.sharedDataManager) {
                             window.sharedDataManager.setPatientConditionState('sepsis', {
                                 isActive: false,
@@ -1607,37 +1648,77 @@
                                 source: 'circulatory-settings'
                             });
                             
-                            // Restore previous HR and BP ranges from shared data manager
-                            if (window.sharedDataManager.restorePreviousHRRanges) {
-                                window.sharedDataManager.restorePreviousHRRanges(currentPatientId);
-                            }
-                            if (window.sharedDataManager.restorePreviousBPRanges) {
-                                window.sharedDataManager.restorePreviousBPRanges(currentPatientId);
+                            // Auto-revert to matrix-based ranges that match main issue and overall risk level
+                            const matrixReversionResult = window.sharedDataManager.revertToMatrixBasedRanges(currentPatientId, 'sepsis');
+                            
+                            if (matrixReversionResult && matrixReversionResult.targetRanges) {
+                                // Save the matrix-based ranges to circulatory settings
+                                setTimeout(() => {
+                                    const revertedRanges = matrixReversionResult.targetRanges;
+                                    if (revertedRanges.HR && revertedRanges.BP_Mean) {
+                                        const existingCirculatorySettings = window.sharedDataManager.getPatientCirculatoirSettings(currentPatientId) || {};
+                                        const newCirculatorySettings = {
+                                            ...existingCirculatorySettings,
+                                            hr: { min: revertedRanges.HR.min, max: revertedRanges.HR.max },
+                                            bp: { min: revertedRanges.BP_Mean.min, max: revertedRanges.BP_Mean.max }
+                                        };
+                                        
+                                        // Save the matrix-based HR and BP ranges automatically
+                                        window.sharedDataManager.savePatientCirculatoirSettings(currentPatientId, newCirculatorySettings);
+                                        console.log('🦠 Sepsis deselected - auto-reverted to matrix-based HR & BP ranges:', {
+                                            reasoning: matrixReversionResult.reasoning,
+                                            settings: newCirculatorySettings
+                                        });
+                                        
+                                        // Refresh sliders to show the matrix-based ranges
+                                        setTimeout(() => {
+                                            refreshSlidersFromTargetRanges();
+                                            
+                                            // Explicitly update HR slider positions with the reverted values
+                                            if (revertedRanges.HR) {
+                                                window.HR_MIN = revertedRanges.HR.min;
+                                                window.HR_MAX = revertedRanges.HR.max;
+                                                updateHRSliderFromGlobalValues();
+                                                
+                                                // Also try direct HR slider update for immediate positioning
+                                                if (hrSlider && typeof hrSlider.updateConfig === 'function') {
+                                                    hrSlider.updateConfig({
+                                                        targetRange: {
+                                                            min: revertedRanges.HR.min,
+                                                            max: revertedRanges.HR.max
+                                                        }
+                                                    });
+                                                    if (hrSlider.updateSliderPosition) {
+                                                        hrSlider.updateSliderPosition();
+                                                    }
+                                                    console.log('✅ HR slider explicitly repositioned after sepsis deselection:', revertedRanges.HR);
+                                                }
+                                            }
+                                            
+                                            // Explicitly update BP slider if available
+                                            if (bpSlider && bpSlider.container && revertedRanges.BP_Mean) {
+                                                if (typeof bpSlider.updateConfig === 'function') {
+                                                    bpSlider.updateConfig({
+                                                        targetRange: {
+                                                            min: revertedRanges.BP_Mean.min,
+                                                            max: revertedRanges.BP_Mean.max
+                                                        }
+                                                    });
+                                                    // Force visual position refresh if method exists
+                                                    if (bpSlider.updateSliderPosition) {
+                                                        bpSlider.updateSliderPosition();
+                                                    }
+                                                    console.log('✅ BP slider explicitly updated after sepsis deselection:', revertedRanges.BP_Mean);
+                                                }
+                                            }
+                                            
+                                            console.log('🎚️ All sliders repositioned after sepsis deselection to matrix-based ranges');
+                                        }, 50);
+                                    }
+                                }, 100); // Small delay to ensure matrix reversion is complete
                             }
                             
-                            // Get the restored ranges and save them to circulatory settings
-                            setTimeout(() => {
-                                const restoredTargetRanges = window.sharedDataManager.getPatientTargetRanges(currentPatientId);
-                                if (restoredTargetRanges && restoredTargetRanges.HR && restoredTargetRanges.BP_Mean) {
-                                    const existingCirculatorySettings = window.sharedDataManager.getPatientCirculatoirSettings(currentPatientId) || {};
-                                    const newCirculatorySettings = {
-                                        ...existingCirculatorySettings,
-                                        hr: { min: restoredTargetRanges.HR.min, max: restoredTargetRanges.HR.max },
-                                        bp: { min: restoredTargetRanges.BP_Mean.min, max: restoredTargetRanges.BP_Mean.max }
-                                    };
-                                    
-                                    // Save the restored HR and BP ranges automatically
-                                    window.sharedDataManager.savePatientCirculatoirSettings(currentPatientId, newCirculatorySettings);
-                                    console.log('🦠 Sepsis deselected on circulatory page - restored HR & BP ranges automatically saved:', newCirculatorySettings);
-                                    
-                                    // Refresh sliders to show the restored ranges
-                                    setTimeout(() => {
-                                        refreshSlidersFromTargetRanges();
-                                    }, 50);
-                                }
-                            }, 100); // Small delay to ensure restoration is complete
-                            
-                            console.log('🦠 Sepsis deselected and previous HR & BP ranges restored');
+                            console.log('🦠 Sepsis deselected - auto-reverted to matrix-based ranges matching main issue and risk level');
                         }
                     } else {
                         // Select tag
@@ -1675,6 +1756,52 @@
                             window.sharedDataManager.setPatientTargetRanges(currentPatientId, updatedTargetRanges);
                             
                             console.log('🦠 Sepsis selected and HR (90-130) & BP (65-85) ranges automatically saved');
+                            
+                            // UPDATE SLIDERS: Refresh sliders to reflect the new sepsis ranges
+                            setTimeout(() => {
+                                // Update global HR variables to sepsis values first
+                                window.HR_MIN = 90;
+                                window.HR_MAX = 130;
+                                window.BP_MIN = 65;
+                                window.BP_MAX = 85;
+                                
+                                refreshSlidersFromTargetRanges();
+                                
+                                // Explicitly ensure HR slider moves to sepsis position
+                                updateHRSliderFromGlobalValues();
+                                
+                                // Also try direct HR slider update for immediate positioning
+                                if (hrSlider && typeof hrSlider.updateConfig === 'function') {
+                                    hrSlider.updateConfig({
+                                        targetRange: {
+                                            min: 90,
+                                            max: 130
+                                        }
+                                    });
+                                    if (hrSlider.updateSliderPosition) {
+                                        hrSlider.updateSliderPosition();
+                                    }
+                                    console.log('✅ HR slider explicitly positioned for sepsis selection: 90-130');
+                                }
+                                
+                                // Explicitly ensure BP slider moves to sepsis position
+                                if (bpSlider && bpSlider.container) {
+                                    if (typeof bpSlider.updateConfig === 'function') {
+                                        bpSlider.updateConfig({
+                                            targetRange: {
+                                                min: 65,
+                                                max: 85
+                                            }
+                                        });
+                                        // Force visual position refresh if method exists
+                                        if (bpSlider.updateSliderPosition) {
+                                            bpSlider.updateSliderPosition();
+                                        }
+                                    }
+                                }
+                                
+                                console.log('🎚️ Sliders updated and repositioned to reflect sepsis tag ranges');
+                            }, 50);
                         }
                     }
                 });

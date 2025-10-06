@@ -16,6 +16,39 @@
     <!-- Link to external CSS file for styling -->
     <link rel="stylesheet" href="css/styles.css">
     
+    <!-- Custom styles for tag parameter highlighting -->
+    <style>
+        .highlight-red {
+            background-color: rgba(255, 99, 99, 0.3) !important;
+            border: 2px solid #ff6363 !important;
+            border-radius: 4px !important;
+            padding: 2px 4px !important;
+            transition: all 0.3s ease !important;
+            animation: pulse-red 0.6s ease-in-out !important;
+        }
+        
+        .highlight-blue {
+            background-color: rgba(99, 150, 255, 0.3) !important;
+            border: 2px solid #6396ff !important;
+            border-radius: 4px !important;
+            padding: 2px 4px !important;
+            transition: all 0.3s ease !important;
+            animation: pulse-blue 0.6s ease-in-out !important;
+        }
+        
+        @keyframes pulse-red {
+            0% { box-shadow: 0 0 0 0 rgba(255, 99, 99, 0.7); }
+            70% { box-shadow: 0 0 0 10px rgba(255, 99, 99, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(255, 99, 99, 0); }
+        }
+        
+        @keyframes pulse-blue {
+            0% { box-shadow: 0 0 0 0 rgba(99, 150, 255, 0.7); }
+            70% { box-shadow: 0 0 0 10px rgba(99, 150, 255, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(99, 150, 255, 0); }
+        }
+    </style>
+    
     <!-- Data Manager for cross-page data synchronization -->
     <script src="js/shared-data-manager.js"></script>
 </head>
@@ -243,6 +276,71 @@
         // ===================================================================
         // CENTRALIZED SYNCHRONIZATION SYSTEM  
         // ===================================================================
+        
+        // Function to apply tag parameter changes with visual highlighting
+        function applyTagParameterChangesWithHighlighting(tag, isActive, parameters) {
+            console.log(`🎨 Applying ${tag} parameter changes with highlighting on alarm overview:`, parameters);
+            
+            // Get all parameter display elements
+            const valueNumbers = document.querySelectorAll('.value-number');
+            const afDisplay = document.getElementById('af-range-display');
+            
+            // Define highlight colors for different conditions
+            const highlightClass = tag === 'sepsis' ? 'highlight-red' : 'highlight-blue';
+            
+            // Apply parameter changes and highlight affected ones
+            if (parameters.HR && valueNumbers[0]) {
+                valueNumbers[0].textContent = `${parameters.HR.min} - ${parameters.HR.max} ${parameters.HR.unit}`;
+                highlightParameterChange(valueNumbers[0], highlightClass, `${tag} affected HR`);
+                console.log(`✅ Updated HR display with ${tag} delta:`, valueNumbers[0].textContent);
+            }
+            
+            if (parameters.BP_Mean && valueNumbers[1]) {
+                valueNumbers[1].textContent = `${parameters.BP_Mean.min} - ${parameters.BP_Mean.max} ${parameters.BP_Mean.unit}`;
+                highlightParameterChange(valueNumbers[1], highlightClass, `${tag} affected BP`);
+                console.log(`✅ Updated BP display with ${tag} delta:`, valueNumbers[1].textContent);
+            }
+            
+            if (parameters.Saturatie && valueNumbers[2]) {
+                valueNumbers[2].textContent = `${parameters.Saturatie.min} - ${parameters.Saturatie.max}${parameters.Saturatie.unit}`;
+                highlightParameterChange(valueNumbers[2], highlightClass, `${tag} affected Saturatie`);
+                console.log(`✅ Updated Saturatie display with ${tag} delta:`, valueNumbers[2].textContent);
+            }
+            
+            if (parameters.AF && afDisplay) {
+                afDisplay.textContent = `${parameters.AF.min} - ${parameters.AF.max} /min`;
+                highlightParameterChange(afDisplay, highlightClass, `${tag} affected AF`);
+                console.log(`✅ Updated AF display with ${tag} delta:`, afDisplay.textContent);
+            }
+            
+            if (parameters.Temperature && valueNumbers[4]) {
+                valueNumbers[4].textContent = `${parameters.Temperature.min} - ${parameters.Temperature.max} ${parameters.Temperature.unit}`;
+                highlightParameterChange(valueNumbers[4], highlightClass, `${tag} affected Temperature`);
+                console.log(`✅ Updated Temperature display with ${tag} delta:`, valueNumbers[4].textContent);
+            }
+        }
+        
+        // Function to highlight parameter changes with visual feedback
+        function highlightParameterChange(element, highlightClass, message) {
+            if (!element) return;
+            
+            // Remove any existing highlight classes
+            element.classList.remove('highlight-red', 'highlight-blue', 'highlight', 'fade-out');
+            
+            // Add the appropriate highlight class
+            element.classList.add(highlightClass);
+            
+            // Add a data attribute to show tooltip or message
+            element.setAttribute('title', message);
+            
+            // Remove highlight after animation
+            setTimeout(() => {
+                element.classList.remove(highlightClass);
+                element.removeAttribute('title');
+            }, 2000);
+            
+            console.log(`🎨 Applied ${highlightClass} highlighting to parameter:`, message);
+        }
 
         /**
          * Synchronize all written displays with centralized target ranges
@@ -426,6 +524,56 @@
                 console.log('� Updating alarm overview displays with new global variables...');
                 syncDisplaysWithCentralizedRanges();
                 console.log('📊 SYNC COMPLETED on alarm overview');
+            });
+
+            // TAG SYSTEM: Listen for tag-based parameter changes (sepsis, pneumonie)
+            window.addEventListener('tagParametersChanged', function(event) {
+                console.log('🏷️ Tag parameters changed event received on alarm overview:', event.detail);
+                const { tag, isActive, patientId, parameters, organStates } = event.detail;
+                
+                if (patientId === currentPatientId) {
+                    console.log(`🏷️ Applying ${tag} parameter changes (${isActive ? 'ACTIVE' : 'INACTIVE'}):`, parameters);
+                    
+                    // Apply parameter changes with highlighting
+                    if (parameters) {
+                        applyTagParameterChangesWithHighlighting(tag, isActive, parameters);
+                    }
+                    
+                    // Update organ circle visual states if tag affected monitoring levels
+                    if (organStates && window.organComponents) {
+                        console.log(`🔄 Updating organ states from tag ${tag}:`, organStates);
+                        
+                        if (organStates.heart && window.organComponents.heart) {
+                            window.organComponents.heart.setRiskLevel(organStates.heart);
+                            console.log(`✅ Updated heart circle to: ${organStates.heart}`);
+                        }
+                        
+                        if (organStates.lung && window.organComponents.lung) {
+                            window.organComponents.lung.setRiskLevel(organStates.lung);
+                            console.log(`✅ Updated lung circle to: ${organStates.lung}`);
+                        }
+                        
+                        if (organStates.temp && window.organComponents.temp) {
+                            window.organComponents.temp.setRiskLevel(organStates.temp);
+                            console.log(`✅ Updated temp circle to: ${organStates.temp}`);
+                        }
+                    }
+                    
+                    // Update tag button visual state if it exists
+                    const tagButton = document.querySelector(`.tag-btn[data-condition="${tag}"]`);
+                    if (tagButton) {
+                        if (isActive) {
+                            tagButton.classList.add('selected');
+                        } else {
+                            tagButton.classList.remove('selected');
+                        }
+                        console.log(`✅ Updated ${tag} tag button visual state: ${isActive ? 'selected' : 'unselected'}`);
+                    }
+                    
+                    console.log('📊 TAG SYNC COMPLETED on alarm overview - parameters AND organ states updated');
+                } else {
+                    console.log(`⏸️ Ignoring tag change - patient mismatch (${patientId} vs ${currentPatientId})`);
+                }
             });
             
             // DISABLED: Listen for HR range changes from sepsis selection
@@ -795,35 +943,18 @@
                         
                         // Handle condition deselection using new condition state system
                         if (currentPatientId && window.sharedDataManager) {
-                            window.sharedDataManager.setPatientConditionState(condition, {
-                                isActive: false,
-                                patientId: currentPatientId,
-                                timestamp: Date.now(),
-                                source: 'alarm-overview'
-                            });
-                            
-                            // DISABLED: Pneumonie no longer changes AF ranges, only visual state
-                            if (condition === 'pneumonie') {
-                                console.log('🫁 Pneumonie deselected - visual state only, no AF range changes');
-                            } else if (condition === 'sepsis') {
-                                console.log('🦠 Sepsis deselected - restoring previous HR/BP ranges');
-                                
-                                // Set condition state first
-                                window.sharedDataManager.setPatientConditionState('sepsis', {
-                                    patientId: currentPatientId,
+                            // Use new tag parameter system for sepsis and pneumonie
+                            if (condition === 'sepsis' || condition === 'pneumonie') {
+                                console.log(`🏷️ Deactivating ${condition} tag with parameter adjustments`);
+                                window.sharedDataManager.toggleConditionTag(currentPatientId, condition, false);
+                            } else {
+                                // Use old system for other conditions
+                                window.sharedDataManager.setPatientConditionState(condition, {
                                     isActive: false,
+                                    patientId: currentPatientId,
                                     timestamp: Date.now(),
                                     source: 'alarm-overview'
                                 });
-                                
-                                console.log('🔍 DEBUG: restorePreviousHRRanges method available:', typeof window.sharedDataManager.restorePreviousHRRanges);
-                                if (window.sharedDataManager.restorePreviousHRRanges) {
-                                    // Call the modified method (now only handles visual state)
-                                    window.sharedDataManager.restorePreviousHRRanges(currentPatientId);
-                                    console.log('🦠 Sepsis deselected - visual state updated, ranges unchanged');
-                                } else {
-                                    console.error('❌ restorePreviousHRRanges method not found!');
-                                }
                             }
                         }
                     } else {
@@ -833,34 +964,18 @@
                         
                         // Handle condition selection using new condition state system
                         if (currentPatientId && window.sharedDataManager) {
-                            window.sharedDataManager.setPatientConditionState(condition, {
-                                isActive: true,
-                                patientId: currentPatientId,
-                                timestamp: Date.now(),
-                                source: 'alarm-overview'
-                            });
-                            
-                            // DISABLED: Pneumonie no longer changes AF ranges, only visual state
-                            if (condition === 'pneumonie') {
-                                console.log('🫁 Pneumonie selected - visual state only, no AF range changes');
-                            } else if (condition === 'sepsis') {
-                                console.log('🦠 Sepsis selected - visual feedback only, no range changes');
-                                
-                                // Set condition state for visual feedback
-                                window.sharedDataManager.setPatientConditionState('sepsis', {
-                                    patientId: currentPatientId,
+                            // Use new tag parameter system for sepsis and pneumonie
+                            if (condition === 'sepsis' || condition === 'pneumonie') {
+                                console.log(`🏷️ Activating ${condition} tag with parameter adjustments`);
+                                window.sharedDataManager.toggleConditionTag(currentPatientId, condition, true);
+                            } else {
+                                // Use old system for other conditions
+                                window.sharedDataManager.setPatientConditionState(condition, {
                                     isActive: true,
+                                    patientId: currentPatientId,
                                     timestamp: Date.now(),
                                     source: 'alarm-overview'
                                 });
-                                
-                                // Call the modified method (now only handles visual state)
-                                if (window.sharedDataManager.applySepsisHRRanges) {
-                                    window.sharedDataManager.applySepsisHRRanges(currentPatientId);
-                                    console.log('🦠 Sepsis selected - visual state updated, ranges unchanged');
-                                } else {
-                                    console.error('❌ applySepsisHRRanges method not found!');
-                                }
                             }
                         }
                     }

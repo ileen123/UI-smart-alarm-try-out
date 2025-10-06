@@ -1476,6 +1476,41 @@
                 }
             });
 
+            // Listen for tag parameter changes (sepsis/pneumonie)
+            window.addEventListener('tagParametersChanged', function(event) {
+                console.log('🏷️ Respiratory page received tag parameters changed:', event.detail);
+                const { patientId, parameters } = event.detail;
+                
+                // Only update if it's for the current patient
+                if (patientId === currentPatientId && parameters) {
+                    // Update AF slider if tag parameters include AF
+                    if (parameters.AF && afSlider && afSlider.config && afSlider.config.targetRange) {
+                        console.log('🔄 Updating AF slider from tag parameters:', parameters.AF.min, '-', parameters.AF.max);
+                        afSlider.config.targetRange.min = parameters.AF.min;
+                        afSlider.config.targetRange.max = parameters.AF.max;
+                        afSlider.currentMin = parameters.AF.min;
+                        afSlider.currentMax = parameters.AF.max;
+                        if (afSlider.updateSliderPosition) {
+                            afSlider.updateSliderPosition();
+                        }
+                        console.log('✅ AF slider updated from tag parameters');
+                    }
+                    
+                    // Update Saturatie slider if tag parameters include Saturatie
+                    if (parameters.Saturatie && saturatieSlider && saturatieSlider.config && saturatieSlider.config.targetRange) {
+                        console.log('🔄 Updating Saturatie slider from tag parameters:', parameters.Saturatie.min, '-', parameters.Saturatie.max);
+                        saturatieSlider.config.targetRange.min = parameters.Saturatie.min;
+                        saturatieSlider.config.targetRange.max = parameters.Saturatie.max;
+                        saturatieSlider.currentMin = parameters.Saturatie.min;
+                        saturatieSlider.currentMax = parameters.Saturatie.max;
+                        if (saturatieSlider.updateSliderPosition) {
+                            saturatieSlider.updateSliderPosition();
+                        }
+                        console.log('✅ Saturatie slider updated from tag parameters');
+                    }
+                }
+            });
+
             
             // SIMPLE APPROACH: Function to update HR slider with correct global variables
             function updateHRSliderFromGlobalValues() {
@@ -1597,7 +1632,7 @@
                         // Deselect tag
                         this.classList.remove('selected');
                         
-                        // Handle pneumonie deselection
+                        // Handle pneumonie deselection using matrix-based reversion
                         if (tagCondition === 'pneumonie' && currentPatientId && window.sharedDataManager) {
                             window.sharedDataManager.setPatientConditionState('pneumonie', {
                                 isActive: false,
@@ -1606,32 +1641,80 @@
                                 source: 'respiratory-settings'
                             });
                             
-                            // Restore previous AF ranges from shared data manager
-                            if (window.sharedDataManager.restorePreviousAFRanges) {
-                                window.sharedDataManager.restorePreviousAFRanges(currentPatientId);
-                                
-                                // Get the restored AF ranges and save them to respiratory settings
+                            // Auto-revert to matrix-based ranges that match main issue and overall risk level
+                            const matrixReversionResult = window.sharedDataManager.revertToMatrixBasedRanges(currentPatientId, 'pneumonie');
+                            
+                            if (matrixReversionResult && matrixReversionResult.targetRanges) {
+                                // Save the matrix-based ranges to respiratory settings
                                 setTimeout(() => {
-                                    const restoredTargetRanges = window.sharedDataManager.getPatientTargetRanges(currentPatientId);
-                                    if (restoredTargetRanges && restoredTargetRanges.AF) {
+                                    const revertedRanges = matrixReversionResult.targetRanges;
+                                    if (revertedRanges.AF || revertedRanges.Saturatie) {
                                         const existingRespiratorySettings = window.sharedDataManager.getPatientRespiratorySettings(currentPatientId) || {};
                                         const newRespiratorySettings = {
-                                            ...existingRespiratorySettings,
-                                            af: { min: restoredTargetRanges.AF.min, max: restoredTargetRanges.AF.max }
+                                            ...existingRespiratorySettings
                                         };
                                         
-                                        // Save the restored AF ranges automatically
-                                        window.sharedDataManager.savePatientRespiratorySettings(currentPatientId, newRespiratorySettings);
-                                        console.log('🫁 Pneumonie deselected on respiratory page - restored AF ranges automatically saved:', newRespiratorySettings);
+                                        // Update AF ranges if available
+                                        if (revertedRanges.AF) {
+                                            newRespiratorySettings.af = { min: revertedRanges.AF.min, max: revertedRanges.AF.max };
+                                        }
                                         
-                                        // Refresh sliders to show the restored ranges
+                                        // Update Saturatie ranges if available
+                                        if (revertedRanges.Saturatie) {
+                                            newRespiratorySettings.saturatie = { min: revertedRanges.Saturatie.min, max: revertedRanges.Saturatie.max };
+                                        }
+                                        
+                                        // Save the matrix-based respiratory ranges automatically
+                                        window.sharedDataManager.savePatientRespiratorySettings(currentPatientId, newRespiratorySettings);
+                                        console.log('🫁 Pneumonie deselected - auto-reverted to matrix-based respiratory ranges:', {
+                                            reasoning: matrixReversionResult.reasoning,
+                                            settings: newRespiratorySettings
+                                        });
+                                        
+                                        // Refresh sliders to show the matrix-based ranges
                                         setTimeout(() => {
                                             refreshSlidersFromTargetRanges();
+                                            
+                                            // Explicitly update AF slider position if available
+                                            if (afSlider && revertedRanges.AF) {
+                                                if (typeof afSlider.updateConfig === 'function') {
+                                                    afSlider.updateConfig({
+                                                        targetRange: {
+                                                            min: revertedRanges.AF.min,
+                                                            max: revertedRanges.AF.max
+                                                        }
+                                                    });
+                                                    // Force visual position refresh
+                                                    if (afSlider.updateSliderPosition) {
+                                                        afSlider.updateSliderPosition();
+                                                    }
+                                                    console.log('✅ AF slider explicitly repositioned after pneumonie deselection:', revertedRanges.AF);
+                                                }
+                                            }
+                                            
+                                            // Explicitly update Saturatie slider position if available
+                                            if (saturatieSlider && revertedRanges.Saturatie) {
+                                                if (typeof saturatieSlider.updateConfig === 'function') {
+                                                    saturatieSlider.updateConfig({
+                                                        targetRange: {
+                                                            min: revertedRanges.Saturatie.min,
+                                                            max: revertedRanges.Saturatie.max
+                                                        }
+                                                    });
+                                                    // Force visual position refresh
+                                                    if (saturatieSlider.updateSliderPosition) {
+                                                        saturatieSlider.updateSliderPosition();
+                                                    }
+                                                    console.log('✅ Saturatie slider explicitly repositioned after pneumonie deselection:', revertedRanges.Saturatie);
+                                                }
+                                            }
+                                            
+                                            console.log('🎚️ All respiratory sliders repositioned after pneumonie deselection to matrix-based ranges');
                                         }, 50);
                                     }
-                                }, 100); // Small delay to ensure restoration is complete
+                                }, 100); // Small delay to ensure matrix reversion is complete
                                 
-                                console.log('🫁 Pneumonie deselected and previous AF ranges restored');
+                                console.log('🫁 Pneumonie deselected - auto-reverted to matrix-based ranges matching main issue and risk level');
                             } else {
                                 console.log('🫁 Pneumonie deselected in respiratory settings');
                             }
@@ -1669,6 +1752,29 @@
                             window.sharedDataManager.setPatientTargetRanges(currentPatientId, updatedTargetRanges);
                             
                             console.log('🫁 Pneumonie selected and AF ranges (10-30) automatically saved');
+                            
+                            // UPDATE SLIDERS: Refresh sliders to reflect the new pneumonie ranges
+                            setTimeout(() => {
+                                refreshSlidersFromTargetRanges();
+                                
+                                // Explicitly ensure AF slider moves to pneumonie position
+                                if (afSlider) {
+                                    if (typeof afSlider.updateConfig === 'function') {
+                                        afSlider.updateConfig({
+                                            targetRange: {
+                                                min: 10,
+                                                max: 30
+                                            }
+                                        });
+                                        // Force visual position refresh
+                                        if (afSlider.updateSliderPosition) {
+                                            afSlider.updateSliderPosition();
+                                        }
+                                    }
+                                }
+                                
+                                console.log('🎚️ Sliders updated and repositioned to reflect pneumonie tag ranges');
+                            }, 50);
                         }
                     }
                 });

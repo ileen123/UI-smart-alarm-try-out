@@ -16,6 +16,39 @@
     <!-- Link to external CSS file for styling -->
     <link rel="stylesheet" href="css/styles.css">
     
+    <!-- Custom styles for tag parameter highlighting -->
+    <style>
+        .highlight-red {
+            background-color: rgba(255, 99, 99, 0.3) !important;
+            border: 2px solid #ff6363 !important;
+            border-radius: 4px !important;
+            padding: 2px 4px !important;
+            transition: all 0.3s ease !important;
+            animation: pulse-red 0.6s ease-in-out !important;
+        }
+        
+        .highlight-blue {
+            background-color: rgba(99, 150, 255, 0.3) !important;
+            border: 2px solid #6396ff !important;
+            border-radius: 4px !important;
+            padding: 2px 4px !important;
+            transition: all 0.3s ease !important;
+            animation: pulse-blue 0.6s ease-in-out !important;
+        }
+        
+        @keyframes pulse-red {
+            0% { box-shadow: 0 0 0 0 rgba(255, 99, 99, 0.7); }
+            70% { box-shadow: 0 0 0 10px rgba(255, 99, 99, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(255, 99, 99, 0); }
+        }
+        
+        @keyframes pulse-blue {
+            0% { box-shadow: 0 0 0 0 rgba(99, 150, 255, 0.7); }
+            70% { box-shadow: 0 0 0 10px rgba(99, 150, 255, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(99, 150, 255, 0); }
+        }
+    </style>
+    
     <!-- Data Manager for cross-page data synchronization -->
     <script src="js/shared-data-manager.js"></script>
 </head>
@@ -510,6 +543,22 @@
                                     
                                     selectedProblem = this.value;
                                     window.dataManager?.setSelectedProblem(selectedProblem);
+                                    
+                                    // IMMEDIATE SAVE: Save problem selection to SharedDataManager immediately
+                                    // so that tag clicks can access the current problem/risk context
+                                    if (currentPatientId && window.sharedDataManager) {
+                                        const existingMedicalInfo = window.sharedDataManager.getPatientMedicalInfo(currentPatientId) || {};
+                                        const updatedMedicalInfo = {
+                                            ...existingMedicalInfo,
+                                            selectedProblem: selectedProblem,
+                                            selectedRiskLevel: selectedRiskLevel,
+                                            selectedTags: selectedTags,
+                                            lastUpdated: new Date().toISOString()
+                                        };
+                                        window.sharedDataManager.savePatientMedicalInfo(currentPatientId, updatedMedicalInfo);
+                                        console.log('💾 Immediately saved problem selection to SharedDataManager:', selectedProblem);
+                                    }
+                                    
                                     updateOrganCirclesBasedOnProblem(selectedProblem);
                                     updateProgressBar(); // Update progress when problem is selected
                                     
@@ -548,6 +597,22 @@
                                     selectedRiskLevel = riskLevel;
                                     console.log('🔵 selectedRiskLevel is now:', selectedRiskLevel);
                                     window.dataManager?.setSelectedRiskLevel(riskLevel);
+                                    
+                                    // IMMEDIATE SAVE: Save risk level selection to SharedDataManager immediately
+                                    // so that tag clicks can access the current problem/risk context
+                                    if (currentPatientId && window.sharedDataManager) {
+                                        const existingMedicalInfo = window.sharedDataManager.getPatientMedicalInfo(currentPatientId) || {};
+                                        const updatedMedicalInfo = {
+                                            ...existingMedicalInfo,
+                                            selectedProblem: selectedProblem,
+                                            selectedRiskLevel: selectedRiskLevel,
+                                            selectedTags: selectedTags,
+                                            lastUpdated: new Date().toISOString()
+                                        };
+                                        window.sharedDataManager.savePatientMedicalInfo(currentPatientId, updatedMedicalInfo);
+                                        console.log('💾 Immediately saved risk level selection to SharedDataManager:', selectedRiskLevel);
+                                    }
+                                    
                                     updateOrganCirclesWithRisk(riskLevel);
                                     
                                     // Debug organ components after update
@@ -613,14 +678,18 @@
                                     
                                     window.dataManager?.setSelectedTags(selectedTags);
                                     
-                                    // FIXED: Only update parameter ranges for non-sepsis and non-pneumonie conditions
-                                    // Sepsis and pneumonie should only affect visual state, not target ranges
-                                    if (tagCondition !== 'sepsis' && tagCondition !== 'pneumonie') {
+                                    // NEW: Immediately apply delta adjustments for sepsis and pneumonie tags
+                                    if (tagCondition === 'sepsis' || tagCondition === 'pneumonie') {
+                                        if (tagCondition === 'sepsis') console.log('🦠 Sepsis tag clicked - applying immediate delta adjustments');
+                                        if (tagCondition === 'pneumonie') console.log('🫁 Pneumonie tag clicked - applying immediate delta adjustments');
+                                        
+                                        // Use SharedDataManager to apply tag parameter adjustments
+                                        if (currentPatientId && window.sharedDataManager) {
+                                            window.sharedDataManager.toggleConditionTag(currentPatientId, tagCondition, this.classList.contains('selected'));
+                                        }
+                                    } else {
                                         console.log('🔄 Updating parameter ranges for condition:', tagCondition);
                                         updateParameterRanges();
-                                    } else {
-                                        if (tagCondition === 'sepsis') console.log('🦠 Sepsis tag clicked - visual state only, no range changes');
-                                        if (tagCondition === 'pneumonie') console.log('🫁 Pneumonie tag clicked - visual state only, no range changes');
                                     }
                                 });
                             });
@@ -663,6 +732,46 @@
                                 console.log('🌐 Global parameters changed event received on setup page:', event.detail);
                                 console.log('🔄 Updating displays with new global variables...');
                                 syncDisplaysWithCentralizedRanges();
+                            });
+
+                            // TAG SYSTEM: Listen for tag-based parameter delta changes (sepsis, pneumonie)
+                            window.addEventListener('tagParametersChanged', function(event) {
+                                console.log('🏷️ Tag parameters changed event received on setup page:', event.detail);
+                                const { tag, isActive, patientId, parameters, organStates } = event.detail;
+                                
+                                if (patientId === currentPatientId && parameters) {
+                                    console.log(`🏷️ Applying ${tag} parameter changes (${isActive ? 'ACTIVE' : 'INACTIVE'}):`, parameters);
+                                    
+                                    // Apply parameter changes with highlighting
+                                    applyTagParameterChangesWithHighlighting(tag, isActive, parameters);
+                                    
+                                    // Update organ states if provided
+                                    if (organStates && window.organComponents) {
+                                        console.log(`🔄 Updating organ states from tag ${tag}:`, organStates);
+                                        
+                                        if (organStates.heart && window.organComponents.heart) {
+                                            window.organComponents.heart.setRiskLevel(organStates.heart);
+                                            console.log(`✅ Updated heart circle to: ${organStates.heart}`);
+                                        }
+                                        
+                                        if (organStates.lung && window.organComponents.lung) {
+                                            window.organComponents.lung.setRiskLevel(organStates.lung);
+                                            console.log(`✅ Updated lung circle to: ${organStates.lung}`);
+                                        }
+                                        
+                                        if (organStates.temp && window.organComponents.temp) {
+                                            window.organComponents.temp.setRiskLevel(organStates.temp);
+                                            console.log(`✅ Updated temp circle to: ${organStates.temp}`);
+                                        }
+                                        
+                                        // Update monitoring status
+                                        setTimeout(() => updateMonitoringStatus(), 100);
+                                    }
+                                    
+                                    console.log('📊 TAG PARAMETER SYNC COMPLETED on setup page');
+                                } else {
+                                    console.log(`⏸️ Ignoring tag change - patient mismatch (${patientId} vs ${currentPatientId})`);
+                                }
                             });
                         }
                         
@@ -1061,6 +1170,79 @@
                             }
 
                             console.log('✅ All displays updated with global variables');
+                        }
+                        
+                        // Function to apply tag parameter changes with visual highlighting
+                        function applyTagParameterChangesWithHighlighting(tag, isActive, parameters) {
+                            console.log(`🎨 Applying ${tag} parameter changes with highlighting:`, parameters);
+                            
+                            // Get all parameter display elements
+                            const circulatoryCard = document.querySelector('.value-card');
+                            const hrRange = circulatoryCard?.querySelector('.value-number');
+                            const bpRange = circulatoryCard?.querySelectorAll('.value-number')[1];
+                            
+                            const respiratoryCards = document.querySelectorAll('.value-card');
+                            const saturatieRange = respiratoryCards[1]?.querySelector('.value-number');
+                            const afDisplay = document.getElementById('af-range-display');
+                            
+                            const temperatureCards = document.querySelectorAll('.value-card');
+                            const tempRange = temperatureCards[2]?.querySelector('.value-number');
+                            
+                            // Define highlight colors for different conditions
+                            const highlightClass = tag === 'sepsis' ? 'highlight-red' : 'highlight-blue';
+                            
+                            // Apply parameter changes and highlight affected ones
+                            if (parameters.HR && hrRange) {
+                                hrRange.textContent = `${parameters.HR.min} - ${parameters.HR.max} ${parameters.HR.unit}`;
+                                highlightParameterChange(hrRange, highlightClass, `${tag} affected HR`);
+                                console.log(`✅ Updated HR display with ${tag} delta:`, hrRange.textContent);
+                            }
+                            
+                            if (parameters.BP_Mean && bpRange) {
+                                bpRange.textContent = `${parameters.BP_Mean.min} - ${parameters.BP_Mean.max} ${parameters.BP_Mean.unit}`;
+                                highlightParameterChange(bpRange, highlightClass, `${tag} affected BP`);
+                                console.log(`✅ Updated BP display with ${tag} delta:`, bpRange.textContent);
+                            }
+                            
+                            if (parameters.AF && afDisplay) {
+                                afDisplay.textContent = `${parameters.AF.min} - ${parameters.AF.max}`;
+                                highlightParameterChange(afDisplay, highlightClass, `${tag} affected AF`);
+                                console.log(`✅ Updated AF display with ${tag} delta:`, afDisplay.textContent);
+                            }
+                            
+                            if (parameters.Saturatie && saturatieRange) {
+                                saturatieRange.textContent = `${parameters.Saturatie.min} - ${parameters.Saturatie.max}${parameters.Saturatie.unit}`;
+                                highlightParameterChange(saturatieRange, highlightClass, `${tag} affected Saturatie`);
+                                console.log(`✅ Updated Saturatie display with ${tag} delta:`, saturatieRange.textContent);
+                            }
+                            
+                            if (parameters.Temperature && tempRange) {
+                                tempRange.textContent = `${parameters.Temperature.min} - ${parameters.Temperature.max} ${parameters.Temperature.unit}`;
+                                highlightParameterChange(tempRange, highlightClass, `${tag} affected Temperature`);
+                                console.log(`✅ Updated Temperature display with ${tag} delta:`, tempRange.textContent);
+                            }
+                        }
+                        
+                        // Function to highlight parameter changes with visual feedback
+                        function highlightParameterChange(element, highlightClass, message) {
+                            if (!element) return;
+                            
+                            // Remove any existing highlight classes
+                            element.classList.remove('highlight-red', 'highlight-blue', 'highlight', 'fade-out');
+                            
+                            // Add the appropriate highlight class
+                            element.classList.add(highlightClass);
+                            
+                            // Add a data attribute to show tooltip or message
+                            element.setAttribute('title', message);
+                            
+                            // Remove highlight after animation
+                            setTimeout(() => {
+                                element.classList.remove(highlightClass);
+                                element.removeAttribute('title');
+                            }, 2000);
+                            
+                            console.log(`🎨 Applied ${highlightClass} highlighting to parameter:`, message);
                         }
 
                         function updateParameterRanges() {

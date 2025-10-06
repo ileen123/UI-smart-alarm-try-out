@@ -897,125 +897,221 @@ class SharedDataManager {
     }
 
     /**
-     * Tag-Based Parameter Adjustment System
-     * Explicit lookup table for individual parameter modifications based on condition tags
+     * Tag-Based Parameter Adjustment System - DELTA APPROACH
+     * Delta-based adjustments that modify base parameters (determined by risk + problem combination)
      * @param {Array} activeTags - Array of active condition tags (['sepsis', 'pneumonie', etc.])
-     * @param {Object} baseTargetRanges - Base target ranges to modify
+     * @param {Object} baseTargetRanges - Base target ranges to modify with deltas
+     * @param {Object} baseOrganStates - Base organ monitoring levels to modify
      * @param {string} overallRiskLevel - Current overall risk level for intensity scaling
-     * @returns {Object} - Modified target ranges and reasoning
+     * @returns {Object} - Modified target ranges, organ states, and reasoning
      */
-    calculateTagBasedParameterAdjustments(activeTags = [], baseTargetRanges = {}, overallRiskLevel = 'low') {
-        console.log(`🏷️ Tag-Based Parameter Calculation: Tags=${JSON.stringify(activeTags)}, Risk=${overallRiskLevel}`);
+    calculateTagBasedParameterAdjustments(activeTags = [], baseTargetRanges = {}, baseOrganStates = {}, overallRiskLevel = 'low') {
+        console.log(`🏷️ Tag-Based DELTA Calculation: Tags=${JSON.stringify(activeTags)}, Risk=${overallRiskLevel}`);
         
-        // TAG PARAMETER MATRIX - Define exact parameter modifications for each tag
+        // TAG DELTA MATRIX - Define delta adjustments that modify base parameters
         const tagMatrix = {
             'sepsis': {
-                description: 'Sepsis-specific parameter adjustments',
-                parameters: {
-                    HR: {
-                        low: { min: 70, max: 110, reasoning: 'Sepsis - mild tachycardia expected' },
-                        mid: { min: 80, max: 120, reasoning: 'Sepsis - moderate tachycardia monitoring' },
-                        high: { min: 90, max: 130, reasoning: 'Sepsis - intensive cardiac monitoring for severe tachycardia' }
-                    },
+                description: 'Sepsis delta adjustments - affects circulatory system primarily',
+                parameterDeltas: {
+                    // BP_Mean affected significantly by sepsis (hypotension risk)
                     BP_Mean: {
-                        low: { min: 60, max: 80, reasoning: 'Sepsis - mild hypotension risk' },
-                        mid: { min: 55, max: 75, reasoning: 'Sepsis - moderate hypotension monitoring' },
-                        high: { min: 50, max: 70, reasoning: 'Sepsis - severe hypotension risk, intensive monitoring' }
+                        low: { minDelta: -10, maxDelta: -10, reasoning: 'Sepsis - hypotension risk, lower BP monitoring range' },
+                        mid: { minDelta: -15, maxDelta: -15, reasoning: 'Sepsis - moderate hypotension risk' },
+                        high: { minDelta: -20, maxDelta: -20, reasoning: 'Sepsis - severe hypotension risk, significantly lower range' }
                     },
+                    // HR affected (tachycardia compensation)  
+                    HR: {
+                        low: { minDelta: 0, maxDelta: +15, reasoning: 'Sepsis - mild tachycardia compensation' },
+                        mid: { minDelta: +5, maxDelta: +20, reasoning: 'Sepsis - moderate tachycardia expected' },
+                        high: { minDelta: +10, maxDelta: +25, reasoning: 'Sepsis - significant tachycardia monitoring' }
+                    },
+                    // Temperature range expansion for fever/hypothermia
                     Temperature: {
-                        low: { min: 35.5, max: 39.0, reasoning: 'Sepsis - fever/hypothermia monitoring' },
-                        mid: { min: 35.0, max: 39.5, reasoning: 'Sepsis - enhanced temperature range for complications' },
-                        high: { min: 34.5, max: 40.0, reasoning: 'Sepsis - extreme temperature variations possible' }
+                        low: { minDelta: -0.5, maxDelta: +0.5, reasoning: 'Sepsis - fever/hypothermia monitoring range expansion' },
+                        mid: { minDelta: -1.0, maxDelta: +1.0, reasoning: 'Sepsis - enhanced temperature range for complications' },
+                        high: { minDelta: -1.5, maxDelta: +1.5, reasoning: 'Sepsis - extreme temperature variation monitoring' }
                     },
+                    // AF affected by metabolic compensation
                     AF: {
-                        low: { min: 14, max: 22, reasoning: 'Sepsis - mild respiratory compensation' },
-                        mid: { min: 16, max: 25, reasoning: 'Sepsis - moderate respiratory changes' },
-                        high: { min: 18, max: 30, reasoning: 'Sepsis - severe respiratory compensation' }
+                        low: { minDelta: +2, maxDelta: +4, reasoning: 'Sepsis - mild respiratory compensation' },
+                        mid: { minDelta: +4, maxDelta: +6, reasoning: 'Sepsis - moderate respiratory changes' },
+                        high: { minDelta: +6, maxDelta: +10, reasoning: 'Sepsis - severe respiratory compensation' }
                     }
+                },
+                // Monitoring level adjustments - increase circulatory monitoring by 1 level
+                monitoringDeltas: {
+                    heart: +1, // Increase circulatory monitoring level by 1 (low->mid, mid->high)
+                    temp: +1,  // Increase temperature monitoring level by 1
+                    reasoning: 'Sepsis requires enhanced circulatory monitoring due to hemodynamic instability'
                 }
             },
             'pneumonie': {
-                description: 'Pneumonia-specific parameter adjustments',
-                parameters: {
+                description: 'Pneumonia delta adjustments - affects respiratory system primarily',
+                parameterDeltas: {
+                    // AF significantly affected by pneumonia
                     AF: {
-                        low: { min: 14, max: 22, reasoning: 'Pneumonia - mild respiratory distress' },
-                        mid: { min: 16, max: 26, reasoning: 'Pneumonia - moderate respiratory compromise' },
-                        high: { min: 18, max: 30, reasoning: 'Pneumonia - severe respiratory distress' }
+                        low: { minDelta: +2, maxDelta: +4, reasoning: 'Pneumonia - mild respiratory distress' },
+                        mid: { minDelta: +4, maxDelta: +8, reasoning: 'Pneumonia - moderate respiratory compromise' },
+                        high: { minDelta: +6, maxDelta: +12, reasoning: 'Pneumonia - severe respiratory distress' }
                     },
+                    // Saturatie compromised
                     Saturatie: {
-                        low: { min: 90, max: 100, reasoning: 'Pneumonia - mild oxygenation compromise' },
-                        mid: { min: 88, max: 100, reasoning: 'Pneumonia - moderate oxygenation monitoring' },
-                        high: { min: 85, max: 100, reasoning: 'Pneumonia - severe oxygenation compromise possible' }
+                        low: { minDelta: -2, maxDelta: 0, reasoning: 'Pneumonia - mild oxygenation compromise' },
+                        mid: { minDelta: -4, maxDelta: 0, reasoning: 'Pneumonia - moderate oxygenation monitoring' },
+                        high: { minDelta: -7, maxDelta: 0, reasoning: 'Pneumonia - severe oxygenation compromise' }
                     },
+                    // HR compensation
                     HR: {
-                        low: { min: 70, max: 110, reasoning: 'Pneumonia - compensatory mild tachycardia' },
-                        mid: { min: 75, max: 115, reasoning: 'Pneumonia - moderate cardiac compensation' },
-                        high: { min: 80, max: 120, reasoning: 'Pneumonia - significant cardiac compensation' }
+                        low: { minDelta: 0, maxDelta: +10, reasoning: 'Pneumonia - compensatory mild tachycardia' },
+                        mid: { minDelta: +5, maxDelta: +15, reasoning: 'Pneumonia - moderate cardiac compensation' },
+                        high: { minDelta: +10, maxDelta: +20, reasoning: 'Pneumonia - significant cardiac compensation' }
                     },
+                    // Temperature for infection monitoring
                     Temperature: {
-                        low: { min: 36.0, max: 39.0, reasoning: 'Pneumonia - fever monitoring' },
-                        mid: { min: 35.5, max: 39.5, reasoning: 'Pneumonia - enhanced fever range' },
-                        high: { min: 35.0, max: 40.0, reasoning: 'Pneumonia - extreme fever/hypothermia risk' }
+                        low: { minDelta: 0, maxDelta: +0.5, reasoning: 'Pneumonia - fever monitoring' },
+                        mid: { minDelta: -0.5, maxDelta: +1.0, reasoning: 'Pneumonia - enhanced fever range' },
+                        high: { minDelta: -1.0, maxDelta: +1.5, reasoning: 'Pneumonia - extreme fever/hypothermia risk' }
                     }
+                },
+                // Monitoring level adjustments - increase respiratory monitoring by 1 level
+                monitoringDeltas: {
+                    lung: +1, // Increase respiratory monitoring level by 1 (low->mid, mid->high)
+                    reasoning: 'Pneumonia requires enhanced respiratory monitoring due to pulmonary compromise'
                 }
             }
         };
         
-        // Start with base ranges
+        // Start with base ranges and organ states
         let adjustedRanges = JSON.parse(JSON.stringify(baseTargetRanges));
+        let adjustedOrganStates = JSON.parse(JSON.stringify(baseOrganStates));
         let appliedAdjustments = [];
         let reasoning = [];
         
-        // Apply adjustments for each active tag
+        // Helper function to increase monitoring level by delta
+        const adjustMonitoringLevel = (currentLevel, delta) => {
+            const levels = ['low', 'mid', 'high'];
+            const currentIndex = levels.indexOf(currentLevel);
+            if (currentIndex === -1) return currentLevel; // Unknown level, return as-is
+            
+            const newIndex = Math.max(0, Math.min(levels.length - 1, currentIndex + delta));
+            return levels[newIndex];
+        };
+        
+        // Apply delta adjustments for each active tag
         activeTags.forEach(tag => {
             const tagConfig = tagMatrix[tag];
             if (!tagConfig) {
-                console.warn(`⚠️ No parameter adjustments defined for tag: ${tag}`);
+                console.warn(`⚠️ No delta adjustments defined for tag: ${tag}`);
                 return;
             }
             
-            console.log(`🏷️ Applying ${tag} adjustments for risk level: ${overallRiskLevel}`);
+            console.log(`🏷️ Applying ${tag} delta adjustments for risk level: ${overallRiskLevel}`);
             
-            // Apply parameter modifications for this tag
-            Object.entries(tagConfig.parameters).forEach(([parameter, riskLevels]) => {
-                const adjustment = riskLevels[overallRiskLevel];
-                if (adjustment && adjustedRanges[parameter]) {
-                    // Store original for comparison
-                    const original = { ...adjustedRanges[parameter] };
+            // Apply parameter delta modifications for this tag
+            if (tagConfig.parameterDeltas) {
+                Object.entries(tagConfig.parameterDeltas).forEach(([parameter, riskLevels]) => {
+                    const deltaConfig = riskLevels[overallRiskLevel];
+                    if (deltaConfig && adjustedRanges[parameter]) {
+                        
+                        // Handle placeholder values - use normal defaults when no main problem is set
+                        let baseMin = adjustedRanges[parameter].min;
+                        let baseMax = adjustedRanges[parameter].max;
+                        
+                        // If we have placeholder values ("-"), use normal/default ranges as baseline for delta calculations
+                        if (baseMin === '-' || baseMax === '-') {
+                            const defaultRanges = {
+                                HR: { min: 60, max: 100 },
+                                BP_Mean: { min: 65, max: 85 },
+                                AF: { min: 12, max: 20 },
+                                Saturatie: { min: 92, max: 100 },
+                                Temperature: { min: 36.0, max: 38.5 }
+                            };
+                            
+                            if (defaultRanges[parameter]) {
+                                baseMin = defaultRanges[parameter].min;
+                                baseMax = defaultRanges[parameter].max;
+                                console.log(`📋 Using default range for ${parameter} delta calculation: ${baseMin}-${baseMax}`);
+                            } else {
+                                console.warn(`⚠️ No default range available for parameter: ${parameter}`);
+                                return; // Skip this parameter if no default is available
+                            }
+                        }
+                        
+                        // Store original for comparison  
+                        const original = { min: baseMin, max: baseMax };
+                        
+                        // Apply the delta adjustments
+                        const newMin = original.min + deltaConfig.minDelta;
+                        const newMax = original.max + deltaConfig.maxDelta;
+                        
+                        adjustedRanges[parameter].min = newMin;
+                        adjustedRanges[parameter].max = newMax;
+                        
+                        appliedAdjustments.push({
+                            tag: tag,
+                            parameter: parameter,
+                            original: original,
+                            deltas: { minDelta: deltaConfig.minDelta, maxDelta: deltaConfig.maxDelta },
+                            adjusted: { min: newMin, max: newMax },
+                            reasoning: deltaConfig.reasoning,
+                            usedDefaults: (baseMin !== adjustedRanges[parameter].min || baseMax !== adjustedRanges[parameter].max)
+                        });
+                        
+                        reasoning.push(`${parameter}: ${deltaConfig.reasoning} (${original.min}→${newMin}, ${original.max}→${newMax})`);
+                        
+                        console.log(`✅ ${tag} → ${parameter}: ${original.min}-${original.max} + (${deltaConfig.minDelta},${deltaConfig.maxDelta}) = ${newMin}-${newMax}`);
+                    }
+                });
+            }
+            
+            // Apply monitoring level delta adjustments
+            if (tagConfig.monitoringDeltas) {
+                Object.entries(tagConfig.monitoringDeltas).forEach(([organ, delta]) => {
+                    if (organ === 'reasoning') return; // Skip reasoning field
                     
-                    // Apply the tag-specific adjustment
-                    adjustedRanges[parameter].min = adjustment.min;
-                    adjustedRanges[parameter].max = adjustment.max;
-                    
-                    appliedAdjustments.push({
-                        tag: tag,
-                        parameter: parameter,
-                        original: original,
-                        adjusted: { ...adjustedRanges[parameter] },
-                        reasoning: adjustment.reasoning
-                    });
-                    
-                    reasoning.push(`${parameter}: ${adjustment.reasoning}`);
-                    
-                    console.log(`✅ ${tag} → ${parameter}: ${original.min}-${original.max} → ${adjustment.min}-${adjustment.max}`);
-                }
-            });
+                    if (adjustedOrganStates[organ] !== undefined) {
+                        const originalLevel = adjustedOrganStates[organ];
+                        const newLevel = adjustMonitoringLevel(originalLevel, delta);
+                        
+                        if (newLevel !== originalLevel) {
+                            adjustedOrganStates[organ] = newLevel;
+                            
+                            appliedAdjustments.push({
+                                tag: tag,
+                                organ: organ,
+                                originalLevel: originalLevel,
+                                delta: delta,
+                                newLevel: newLevel,
+                                reasoning: tagConfig.monitoringDeltas.reasoning
+                            });
+                            
+                            reasoning.push(`${organ} monitoring: ${originalLevel}→${newLevel} (${tagConfig.monitoringDeltas.reasoning})`);
+                            
+                            console.log(`✅ ${tag} → ${organ} monitoring: ${originalLevel} + ${delta} = ${newLevel}`);
+                        } else {
+                            console.log(`ℹ️ ${tag} → ${organ} monitoring: ${originalLevel} + ${delta} = ${newLevel} (no change - already at limit)`);
+                        }
+                    }
+                });
+            }
         });
         
         const summary = {
-            approach: activeTags.length > 0 ? `Tag-based adjustments for: ${activeTags.join(', ')}` : 'No tag adjustments',
+            approach: activeTags.length > 0 ? `Delta adjustments for: ${activeTags.join(', ')}` : 'No tag adjustments',
             details: reasoning.join('; '),
             tagsProcessed: activeTags,
             adjustmentsCount: appliedAdjustments.length
         };
         
-        console.log(`✅ Tag adjustments applied:`, summary);
+        console.log(`✅ Tag delta adjustments applied:`, summary);
         
         return {
             adjustedRanges,
+            adjustedOrganStates,
             appliedAdjustments,
             reasoning: summary,
-            originalRanges: baseTargetRanges
+            originalRanges: baseTargetRanges,
+            originalOrganStates: baseOrganStates
         };
     }
 
@@ -1121,19 +1217,22 @@ class SharedDataManager {
             console.log(`🏷️ Active condition tags found:`, activeTags);
         }
         
-        // Apply tag-based parameter adjustments to target ranges
+        // Apply tag-based parameter adjustments to target ranges AND organ states
         if (activeTags.length > 0) {
-            const tagAdjustments = this.calculateTagBasedParameterAdjustments(activeTags, targetRanges, overallRiskLevel);
+            const tagAdjustments = this.calculateTagBasedParameterAdjustments(activeTags, targetRanges, organStates, overallRiskLevel);
             targetRanges = tagAdjustments.adjustedRanges;
+            organStates = tagAdjustments.adjustedOrganStates; // Use adjusted organ states from tags
             
-            console.log(`🏷️ Target ranges adjusted by tags:`, {
+            console.log(`🏷️ Target ranges AND organ states adjusted by tags:`, {
                 originalProblem: problemValue,
                 activeTags: activeTags,
                 adjustmentsApplied: tagAdjustments.appliedAdjustments.length,
-                reasoning: tagAdjustments.reasoning
+                reasoning: tagAdjustments.reasoning,
+                originalOrganStates: tagAdjustments.originalOrganStates,
+                adjustedOrganStates: organStates
             });
         } else {
-            console.log(`🏷️ No active condition tags - using base target ranges`);
+            console.log(`🏷️ No active condition tags - using base target ranges and organ states`);
         }
         
         // Apply the states to organ components if provided
@@ -1791,6 +1890,270 @@ class SharedDataManager {
     }
 
     /**
+     * Apply Tag-Based Parameter Adjustments
+     * Triggers when condition tags (sepsis, pneumonie) are activated/deactivated
+     * @param {string} patientId - Patient ID
+     * @param {string} tag - Condition tag ('sepsis', 'pneumonie')
+     * @param {boolean} isActive - Whether the tag is being activated or deactivated
+     */
+    applyTagParameterAdjustments(patientId, tag, isActive) {
+        console.log(`🏷️ Applying tag parameter adjustments: ${tag} = ${isActive ? 'ACTIVE' : 'INACTIVE'} for patient ${patientId}`);
+        
+        if (!patientId) {
+            console.warn('❌ No patient ID provided for tag parameter adjustments');
+            return;
+        }
+        
+        // Get current medical problem and risk level
+        const medicalInfo = this.getPatientMedicalInfo(patientId);
+        const selectedProblem = medicalInfo?.selectedProblem || 'none';
+        const selectedRiskLevel = medicalInfo?.selectedRiskLevel || 'low';
+        
+        console.log(`🎯 Current context - Problem: ${selectedProblem}, Risk: ${selectedRiskLevel}, Tag: ${tag}`);
+        
+        // Re-apply problem-specific monitoring with current tag states
+        // This will automatically pick up the new tag state and adjust parameters
+        const result = this.applyProblemSpecificMonitoring(
+            selectedProblem,
+            null, // No organ components - just update parameters
+            patientId,
+            selectedRiskLevel,
+            false // Don't overwrite manual adjustments, just update base parameters
+        );
+        
+        console.log(`✅ Tag-based parameter adjustment completed:`, {
+            tag: tag,
+            isActive: isActive,
+            appliedRanges: result.targetRanges,
+            appliedOrganStates: result.organStates,
+            reasoning: result.reasoning
+        });
+        
+        // UPDATE GLOBAL VARIABLES: Apply delta-adjusted ranges to global variables
+        // so that sliders reflect the tag-adjusted parameter values
+        if (result.targetRanges) {
+            if (result.targetRanges.HR && result.targetRanges.HR.min !== '-') {
+                window.HR_MIN = result.targetRanges.HR.min;
+                window.HR_MAX = result.targetRanges.HR.max;
+            }
+            if (result.targetRanges.BP_Mean && result.targetRanges.BP_Mean.min !== '-') {
+                window.BP_MIN = result.targetRanges.BP_Mean.min;
+                window.BP_MAX = result.targetRanges.BP_Mean.max;
+            }
+            if (result.targetRanges.AF && result.targetRanges.AF.min !== '-') {
+                window.AF_MIN = result.targetRanges.AF.min;
+                window.AF_MAX = result.targetRanges.AF.max;
+            }
+            if (result.targetRanges.Saturatie && result.targetRanges.Saturatie.min !== '-') {
+                window.SAT_MIN = result.targetRanges.Saturatie.min;
+                window.SAT_MAX = result.targetRanges.Saturatie.max;
+            }
+            if (result.targetRanges.Temperature && result.targetRanges.Temperature.min !== '-') {
+                window.TEMP_MIN = result.targetRanges.Temperature.min;
+                window.TEMP_MAX = result.targetRanges.Temperature.max;
+            }
+            
+            // Save updated global variables
+            this.saveGlobalParameterVariables();
+            console.log('💾 Updated global variables with tag-adjusted ranges');
+        }
+        
+        // Dispatch event to notify all pages about parameter AND monitoring level changes
+        setTimeout(() => {
+            window.dispatchEvent(new CustomEvent('tagParametersChanged', {
+                detail: { 
+                    source: 'tagChange',
+                    tag: tag,
+                    isActive: isActive,
+                    patientId: patientId,
+                    parameters: result.targetRanges,
+                    organStates: result.organStates
+                }
+            }));
+            console.log(`🔄 Dispatched tagParametersChanged event for ${tag} with parameters AND organ states`);
+            
+            // Also dispatch global parameters changed event to update sliders
+            window.dispatchEvent(new CustomEvent('globalParametersChanged', {
+                detail: { 
+                    source: 'tagChange',
+                    tag: tag,
+                    isActive: isActive,
+                    patientId: patientId
+                }
+            }));
+            console.log(`🔄 Dispatched globalParametersChanged event for tag-based slider updates`);
+        }, 10);
+        
+        return result;
+    }
+
+    /**
+     * Toggle Condition Tag and Apply Parameter Changes
+     * Convenience method that combines tag state change with parameter adjustments
+     * @param {string} patientId - Patient ID
+     * @param {string} tag - Condition tag ('sepsis', 'pneumonie')
+     * @param {boolean} isActive - Whether to activate or deactivate the tag
+     */
+    toggleConditionTag(patientId, tag, isActive) {
+        console.log(`🏷️ Toggling condition tag: ${tag} = ${isActive ? 'ON' : 'OFF'} for patient ${patientId}`);
+        
+        // Update the condition state
+        this.setPatientConditionState(tag, {
+            isActive: isActive,
+            timestamp: new Date().toISOString(),
+            triggeredBy: 'manual',
+            patientId: patientId
+        });
+        
+        // Apply parameter adjustments
+        const result = this.applyTagParameterAdjustments(patientId, tag, isActive);
+        
+        console.log(`✅ Condition tag ${tag} ${isActive ? 'activated' : 'deactivated'} with parameter adjustments`);
+        
+        return result;
+    }
+
+    /**
+     * Revert to Matrix-Based Parameter Ranges
+     * When a tag is deselected, automatically revert back to the parameter ranges 
+     * that match the main medical problem and overall risk level combination 
+     * as defined in the risk matrix (without tag delta adjustments)
+     * @param {string} patientId - Patient ID
+     * @param {string} deselectedTag - The tag that was just deselected
+     * @returns {Object} - Updated target ranges and organ states
+     */
+    revertToMatrixBasedRanges(patientId, deselectedTag) {
+        console.log(`🔄 Reverting to matrix-based ranges after deselecting tag: ${deselectedTag} for patient: ${patientId}`);
+        
+        if (!patientId) {
+            console.warn('❌ No patient ID provided for matrix reversion');
+            return null;
+        }
+        
+        // Get current medical problem and risk level
+        const medicalInfo = this.getPatientMedicalInfo(patientId);
+        const selectedProblem = medicalInfo?.selectedProblem || 'none';
+        const selectedRiskLevel = medicalInfo?.selectedRiskLevel || 'low';
+        
+        console.log(`🎯 Matrix reversion context - Problem: ${selectedProblem}, Risk: ${selectedRiskLevel}`);
+        
+        // Get base ranges and organ states from the matrix (without tag adjustments)
+        const baseResult = this.applyProblemSpecificMonitoring(
+            selectedProblem,
+            null, // No organ components - just calculate ranges
+            null, // Don't save yet - we'll save the final result
+            selectedRiskLevel,
+            false // Don't overwrite manual adjustments during calculation
+        );
+        
+        // Get remaining active tags (excluding the deselected one)
+        const remainingActiveTags = [];
+        const allTags = ['sepsis', 'pneumonie']; // Add more as needed
+        
+        allTags.forEach(tag => {
+            if (tag !== deselectedTag) {
+                const conditionState = this.getPatientConditionState(tag, patientId);
+                if (conditionState && conditionState.isActive) {
+                    remainingActiveTags.push(tag);
+                }
+            }
+        });
+        
+        console.log(`🏷️ Remaining active tags after deselecting ${deselectedTag}:`, remainingActiveTags);
+        
+        // Apply delta adjustments for remaining active tags only
+        let finalRanges = baseResult.targetRanges;
+        let finalOrganStates = baseResult.organStates;
+        
+        if (remainingActiveTags.length > 0) {
+            const tagAdjustments = this.calculateTagBasedParameterAdjustments(
+                remainingActiveTags, 
+                baseResult.targetRanges, 
+                baseResult.organStates, 
+                selectedRiskLevel
+            );
+            
+            finalRanges = tagAdjustments.adjustedRanges;
+            finalOrganStates = tagAdjustments.adjustedOrganStates;
+            
+            console.log(`🏷️ Applied remaining tag adjustments:`, {
+                remainingTags: remainingActiveTags,
+                adjustmentsApplied: tagAdjustments.appliedAdjustments.length,
+                reasoning: tagAdjustments.reasoning
+            });
+        } else {
+            console.log(`📋 No remaining tags - using pure matrix-based ranges for ${selectedProblem} + ${selectedRiskLevel}`);
+        }
+        
+        // Save the reverted ranges
+        this.setPatientTargetRanges(patientId, finalRanges);
+        
+        // Update global variables to reflect the reverted ranges
+        if (finalRanges.HR && finalRanges.HR.min !== '-') {
+            window.HR_MIN = finalRanges.HR.min;
+            window.HR_MAX = finalRanges.HR.max;
+        }
+        if (finalRanges.BP_Mean && finalRanges.BP_Mean.min !== '-') {
+            window.BP_MIN = finalRanges.BP_Mean.min;
+            window.BP_MAX = finalRanges.BP_Mean.max;
+        }
+        if (finalRanges.AF && finalRanges.AF.min !== '-') {
+            window.AF_MIN = finalRanges.AF.min;
+            window.AF_MAX = finalRanges.AF.max;
+        }
+        if (finalRanges.Saturatie && finalRanges.Saturatie.min !== '-') {
+            window.SAT_MIN = finalRanges.Saturatie.min;
+            window.SAT_MAX = finalRanges.Saturatie.max;
+        }
+        if (finalRanges.Temperature && finalRanges.Temperature.min !== '-') {
+            window.TEMP_MIN = finalRanges.Temperature.min;
+            window.TEMP_MAX = finalRanges.Temperature.max;
+        }
+        
+        // Save updated global variables
+        this.saveGlobalParameterVariables();
+        
+        const result = {
+            targetRanges: finalRanges,
+            organStates: finalOrganStates,
+            reasoning: {
+                approach: `Matrix reversion after deselecting ${deselectedTag}`,
+                baseProblem: selectedProblem,
+                riskLevel: selectedRiskLevel,
+                remainingTags: remainingActiveTags,
+                details: `Reverted to ${selectedProblem} + ${selectedRiskLevel} base ranges with remaining tag adjustments`
+            }
+        };
+        
+        console.log(`✅ Matrix-based reversion completed:`, result);
+        
+        // Dispatch events to update UI
+        setTimeout(() => {
+            window.dispatchEvent(new CustomEvent('tagParametersChanged', {
+                detail: { 
+                    source: 'matrixReversion',
+                    deselectedTag: deselectedTag,
+                    patientId: patientId,
+                    parameters: finalRanges,
+                    organStates: finalOrganStates
+                }
+            }));
+            
+            window.dispatchEvent(new CustomEvent('globalParametersChanged', {
+                detail: { 
+                    source: 'matrixReversion',
+                    deselectedTag: deselectedTag,
+                    patientId: patientId
+                }
+            }));
+            
+            console.log(`🔄 Dispatched matrix reversion events for ${deselectedTag}`);
+        }, 10);
+        
+        return result;
+    }
+
+    /**
      * Update circulatory monitoring level and sync across pages
      * @param {string} patientId - Patient ID  
      * @param {string} level - Monitoring level (los, mid, tight)
@@ -2142,6 +2505,15 @@ class SharedDataManager {
             console.error('❌ Error saving target ranges:', error);
             return false;
         }
+    }
+
+    /**
+     * Set patient-specific vital parameter target ranges (alias for savePatientTargetRanges)
+     * This method is used by some components that expect a 'set' method instead of 'save'
+     */
+    setPatientTargetRanges(patientId, targetRanges) {
+        console.log('🔄 setPatientTargetRanges called - delegating to savePatientTargetRanges');
+        return this.savePatientTargetRanges(patientId, targetRanges);
     }
 
     /**
@@ -2624,6 +2996,38 @@ class SharedDataManager {
         elements.forEach(element => {
             this.highlightElement(element, highlightClass, duration);
         });
+    }
+
+    /**
+     * Debug localStorage content - useful for troubleshooting
+     */
+    debugLocalStorage() {
+        console.log('🔍 === DEBUG localStorage CONTENT ===');
+        console.log('📊 Total localStorage keys:', localStorage.length);
+        
+        for (let i = 0; i < localStorage.length; i++) {
+            const key = localStorage.key(i);
+            const value = localStorage.getItem(key);
+            
+            try {
+                const parsed = JSON.parse(value);
+                console.log(`🔑 ${key}:`, parsed);
+            } catch (e) {
+                console.log(`🔑 ${key}:`, value);
+            }
+        }
+        
+        console.log('🔍 === END DEBUG localStorage ===');
+        
+        // Also log centralized app data
+        const appData = this.getAppData();
+        if (appData) {
+            console.log('📱 === CENTRALIZED APP DATA ===');
+            console.log('📊 Patients:', Object.keys(appData.patients || {}));
+            console.log('🏥 Beds:', Object.keys(appData.beds || {}));
+            console.log('💾 Sessions:', appData.sessions);
+            console.log('📱 === END CENTRALIZED APP DATA ===');
+        }
     }
 }
 
