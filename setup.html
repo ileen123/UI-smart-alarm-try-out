@@ -1407,7 +1407,7 @@
                             const tempRange = temperatureCards[2]?.querySelector('.value-number');
                             
                             // Define highlight colors for different conditions
-                            const highlightClass = tag === 'sepsis' ? 'highlight-red' : 'highlight-blue';
+                            const highlightClass = 'highlight-blue'; // Use blue highlighting for all conditions (sepsis, pneumonie, etc.)
                             
                             // Update ALL parameter displays (to ensure consistency)
                             // But only highlight those that are ACTUALLY affected by this specific tag

@@ -376,7 +376,7 @@
             const afDisplay = document.getElementById('af-range-display-overview'); // Fixed: Use correct ID for alarm-overview
             
             // Define highlight colors for different conditions
-            const highlightClass = tag === 'sepsis' ? 'highlight-red' : 'highlight-blue';
+            const highlightClass = 'highlight-blue'; // Use blue highlighting for all conditions (sepsis, pneumonie, etc.)
             
             // Update ALL parameter displays (to ensure consistency)
             // But only highlight those that are ACTUALLY affected by this specific tag
@@ -1585,7 +1585,7 @@
                         
                         // Apply highlighting only if sepsis is active AND we should highlight (tag button clicked) AND it's sepsis-specific
                         if (hasSepsis && shouldHighlight && (highlightCondition === 'sepsis' || highlightCondition === null)) {
-                            window.sharedDataManager.highlightElement(hrRange, 'highlight-beige', 1500);
+                            window.sharedDataManager.highlightElement(hrRange, 'highlight-blue', 1500);
                             console.log('✅ Applied sepsis highlighting to HR display');
                         }
                     }
@@ -1604,7 +1604,7 @@
                             
                             // Apply highlighting only if sepsis is active AND we should highlight (tag button clicked) AND it's sepsis-specific
                             if (hasSepsis && shouldHighlight && (highlightCondition === 'sepsis' || highlightCondition === null)) {
-                                window.sharedDataManager.highlightElement(bpRange, 'highlight-beige', 1500);
+                                window.sharedDataManager.highlightElement(bpRange, 'highlight-blue', 1500);
                                 console.log('✅ Applied sepsis highlighting to BP display');
                             }
                         } else {
@@ -1719,7 +1719,7 @@
                         
                         // Highlight if using sepsis thresholds
                         if (hasSepsis && sepsisThresholds) {
-                            window.sharedDataManager.highlightElement(hrRange, 'highlight-beige', 1500);
+                            window.sharedDataManager.highlightElement(hrRange, 'highlight-blue', 1500);
                             console.log('🔍 DEBUG: Applied sepsis highlighting to HR range');
                         }
                     }
@@ -1742,11 +1742,11 @@
                 // Apply styling based on source
                 if (isSepsis) {
                     // Use the shared highlighting function with timeout for sepsis
-                    window.sharedDataManager.highlightElement(hrRange, 'highlight-beige', 1500);
+                    window.sharedDataManager.highlightElement(hrRange, 'highlight-blue', 1500);
                     console.log('🦠 Applied sepsis highlighting to HR display with 1.5s timeout');
                 } else {
                     // Use the shared highlighting function with timeout for restored values
-                    window.sharedDataManager.highlightElement(hrRange, 'highlight-beige', 1500);
+                    window.sharedDataManager.highlightElement(hrRange, 'highlight-blue', 1500);
                     console.log('🔙 Applied restored highlighting to HR display with 1.5s timeout');
                 }
             }
@@ -1766,11 +1766,11 @@
                 // Apply styling based on source
                 if (isSepsis) {
                     // Use the shared highlighting function with timeout for sepsis
-                    window.sharedDataManager.highlightElement(bpRange, 'highlight-beige', 1500);
+                    window.sharedDataManager.highlightElement(bpRange, 'highlight-blue', 1500);
                     console.log('🦠 Applied sepsis highlighting to BP display with 1.5s timeout');
                 } else {
                     // Use the shared highlighting function with timeout for restored values
-                    window.sharedDataManager.highlightElement(bpRange, 'highlight-beige', 1500);
+                    window.sharedDataManager.highlightElement(bpRange, 'highlight-blue', 1500);
                     console.log('🔙 Applied restored highlighting to BP display with 1.5s timeout');
                 }
                 
