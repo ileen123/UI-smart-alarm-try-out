@@ -1135,11 +1135,11 @@
             // Use same size as alarm overview
             const circleSize = 130;
             
-            // Get current monitoring level from SharedDataManager
+            // Get EFFECTIVE monitoring level from SharedDataManager (including tag adjustments)
             let initialLevel = 'mid';
             if (currentPatientId && window.sharedDataManager) {
-                initialLevel = window.sharedDataManager.getHeartMonitoringLevel(currentPatientId);
-                console.log(`🫀 Heart circle initialization - Loading heart monitoring level for patient ${currentPatientId}:`, initialLevel);
+                initialLevel = window.sharedDataManager.getEffectiveHeartMonitoringLevel(currentPatientId);
+                console.log(`🫀 Heart circle initialization - Loading EFFECTIVE heart monitoring level for patient ${currentPatientId}:`, initialLevel);
             } else {
                 console.log('🫀 Heart circle initialization - Using default level (mid) - no patient ID or SharedDataManager');
                 console.log('🫀 Current patient ID:', currentPatientId);
@@ -1193,11 +1193,11 @@
             console.log('🔍 Current patient ID:', currentPatientId);
             console.log('🔍 SharedDataManager available:', !!window.sharedDataManager);
             
-            // Get current monitoring level from SharedDataManager
+            // Get EFFECTIVE monitoring level from SharedDataManager (including tag adjustments)
             let currentLevel = 'mid'; // default
             if (currentPatientId && window.sharedDataManager) {
-                currentLevel = window.sharedDataManager.getHeartMonitoringLevel(currentPatientId);
-                console.log(`📱 Loaded heart monitoring level for patient ${currentPatientId}:`, currentLevel);
+                currentLevel = window.sharedDataManager.getEffectiveHeartMonitoringLevel(currentPatientId);
+                console.log(`📱 Loaded EFFECTIVE heart monitoring level for patient ${currentPatientId}:`, currentLevel);
             } else {
                 console.log('⚠️ Using default level (mid) - no patient ID or SharedDataManager');
             }
@@ -1504,10 +1504,10 @@
                     }
                 }
                 
-                // Also initialize monitoring level based on current stored level
-                const currentHeartLevel = window.sharedDataManager.getHeartMonitoringLevel(currentPatientId);
+                // Also initialize monitoring level based on EFFECTIVE stored level (including tag adjustments)
+                const currentHeartLevel = window.sharedDataManager.getEffectiveHeartMonitoringLevel(currentPatientId);
                 if (currentHeartLevel) {
-                    console.log('💓 Initializing heart monitoring level to:', currentHeartLevel);
+                    console.log('💓 Initializing EFFECTIVE heart monitoring level to:', currentHeartLevel);
                     
                     // Update heart circle visual state (if available, otherwise it will be set during heart circle initialization)
                     if (window.circulatoirHeartCircle) {

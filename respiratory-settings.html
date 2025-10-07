@@ -1070,11 +1070,11 @@
             // Use same size as alarm overview
             const circleSize = 130;
             
-            // Get current monitoring level from SharedDataManager
+            // Get EFFECTIVE monitoring level from SharedDataManager (including tag adjustments)
             let initialLevel = 'mid';
             if (currentPatientId && window.sharedDataManager) {
-                initialLevel = window.sharedDataManager.getLungMonitoringLevel(currentPatientId);
-                console.log(`Loading lung monitoring level for patient ${currentPatientId}:`, initialLevel);
+                initialLevel = window.sharedDataManager.getEffectiveLungMonitoringLevel(currentPatientId);
+                console.log(`Loading EFFECTIVE lung monitoring level for patient ${currentPatientId}:`, initialLevel);
             }
             
             window.respiratoryLungCircle = new HeartCircleComponent('respiratory-heart-circle-container', { 
@@ -1344,9 +1344,9 @@
                 return;
             }
             
-            // Get the saved lung monitoring level
-            const savedLevel = window.sharedDataManager.getLungMonitoringLevel(currentPatientId);
-            console.log('📊 Saved lung monitoring level:', savedLevel);
+            // Get the EFFECTIVE saved lung monitoring level (including tag adjustments)
+            const savedLevel = window.sharedDataManager.getEffectiveLungMonitoringLevel(currentPatientId);
+            console.log('📊 Saved EFFECTIVE lung monitoring level:', savedLevel);
             
             // Map lung levels back to button levels
             const levelMapping = {
@@ -1454,10 +1454,10 @@
                     console.warn('❌ RESPIRATORY: Pneumonie button not found!');
                 }
                 
-                // Also initialize monitoring level based on current stored level
-                const currentLungLevel = window.sharedDataManager.getLungMonitoringLevel(currentPatientId);
+                // Also initialize monitoring level based on EFFECTIVE stored level (including tag adjustments)
+                const currentLungLevel = window.sharedDataManager.getEffectiveLungMonitoringLevel(currentPatientId);
                 if (currentLungLevel && window.respiratoryLungCircle) {
-                    console.log('🫁 Initializing lung monitoring level to:', currentLungLevel);
+                    console.log('🫁 Initializing EFFECTIVE lung monitoring level to:', currentLungLevel);
                     window.respiratoryLungCircle.setRiskLevel(currentLungLevel);
                     
                     // Update monitoring level buttons using existing helper function

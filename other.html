@@ -1050,11 +1050,11 @@
             // Use same size as alarm overview
             const circleSize = 130;
             
-            // Get current monitoring level from SharedDataManager
+            // Get EFFECTIVE monitoring level from SharedDataManager (including tag adjustments)
             let initialLevel = 'mid';
             if (currentPatientId && window.sharedDataManager) {
-                initialLevel = window.sharedDataManager.getTempMonitoringLevel(currentPatientId);
-                console.log(`Loading temp monitoring level for patient ${currentPatientId}:`, initialLevel);
+                initialLevel = window.sharedDataManager.getEffectiveTempMonitoringLevel(currentPatientId);
+                console.log(`Loading EFFECTIVE temp monitoring level for patient ${currentPatientId}:`, initialLevel);
             }
             
             window.tempCircle = new HeartCircleComponent('respiratory-heart-circle-container', { 
@@ -1262,9 +1262,9 @@
                 return;
             }
             
-            // Get the saved temp monitoring level
-            const savedLevel = window.sharedDataManager.getTempMonitoringLevel(currentPatientId);
-            console.log('📊 Saved temp monitoring level:', savedLevel);
+            // Get the EFFECTIVE saved temp monitoring level (including tag adjustments)
+            const savedLevel = window.sharedDataManager.getEffectiveTempMonitoringLevel(currentPatientId);
+            console.log('📊 Saved EFFECTIVE temp monitoring level:', savedLevel);
             
             // Map temp levels back to button levels
             const levelMapping = {
