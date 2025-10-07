@@ -282,7 +282,7 @@
             // Based on the tagMatrix in SharedDataManager, determine which parameters are affected by each tag
             const tagParameterMap = {
                 'sepsis': ['HR', 'BP_Mean'], // Sepsis affects HR and BP_Mean only
-                'pneumonie': ['AF', 'Saturatie', 'HR', 'BP_Mean', 'Temperature'] // Pneumonie affects AF, Saturatie, HR, BP_Mean, and Temperature
+                'pneumonie': ['AF'] // Pneumonie affects AF only
             };
             
             return tagParameterMap[tag] && tagParameterMap[tag].includes(parameter);
@@ -292,7 +292,7 @@
         function getParametersAffectedByRiskLevelChange(medicalProblem) {
             // Based on the medical condition matrix, determine which parameters change with risk level
             const problemParameterMap = {
-                'respiratoire-insufficientie': ['AF', 'Saturatie', 'HR'], // Respiratory issues affect breathing and compensatory heart rate
+                'respiratoire-insufficientie': ['AF', 'BP_Mean', 'HR'], // Respiratory issues affect breathing and compensatory heart rate
                 'hart-falen': ['HR', 'BP_Mean', 'Saturatie'], // Heart failure affects heart rate, blood pressure, and oxygen saturation
                 'sepsis': ['HR', 'BP_Mean', 'Temperature'], // Sepsis affects circulatory system and temperature
                 'none': ['HR', 'BP_Mean', 'AF', 'Saturatie', 'Temperature'] // Default: all parameters might change

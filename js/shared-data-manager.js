@@ -1079,12 +1079,7 @@ class SharedDataManager {
                         mid: { minDelta: 0, maxDelta: 20, reasoning: 'Sepsis - moderate tachycardia expected' },
                         high: { minDelta: 0, maxDelta: 20, reasoning: 'Sepsis - significant tachycardia monitoring' }
                     },
-                    // Temperature for infection/sepsis monitoring (fever or hypothermia)
-                    Temperature: {
-                        low: { minDelta: -0.5, maxDelta: +1.0, reasoning: 'Sepsis - fever/hypothermia monitoring range' },
-                        mid: { minDelta: -1.0, maxDelta: +1.5, reasoning: 'Sepsis - enhanced temperature range for infection monitoring' },
-                        high: { minDelta: -1.5, maxDelta: +2.0, reasoning: 'Sepsis - extreme temperature variations monitoring' }
-                    }
+                    
                 },
                 // Monitoring level adjustments - increase circulatory monitoring by 1 level
                 monitoringDeltas: {
