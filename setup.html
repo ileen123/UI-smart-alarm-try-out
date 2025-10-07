@@ -529,6 +529,71 @@
                                     return 'los';
                             }
                         }
+
+                        // Function to highlight parameters affected by main problem changes
+                        function highlightParametersForProblemChange(newProblem, oldProblem, newParameters) {
+                            console.log(`🎨 Highlighting parameters affected by problem change: ${oldProblem} → ${newProblem}`);
+                            
+                            // Determine which parameters actually change based on medical conditions
+                            const affectedParameters = [];
+                            
+                            // HR and BP_Mean always change when switching medical problems
+                            affectedParameters.push('HR', 'BP_Mean');
+                            
+                            // AF only changes when switching from/to respiratoire-insufficientie
+                            const respiratoryProblems = ['respiratoire-insufficientie'];
+                            const oldIsRespiratory = respiratoryProblems.includes(oldProblem);
+                            const newIsRespiratory = respiratoryProblems.includes(newProblem);
+                            
+                            if (oldIsRespiratory !== newIsRespiratory) {
+                                affectedParameters.push('AF');
+                                console.log(`📊 AF included - respiratory status changed: ${oldIsRespiratory} → ${newIsRespiratory}`);
+                            } else {
+                                console.log(`📊 AF excluded - respiratory status unchanged: both ${oldIsRespiratory ? 'respiratory' : 'non-respiratory'}`);
+                            }
+                            
+                            console.log(`📊 Parameters affected by ${oldProblem} → ${newProblem}:`, affectedParameters);
+                            
+                            // Get parameter display elements
+                            const valueNumbers = document.querySelectorAll('.value-number');
+                            const afDisplay = document.getElementById('af-range-display');
+                            
+                            // Update and highlight HR (always affected)
+                            if (affectedParameters.includes('HR') && newParameters.HR && valueNumbers[0]) {
+                                valueNumbers[0].textContent = `${newParameters.HR.min} - ${newParameters.HR.max} ${newParameters.HR.unit}`;
+                                highlightParameterChange(valueNumbers[0], 'highlight', `Problem change (${oldProblem}→${newProblem}) affected HR`);
+                                console.log(`✅ Updated and HIGHLIGHTED HR for problem change:`, valueNumbers[0].textContent);
+                            }
+                            
+                            // Update and highlight BP_Mean (always affected)
+                            if (affectedParameters.includes('BP_Mean') && newParameters.BP_Mean && valueNumbers[1]) {
+                                valueNumbers[1].textContent = `${newParameters.BP_Mean.min} - ${newParameters.BP_Mean.max} ${newParameters.BP_Mean.unit}`;
+                                highlightParameterChange(valueNumbers[1], 'highlight', `Problem change (${oldProblem}→${newProblem}) affected BP`);
+                                console.log(`✅ Updated and HIGHLIGHTED BP for problem change:`, valueNumbers[1].textContent);
+                            }
+                            
+                            // Update and conditionally highlight AF (only when respiratory status changes)
+                            if (newParameters.AF && afDisplay) {
+                                afDisplay.textContent = `${newParameters.AF.min} - ${newParameters.AF.max} /min`;
+                                if (affectedParameters.includes('AF')) {
+                                    highlightParameterChange(afDisplay, 'highlight', `Problem change (${oldProblem}→${newProblem}) affected AF`);
+                                    console.log(`✅ Updated and HIGHLIGHTED AF for problem change:`, afDisplay.textContent);
+                                } else {
+                                    console.log(`📊 Updated AF (no highlight - unchanged between non-respiratory conditions):`, afDisplay.textContent);
+                                }
+                            }
+                            
+                            // DON'T highlight Temperature and Saturatie - they stay the same
+                            console.log(`ℹ️ Temperature and Saturatie not highlighted - unchanged by problem selection`);
+                            
+                            console.log(`✅ Completed parameter highlighting for problem change: ${oldProblem} → ${newProblem}`);
+                            
+                            // Reset the flag after highlighting is complete
+                            if (window.sharedDataManager) {
+                                window.sharedDataManager.setUserChangingProblem(false);
+                                console.log('🔄 Reset user changing problem flag after highlighting');
+                            }
+                        }
                         
                         function setupEventListeners() {
                             // Set up problem dropdown listener
@@ -1025,6 +1090,10 @@
             const shouldOverwriteManualAdjustments = window.sharedDataManager?.isUserManuallyChangingProblem() || false;
             console.log('🎯 Should overwrite manual adjustments:', shouldOverwriteManualAdjustments);
             
+            // Store old problem for highlighting comparison
+            const oldProblem = window.previousSelectedProblem || '';
+            window.previousSelectedProblem = effectiveProblem;
+            
             const result = window.sharedDataManager.applyProblemSpecificMonitoring(
                 effectiveProblem, 
                 window.organComponents,
@@ -1032,6 +1101,21 @@
                 effectiveRiskLevel, // Use 'mid' as default when problem selected but no risk chosen
                 shouldOverwriteManualAdjustments // Pass user intent flag
             );
+
+            // HIGHLIGHT PARAMETERS affected by problem changes
+            console.log(`🔍 DEBUG: Checking highlighting conditions:`);
+            console.log(`   - result.targetRanges exists:`, !!result.targetRanges);
+            console.log(`   - oldProblem (${oldProblem}) !== effectiveProblem (${effectiveProblem}):`, oldProblem !== effectiveProblem);
+            console.log(`   - shouldOverwriteManualAdjustments:`, shouldOverwriteManualAdjustments);
+            
+            if (result.targetRanges && oldProblem !== effectiveProblem && shouldOverwriteManualAdjustments) {
+                console.log(`🎨 Main problem changed from ${oldProblem} to ${effectiveProblem} - highlighting affected parameters`);
+                setTimeout(() => {
+                    highlightParametersForProblemChange(effectiveProblem, oldProblem, result.targetRanges);
+                }, 200);
+            } else {
+                console.log(`⏭️ Skipping highlighting - conditions not met`);
+            }
 
             // CONDITIONAL SYNC: Only update displays with global variables if they were actually updated
             if (shouldOverwriteManualAdjustments) {
@@ -1765,6 +1849,12 @@
             const dropdownText = dropdown.querySelector('.dropdown-text');
             const options = document.getElementById('dropdownOptions');
             const legacySelect = document.getElementById('problemDropdownLegacy');
+            
+            // 🎯 CRUCIAL: Set flag that user is manually changing problem (enables highlighting)
+            console.log('🎯 USER manually selected problem via dropdown:', value);
+            if (window.sharedDataManager) {
+                window.sharedDataManager.setUserChangingProblem(true);
+            }
             
             // Update the GLOBAL selectedProblem variable (not custom one)
             selectedProblem = value;
