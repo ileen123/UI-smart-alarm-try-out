@@ -582,6 +582,15 @@ class SharedDataManager {
             const heartLevelKey = `heartMonitoringLevel_${patientId}`;
             localStorage.removeItem(heartLevelKey);
             
+            // Clear all parameter alarm states for this patient
+            const parameters = ['HR', 'BP_Mean', 'Saturatie', 'AF', 'Temperature'];
+            parameters.forEach(parameter => {
+                const alarmKey = `patient-${patientId}-alarm-${parameter}`;
+                localStorage.removeItem(alarmKey);
+                console.log(`🔔 Removed alarm state for ${parameter}:`, alarmKey);
+            });
+            console.log('✅ Cleared all parameter alarm states for patient:', patientId);
+            
             // Clear any session-specific data for this patient
             const sessionData = this.getSessionData();
             if (sessionData && sessionData.currentPatient === patientId) {
