@@ -972,13 +972,13 @@ body {
     box-shadow: none;
 }
 
-/* Red highlight variant for sepsis */
+/* Blue highlight variant for sepsis */
 .value-number.highlight-red {
-    background-color: #ffe6e6; /* Light red background */
-    color: #d63384; /* Red text */
+    background-color: #1191fa4f; /* Light blue background */
+    color: #1191FA; /* Red text */
     padding: 4px 8px; /* Add padding when highlighted */
     border-radius: 20px; /* Rounded corners */
-    border: 2px solid #ff6b6b; /* Red border */
+    border: 2px solid #1191FA; /* Blue border */
     animation: pulse-red 0.6s ease-in-out; /* Red pulse animation */
     transition: all 0.3s ease-out; /* Smooth transition for fade-out */
 }

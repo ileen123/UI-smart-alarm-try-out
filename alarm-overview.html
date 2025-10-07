@@ -501,6 +501,10 @@
         function syncDisplaysWithCentralizedRanges() {
             console.log('🌐 SIMPLE SYNC: Updating alarm overview displays with global variables...');
 
+            // Check if user is manually changing problems - if so, apply highlighting after updates
+            const isUserChangingProblem = window.sharedDataManager?.isUserManuallyChangingProblem();
+            console.log('🎨 SYNC: User changing problem?', isUserChangingProblem);
+
             // Update parameter displays - simple direct approach
             const valueNumbers = document.querySelectorAll('.value-number');
             
@@ -509,12 +513,28 @@
                 if (valueNumbers[0]) {
                     valueNumbers[0].textContent = `${window.HR_MIN} - ${window.HR_MAX} bpm`;
                     console.log('📊 Updated HR display:', valueNumbers[0].textContent);
+                    
+                    // Apply highlighting if user is changing problems
+                    if (isUserChangingProblem) {
+                        setTimeout(() => {
+                            highlightParameterChange(valueNumbers[0], 'highlight', 'Problem change affected HR');
+                            console.log('🎨 SYNC: Applied highlighting to HR after sync');
+                        }, 50);
+                    }
                 }
 
                 // Update BP display from global variables
                 if (valueNumbers[1]) {
                     valueNumbers[1].textContent = `${window.BP_MIN} - ${window.BP_MAX} mmHg`;
                     console.log('📊 Updated BP display:', valueNumbers[1].textContent);
+                    
+                    // Apply highlighting if user is changing problems
+                    if (isUserChangingProblem) {
+                        setTimeout(() => {
+                            highlightParameterChange(valueNumbers[1], 'highlight', 'Problem change affected BP');
+                            console.log('🎨 SYNC: Applied highlighting to BP after sync');
+                        }, 50);
+                    }
                 }
 
                 // Update Saturatie display from global variables
@@ -528,6 +548,9 @@
                 if (afDisplay) {
                     afDisplay.textContent = `${window.AF_MIN} - ${window.AF_MAX} /min`;
                     console.log('📊 Updated AF display:', afDisplay.textContent);
+                    
+                    // NOTE: AF highlighting is handled by highlightParametersForProblemChange() 
+                    // with smart medical logic - don't highlight here to avoid conflicts
                 }
 
                 // Update Temperature display from global variables
@@ -538,6 +561,14 @@
             }
 
             console.log('✅ All alarm overview displays updated with global variables');
+            
+            // Reset the user changing problem flag after highlighting is applied
+            if (isUserChangingProblem && window.sharedDataManager) {
+                setTimeout(() => {
+                    window.sharedDataManager.setUserChangingProblem(false);
+                    console.log('🔄 SYNC: Reset user changing problem flag after highlighting');
+                }, 100);
+            }
         }
 
         // Initialize page when DOM is loaded
@@ -1886,19 +1917,27 @@
 
         // Function to update organ circles based on selected problem
         function updateOrganCirclesBasedOnProblem(problemValue) {
-            console.log('🎯 MAIN PROBLEM CHANGE - Problem selected:', problemValue);
-            console.log('🎯 MAIN PROBLEM CHANGE - Previous selectedProblem:', selectedProblem);
+            console.log('🎯 ALARM-OVERVIEW: Problem selected:', problemValue);
             selectedProblem = problemValue;
-            console.log('🎯 MAIN PROBLEM CHANGE - New selectedProblem:', selectedProblem);
-            console.log('🎯 MAIN PROBLEM CHANGE - Calling updateOrganCircles(true)...');
+            
+            // Store old problem for highlighting comparison
+            const oldProblem = window.previousSelectedProblem || '';
+            window.previousSelectedProblem = selectedProblem;
+            
+            // Call the main update function
             updateOrganCircles(true); // MANUAL PROBLEM CHANGE: Overwrite manual adjustments
             
-            // Save current medical info including the problem selection
-            if (currentPatientId && window.sharedDataManager) {
-                const currentMedicalInfo = window.sharedDataManager.getPatientMedicalInfo(currentPatientId) || {};
-                currentMedicalInfo.selectedProblem = problemValue;
-                window.sharedDataManager.savePatientMedicalInfo(currentPatientId, currentMedicalInfo);
-                console.log('✅ Problem selection saved for patient:', currentPatientId, problemValue);
+            // Apply highlighting if this was a manual user change and the problem actually changed
+            if (window.sharedDataManager?.isUserManuallyChangingProblem() && oldProblem !== selectedProblem && oldProblem) {
+                console.log('🎨 ALARM-OVERVIEW: User changed problem, applying highlighting after update...');
+                
+                setTimeout(() => {
+                    // Get the updated target ranges
+                    const targetRanges = window.sharedDataManager.getPatientTargetRanges(currentPatientId);
+                    if (targetRanges) {
+                        highlightParametersForProblemChange(selectedProblem, oldProblem, targetRanges);
+                    }
+                }, 200); // Delay to ensure all updates are complete
             }
         }
         
@@ -2051,13 +2090,85 @@
             options.classList.toggle('show');
         }
 
+        // Function to highlight parameters affected by main problem changes
+        function highlightParametersForProblemChange(newProblem, oldProblem, newParameters) {
+            console.log(`🎨 ALARM-OVERVIEW: Highlighting parameters affected by problem change: ${oldProblem} → ${newProblem}`);
+            
+            // Determine which parameters actually change based on medical conditions
+            const affectedParameters = [];
+            
+            // HR and BP_Mean always change when switching medical problems
+            affectedParameters.push('HR', 'BP_Mean');
+            
+            // AF only changes when switching from/to respiratoire-insufficientie
+            const respiratoryProblems = ['respiratoire-insufficientie'];
+            const oldIsRespiratory = respiratoryProblems.includes(oldProblem);
+            const newIsRespiratory = respiratoryProblems.includes(newProblem);
+            
+            if (oldIsRespiratory !== newIsRespiratory) {
+                affectedParameters.push('AF');
+                console.log(`📊 ALARM-OVERVIEW: AF included - respiratory status changed: ${oldIsRespiratory} → ${newIsRespiratory}`);
+            } else {
+                console.log(`📊 ALARM-OVERVIEW: AF excluded - respiratory status unchanged: both ${oldIsRespiratory ? 'respiratory' : 'non-respiratory'}`);
+            }
+            
+            console.log(`📊 ALARM-OVERVIEW: Parameters affected by ${oldProblem} → ${newProblem}:`, affectedParameters);
+            
+            // Get parameter display elements
+            const valueNumbers = document.querySelectorAll('.value-number');
+            const afDisplay = document.getElementById('af-range-display-overview');
+            
+            // Update and highlight HR (always affected)
+            if (affectedParameters.includes('HR') && newParameters.HR && valueNumbers[0]) {
+                valueNumbers[0].textContent = `${newParameters.HR.min} - ${newParameters.HR.max} ${newParameters.HR.unit}`;
+                highlightParameterChange(valueNumbers[0], 'highlight', `Problem change (${oldProblem}→${newProblem}) affected HR`);
+                console.log(`✅ ALARM-OVERVIEW: Updated and HIGHLIGHTED HR for problem change:`, valueNumbers[0].textContent);
+            }
+            
+            // Update and highlight BP_Mean (always affected)
+            if (affectedParameters.includes('BP_Mean') && newParameters.BP_Mean && valueNumbers[1]) {
+                valueNumbers[1].textContent = `${newParameters.BP_Mean.min} - ${newParameters.BP_Mean.max} ${newParameters.BP_Mean.unit}`;
+                highlightParameterChange(valueNumbers[1], 'highlight', `Problem change (${oldProblem}→${newProblem}) affected BP`);
+                console.log(`✅ ALARM-OVERVIEW: Updated and HIGHLIGHTED BP for problem change:`, valueNumbers[1].textContent);
+            }
+            
+            // Update and conditionally highlight AF (only when respiratory status changes)
+            if (newParameters.AF && afDisplay) {
+                afDisplay.textContent = `${newParameters.AF.min} - ${newParameters.AF.max} /min`;
+                if (affectedParameters.includes('AF')) {
+                    highlightParameterChange(afDisplay, 'highlight', `Problem change (${oldProblem}→${newProblem}) affected AF`);
+                    console.log(`✅ ALARM-OVERVIEW: Updated and HIGHLIGHTED AF for problem change:`, afDisplay.textContent);
+                } else {
+                    console.log(`📊 ALARM-OVERVIEW: Updated AF (no highlight - unchanged between non-respiratory conditions):`, afDisplay.textContent);
+                }
+            }
+            
+            // DON'T highlight Temperature and Saturatie - they stay the same
+            console.log(`ℹ️ ALARM-OVERVIEW: Temperature and Saturatie not highlighted - unchanged by problem selection`);
+            
+            console.log(`✅ ALARM-OVERVIEW: Completed parameter highlighting for problem change: ${oldProblem} → ${newProblem}`);
+            
+            // Reset the flag after highlighting is complete
+            if (window.sharedDataManager) {
+                window.sharedDataManager.setUserChangingProblem(false);
+                console.log('🔄 ALARM-OVERVIEW: Reset user changing problem flag after highlighting');
+            }
+        }
+
         function selectOption(value, text) {
             const dropdown = document.getElementById('problemDropdown');
             const dropdownText = dropdown.querySelector('.dropdown-text');
             const options = document.getElementById('dropdownOptions');
             const legacySelect = document.getElementById('problem-dropdown');
             
-            // Update display
+            // 🎯 CRUCIAL: Set flag that user is manually changing problem (enables highlighting)
+            console.log('🎯 ALARM-OVERVIEW: USER manually selected problem via dropdown:', value);
+            if (window.sharedDataManager) {
+                window.sharedDataManager.setUserChangingProblem(true);
+            }
+            
+            // Update the GLOBAL selectedProblem variable (not custom one)
+            selectedProblem = value;
             dropdownText.textContent = text;
             
             // Update legacy select for backward compatibility
@@ -2079,24 +2190,12 @@
             dropdown.classList.remove('open');
             options.classList.remove('show');
             
-            // Store the selected problem using sharedDataManager for consistency
-            const sessionData = window.sharedDataManager?.getSessionData();
-            const currentPatientId = sessionData?.currentPatient;
-            
-            if (currentPatientId && window.sharedDataManager && value) {
-                // Get existing medical info and update the selected problem
-                const currentMedicalInfo = window.sharedDataManager.getPatientMedicalInfo(currentPatientId) || {};
-                currentMedicalInfo.selectedProblem = value;
-                currentMedicalInfo.lastUpdated = new Date().toISOString();
-                
-                // Save back to sharedDataManager
-                window.sharedDataManager.savePatientMedicalInfo(currentPatientId, currentMedicalInfo);
-                console.log('✅ Updated selected problem in sharedDataManager:', value);
-            }
-            
-            // Also update dataManager if it exists for backward compatibility
-            if (window.dataManager) {
-                window.dataManager.setSelectedProblem(value);
+            // Trigger all the necessary updates that the original dropdown would trigger
+            if (value) {
+                if (window.dataManager) {
+                    window.dataManager.setSelectedProblem(selectedProblem);
+                }
+                updateOrganCirclesBasedOnProblem(selectedProblem);
             }
         }
 
