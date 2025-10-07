@@ -618,14 +618,7 @@
                                         
                                         // NEW: Apply intelligent highlighting for risk level changes
                                         if (oldRiskLevel && oldRiskLevel !== riskLevel && selectedProblem) {
-                                            console.log('🎨 Risk level changed - applying intelligent parameter highlighting');
-                                            
-                                            // Get new parameters from SharedDataManager based on new risk level
-                                            const newParameters = window.sharedDataManager.getMatrixBasedBaseRanges(selectedProblem, riskLevel);
-                                            console.log('📊 New parameters for risk level change:', newParameters);
-                                            
-                                            // Apply intelligent highlighting for parameters affected by this medical condition
-                                            highlightParametersForRiskLevelChange(selectedProblem, oldRiskLevel, riskLevel, newParameters);
+                                            console.log('📊 Risk level changed - no highlighting needed');
                                         }
                                     }
                                     

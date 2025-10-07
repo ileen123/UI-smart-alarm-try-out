@@ -1190,12 +1190,9 @@
                         // Update monitoring status labels after risk level change
                         setTimeout(() => updateMonitoringStatus(), 100);
                         
-                        // HIGHLIGHT PARAMETERS affected by risk level change
+                        // Log the change but don't highlight for risk level changes
                         if (result.targetRanges && oldRiskLevel !== riskLevel) {
-                            console.log(`🎨 Risk level changed from ${oldRiskLevel} to ${riskLevel} - highlighting affected parameters`);
-                            setTimeout(() => {
-                                highlightParametersForRiskLevelChange(selectedProblem, oldRiskLevel, riskLevel, result.targetRanges);
-                            }, 200); // Small delay to ensure displays are updated first
+                            console.log(`📊 Risk level changed from ${oldRiskLevel} to ${riskLevel} - no highlighting needed`);
                         }
                         
                         // Save the risk level to patient medical info for bed overview color updates
