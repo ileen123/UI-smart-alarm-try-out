@@ -1093,34 +1093,11 @@ class SharedDataManager {
                 parameterDeltas: {
                     // AF significantly affected by pneumonia
                     AF: {
-                        low: { minDelta: +2, maxDelta: +4, reasoning: 'Pneumonia - mild respiratory distress' },
-                        mid: { minDelta: +4, maxDelta: +8, reasoning: 'Pneumonia - moderate respiratory compromise' },
-                        high: { minDelta: +6, maxDelta: +12, reasoning: 'Pneumonia - severe respiratory distress' }
+                        low: { minDelta: +0, maxDelta: +2, reasoning: 'Pneumonia - mild respiratory distress' },
+                        mid: { minDelta: +0, maxDelta: +2, reasoning: 'Pneumonia - moderate respiratory compromise' },
+                        high: { minDelta: +0, maxDelta: +2, reasoning: 'Pneumonia - severe respiratory distress' }
                     },
-                    // Saturatie compromised
-                    Saturatie: {
-                        low: { minDelta: -2, maxDelta: 0, reasoning: 'Pneumonia - mild oxygenation compromise' },
-                        mid: { minDelta: -4, maxDelta: 0, reasoning: 'Pneumonia - moderate oxygenation monitoring' },
-                        high: { minDelta: -7, maxDelta: 0, reasoning: 'Pneumonia - severe oxygenation compromise' }
-                    },
-                    // HR compensation
-                    HR: {
-                        low: { minDelta: 0, maxDelta: +10, reasoning: 'Pneumonia - compensatory mild tachycardia' },
-                        mid: { minDelta: +5, maxDelta: +15, reasoning: 'Pneumonia - moderate cardiac compensation' },
-                        high: { minDelta: +10, maxDelta: +20, reasoning: 'Pneumonia - significant cardiac compensation' }
-                    },
-                    // BP_Mean affected by respiratory compromise and compensation
-                    BP_Mean: {
-                        low: { minDelta: 0, maxDelta: +5, reasoning: 'Pneumonia - mild compensatory hypertension' },
-                        mid: { minDelta: -5, maxDelta: +5, reasoning: 'Pneumonia - variable BP response to respiratory compromise' },
-                        high: { minDelta: -10, maxDelta: 0, reasoning: 'Pneumonia - potential hypotension from severe respiratory distress' }
-                    },
-                    // Temperature for infection monitoring
-                    Temperature: {
-                        low: { minDelta: 0, maxDelta: +0.5, reasoning: 'Pneumonia - fever monitoring' },
-                        mid: { minDelta: -0.5, maxDelta: +1.0, reasoning: 'Pneumonia - enhanced fever range' },
-                        high: { minDelta: -1.0, maxDelta: +1.5, reasoning: 'Pneumonia - extreme fever/hypothermia risk' }
-                    }
+                    
                 },
                 // Monitoring level adjustments - increase respiratory monitoring by 1 level
                 monitoringDeltas: {
