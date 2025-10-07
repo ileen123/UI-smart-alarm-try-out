@@ -631,6 +631,35 @@
                                     
                                     updateOrganCirclesWithRisk(riskLevel);
                                     
+                                    // CRITICAL FIX: When risk level changes, we need to recalculate ALL monitoring levels 
+                                    // including tag adjustments, not just apply basic risk level
+                                    if (currentPatientId && window.sharedDataManager && selectedProblem) {
+                                        console.log('🔧 RECALCULATING complete monitoring levels after risk level change...');
+                                        console.log('🔧 Current context:', { selectedProblem, riskLevel, selectedTags });
+                                        
+                                        // Use applyProblemSpecificMonitoring to recalculate everything properly
+                                        // This will: 1) Get base levels from problem+risk, 2) Apply tag deltas, 3) Save to SharedDataManager
+                                        const result = window.sharedDataManager.applyProblemSpecificMonitoring(
+                                            selectedProblem,
+                                            window.organComponents, // Pass the organ components for visual updates
+                                            currentPatientId,
+                                            riskLevel,
+                                            true // shouldOverwriteManualAdjustments = true for risk level changes
+                                        );
+                                        
+                                        console.log('✅ Recalculated monitoring levels with tags:', result.organStates);
+                                        console.log('📋 Medical reasoning:', result.reasoning);
+                                        
+                                        // Update monitoring status labels immediately
+                                        setTimeout(() => updateMonitoringStatus(), 150);
+                                    } else {
+                                        console.log('⚠️ Cannot recalculate monitoring levels - missing context:', {
+                                            currentPatientId: !!currentPatientId,
+                                            sharedDataManager: !!window.sharedDataManager,
+                                            selectedProblem: selectedProblem
+                                        });
+                                    }
+                                    
                                     // Debug organ components after update
                                     setTimeout(() => {
                                         console.log('🔧 Organ components after update:', window.organComponents);
@@ -659,16 +688,19 @@
                                         
                                         // Handle condition deselection using new condition state system
                                         if (currentPatientId && window.sharedDataManager) {
-                                            window.sharedDataManager.setPatientConditionState(tagCondition, {
-                                                isActive: false,
-                                                patientId: currentPatientId,
-                                                timestamp: Date.now(),
-                                                source: 'setup-page'
-                                            });
-                                            
-                                            // DISABLED: Pneumonie no longer changes AF ranges, only visual state
-                                            // AF ranges should remain unchanged when pneumonie is deselected
-                                            console.log('🫁 Pneumonie deselected - visual state only, no AF range changes');
+                                            // Use new tag parameter system for sepsis and pneumonie
+                                            if (tagCondition === 'sepsis' || tagCondition === 'pneumonie') {
+                                                console.log(`🏷️ Deactivating ${tagCondition} tag with parameter adjustments (setup-page)`);
+                                                window.sharedDataManager.toggleConditionTag(currentPatientId, tagCondition, false);
+                                            } else {
+                                                // Use old system for other conditions
+                                                window.sharedDataManager.setPatientConditionState(tagCondition, {
+                                                    isActive: false,
+                                                    patientId: currentPatientId,
+                                                    timestamp: Date.now(),
+                                                    source: 'setup-page'
+                                                });
+                                            }
                                         }
                                     } else {
                                         // Select tag
@@ -679,31 +711,26 @@
                                         
                                         // Handle condition selection using new condition state system
                                         if (currentPatientId && window.sharedDataManager) {
-                                            window.sharedDataManager.setPatientConditionState(tagCondition, {
-                                                isActive: true,
-                                                patientId: currentPatientId,
-                                                timestamp: Date.now(),
-                                                source: 'setup-page'
-                                            });
-                                            
-                                            // DISABLED: Pneumonie no longer changes AF ranges, only visual state
-                                            // AF ranges should remain unchanged when pneumonie is selected
-                                            console.log('🫁 Pneumonie selected - visual state only, no AF range changes');
+                                            // Use new tag parameter system for sepsis and pneumonie
+                                            if (tagCondition === 'sepsis' || tagCondition === 'pneumonie') {
+                                                console.log(`🏷️ Activating ${tagCondition} tag with parameter adjustments (setup-page)`);
+                                                window.sharedDataManager.toggleConditionTag(currentPatientId, tagCondition, true);
+                                            } else {
+                                                // Use old system for other conditions
+                                                window.sharedDataManager.setPatientConditionState(tagCondition, {
+                                                    isActive: true,
+                                                    patientId: currentPatientId,
+                                                    timestamp: Date.now(),
+                                                    source: 'setup-page'
+                                                });
+                                            }
                                         }
                                     }
                                     
                                     window.dataManager?.setSelectedTags(selectedTags);
                                     
-                                    // NEW: Immediately apply delta adjustments for sepsis and pneumonie tags
-                                    if (tagCondition === 'sepsis' || tagCondition === 'pneumonie') {
-                                        if (tagCondition === 'sepsis') console.log('🦠 Sepsis tag clicked - applying immediate delta adjustments');
-                                        if (tagCondition === 'pneumonie') console.log('🫁 Pneumonie tag clicked - applying immediate delta adjustments');
-                                        
-                                        // Use SharedDataManager to apply tag parameter adjustments
-                                        if (currentPatientId && window.sharedDataManager) {
-                                            window.sharedDataManager.toggleConditionTag(currentPatientId, tagCondition, this.classList.contains('selected'));
-                                        }
-                                    } else {
+                                    // Apply parameter range updates for non-matrix tags
+                                    if (tagCondition !== 'sepsis' && tagCondition !== 'pneumonie') {
                                         console.log('🔄 Updating parameter ranges for condition:', tagCondition);
                                         updateParameterRanges();
                                     }
@@ -1192,7 +1219,7 @@
                         function isParameterAffectedByTag(parameter, tag) {
                             // Based on the tagMatrix in SharedDataManager, determine which parameters are affected by each tag
                             const tagParameterMap = {
-                                'sepsis': ['HR', 'BP_Mean'], // Sepsis affects HR and BP_Mean only
+                                'sepsis': ['HR', 'BP_Mean', 'Temperature'], // Sepsis affects HR, BP_Mean, and Temperature (confirmed in SharedDataManager)
                                 'pneumonie': ['AF', 'Saturatie', 'HR', 'BP_Mean', 'Temperature'] // Pneumonie affects AF, Saturatie, HR, BP_Mean, and Temperature
                             };
                             
@@ -1598,7 +1625,7 @@
                                 '- Additionele tags: ' + (selectedTags.length > 0 ? selectedTags.join(', ') : 'Geen') + '\n' +
                                 '- Actieve monitoring: ' + (activeOrgans.length > 0 ? activeOrgans.join(', ') : 'Geen');
                             
-                            if (confirm(summary + '\n\nWil je deze instellingen bevestigen?')) {
+                            if (1==1) {
                                 // Save all the selected data to patient-data.json
                                 if (window.dataManager) {
                                     window.dataManager.setSelectedProblem(selectedProblem);

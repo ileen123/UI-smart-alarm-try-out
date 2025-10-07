@@ -1331,6 +1331,55 @@
                 
                 // Mark this as a recent manual change to prioritize it over calculated values
                 sessionStorage.setItem('recentHeartLevelChange', Date.now().toString());
+                
+                // APPLY TAG MONITORING DELTAS: Check for active tags and apply their monitoring deltas
+                const medicalInfo = window.sharedDataManager.getPatientMedicalInfo(currentPatientId);
+                const selectedProblem = medicalInfo?.selectedProblem || 'none';
+                const selectedRiskLevel = medicalInfo?.selectedRiskLevel || 'low';
+                
+                // Get active condition tags
+                const activeTags = [];
+                const sepsisCondition = window.sharedDataManager.getPatientConditionState('sepsis', currentPatientId);
+                const pneumonieCondition = window.sharedDataManager.getPatientConditionState('pneumonie', currentPatientId);
+                
+                if (sepsisCondition && sepsisCondition.isActive) {
+                    activeTags.push('sepsis');
+                }
+                if (pneumonieCondition && pneumonieCondition.isActive) {
+                    activeTags.push('pneumonie');
+                }
+                
+                if (activeTags.length > 0) {
+                    console.log(`🏷️ Active tags found: ${activeTags.join(', ')} - applying monitoring deltas to heart level`);
+                    
+                    // Apply tag-based monitoring deltas to the manually set level
+                    const baseOrganStates = { heart: heartLevel, lung: 'mid', temp: 'mid' }; // Use current manual level as base
+                    const tagAdjustments = window.sharedDataManager.calculateTagBasedParameterAdjustments(
+                        activeTags, 
+                        {}, // Empty target ranges - we only need organ state adjustments
+                        baseOrganStates, 
+                        selectedRiskLevel
+                    );
+                    
+                    const adjustedHeartLevel = tagAdjustments.adjustedOrganStates.heart;
+                    
+                    if (adjustedHeartLevel !== heartLevel) {
+                        console.log(`🔄 Tag adjustments changed heart level: ${heartLevel} → ${adjustedHeartLevel}`);
+                        
+                        // Update the heart circle with the tag-adjusted level
+                        if (window.circulatoirHeartCircle) {
+                            window.circulatoirHeartCircle.setRiskLevel(adjustedHeartLevel);
+                        }
+                        
+                        // Save the adjusted level
+                        window.sharedDataManager.setHeartMonitoringLevel(currentPatientId, adjustedHeartLevel);
+                        console.log(`✅ Applied tag-adjusted heart level: ${adjustedHeartLevel}`);
+                    } else {
+                        console.log(`ℹ️ No tag adjustment needed for heart level: ${heartLevel}`);
+                    }
+                } else {
+                    console.log(`ℹ️ No active tags - using manual heart level: ${heartLevel}`);
+                }
             }
             
             // Update sliders if they exist
@@ -1454,6 +1503,45 @@
                         console.log('✅ Initialized sepsis button as deselected');
                     }
                 }
+                
+                // Also initialize monitoring level based on current stored level
+                const currentHeartLevel = window.sharedDataManager.getHeartMonitoringLevel(currentPatientId);
+                if (currentHeartLevel) {
+                    console.log('💓 Initializing heart monitoring level to:', currentHeartLevel);
+                    
+                    // Update heart circle visual state (if available, otherwise it will be set during heart circle initialization)
+                    if (window.circulatoirHeartCircle) {
+                        window.circulatoirHeartCircle.setRiskLevel(currentHeartLevel);
+                        console.log('✅ Set heart circle level during tag initialization');
+                    } else {
+                        console.log('ℹ️ Heart circle not yet available - will be set during heart circle initialization');
+                    }
+                    
+                    // Update monitoring level buttons using existing helper function
+                    const buttonLevel = currentHeartLevel === 'low' ? 'loose' : 
+                                      currentHeartLevel === 'mid' ? 'mid' : 
+                                      currentHeartLevel === 'high' ? 'tight' : 'mid'; // Default to mid
+                    
+                    console.log('💓 Initializing heart monitoring buttons for level:', currentHeartLevel, '→', buttonLevel);
+                    
+                    if (typeof updateButtonStates === 'function') {
+                        updateButtonStates(buttonLevel);
+                        console.log('✅ Initialized monitoring level buttons using helper function');
+                    } else {
+                        // Fallback: Direct button update if helper function not available
+                        document.querySelectorAll('.button-group .btn').forEach(btn => {
+                            btn.classList.remove('selected');
+                        });
+                        
+                        const selectedButton = document.querySelector(`.button-group .btn[data-level="${buttonLevel}"]`);
+                        if (selectedButton) {
+                            selectedButton.classList.add('selected');
+                            console.log('✅ Initialized monitoring level button to:', buttonLevel, 'for heart level:', currentHeartLevel);
+                        } else {
+                            console.warn('❌ Could not find monitoring button for level:', buttonLevel, 'heart level:', currentHeartLevel);
+                        }
+                    }
+                }
             }
         }
 
@@ -1528,34 +1616,114 @@
             // Listen for tag parameter changes (sepsis/pneumonie)
             window.addEventListener('tagParametersChanged', function(event) {
                 console.log('🏷️ Circulatory page received tag parameters changed:', event.detail);
-                const { patientId, parameters } = event.detail;
+                const { patientId, parameters, changedTags, organStates } = event.detail;
                 
                 // Only update if it's for the current patient
-                if (patientId === currentPatientId && parameters) {
-                    // Update HR slider if tag parameters include HR
-                    if (parameters.HR && hrSlider && hrSlider.config && hrSlider.config.targetRange) {
-                        console.log('🔄 Updating HR slider from tag parameters:', parameters.HR.min, '-', parameters.HR.max);
-                        hrSlider.config.targetRange.min = parameters.HR.min;
-                        hrSlider.config.targetRange.max = parameters.HR.max;
-                        hrSlider.currentMin = parameters.HR.min;
-                        hrSlider.currentMax = parameters.HR.max;
-                        if (hrSlider.updateSliderPosition) {
-                            hrSlider.updateSliderPosition();
+                if (patientId === currentPatientId) {
+                    // Update tag button visual states for changed tags
+                    if (changedTags) {
+                        if (changedTags.includes('sepsis')) {
+                            const sepsisState = window.sharedDataManager.getPatientConditionState('sepsis', currentPatientId);
+                            const sepsisButton = document.querySelector('.circulatory-tag[data-condition="sepsis"]');
+                            
+                            if (sepsisButton) {
+                                if (sepsisState && sepsisState.isActive) {
+                                    sepsisButton.classList.add('selected');
+                                    console.log('✅ Updated sepsis button to SELECTED from cross-page sync');
+                                } else {
+                                    sepsisButton.classList.remove('selected');
+                                    console.log('✅ Updated sepsis button to DESELECTED from cross-page sync');
+                                }
+                            }
                         }
-                        console.log('✅ HR slider updated from tag parameters');
+                        
+                        if (changedTags.includes('pneumonie')) {
+                            const pneumonieState = window.sharedDataManager.getPatientConditionState('pneumonie', currentPatientId);
+                            const pneumonieButton = document.querySelector('.circulatory-tag[data-condition="pneumonie"]');
+                            
+                            if (pneumonieButton) {
+                                if (pneumonieState && pneumonieState.isActive) {
+                                    pneumonieButton.classList.add('selected');
+                                    console.log('✅ Updated pneumonie button to SELECTED from cross-page sync');
+                                } else {
+                                    pneumonieButton.classList.remove('selected');
+                                    console.log('✅ Updated pneumonie button to DESELECTED from cross-page sync');
+                                }
+                            }
+                        }
                     }
                     
-                    // Update BP slider if tag parameters include BP_Mean
-                    if (parameters.BP_Mean && bpSlider && bpSlider.config && bpSlider.config.targetRange) {
-                        console.log('🔄 Updating BP slider from tag parameters:', parameters.BP_Mean.min, '-', parameters.BP_Mean.max);
-                        bpSlider.config.targetRange.min = parameters.BP_Mean.min;
-                        bpSlider.config.targetRange.max = parameters.BP_Mean.max;
-                        bpSlider.currentMin = parameters.BP_Mean.min;
-                        bpSlider.currentMax = parameters.BP_Mean.max;
-                        if (bpSlider.updateSliderPosition) {
-                            bpSlider.updateSliderPosition();
+                    // Update heart monitoring level if organ states changed
+                    if (organStates && organStates.heart !== undefined) {
+                        const newHeartLevel = organStates.heart;
+                        console.log('💓 Updating heart monitoring level from tag change:', newHeartLevel);
+                        
+                        // Update heart circle visual state
+                        if (window.circulatoirHeartCircle) {
+                            window.circulatoirHeartCircle.setRiskLevel(newHeartLevel);
+                            console.log('✅ Updated circulatoir heart circle to:', newHeartLevel);
                         }
-                        console.log('✅ BP slider updated from tag parameters');
+                        
+                        // Update monitoring level buttons visual state using existing helper function
+                        const buttonLevel = newHeartLevel === 'low' ? 'loose' : 
+                                          newHeartLevel === 'mid' ? 'mid' : 
+                                          newHeartLevel === 'high' ? 'tight' : 'mid'; // Default to mid
+                        
+                        console.log('💓 Updating heart monitoring buttons for level:', newHeartLevel, '→', buttonLevel);
+                        
+                        // Use existing updateButtonStates helper function for consistency
+                        if (typeof updateButtonStates === 'function') {
+                            updateButtonStates(buttonLevel);
+                            console.log('✅ Updated monitoring level buttons using helper function');
+                        } else {
+                            // Fallback: Direct button update if helper function not available
+                            document.querySelectorAll('.button-group .btn').forEach(btn => {
+                                btn.classList.remove('selected');
+                            });
+                            
+                            const selectedButton = document.querySelector(`.button-group .btn[data-level="${buttonLevel}"]`);
+                            if (selectedButton) {
+                                selectedButton.classList.add('selected');
+                                console.log('✅ Updated monitoring level button to:', buttonLevel, 'for heart level:', newHeartLevel);
+                            } else {
+                                console.warn('❌ Could not find monitoring button for level:', buttonLevel, 'heart level:', newHeartLevel);
+                            }
+                        }
+                        
+                        // Update sliders to reflect new monitoring level
+                        if (typeof updateSlidersMonitoringLevel === 'function') {
+                            updateSlidersMonitoringLevel(buttonLevel);
+                            console.log('✅ Updated sliders for monitoring level:', buttonLevel);
+                        }
+                    }
+                    
+                    // Update parameter ranges if provided
+                    if (parameters) {
+                        // Update HR slider if tag parameters include HR
+                        if (parameters.HR && hrSlider && hrSlider.config && hrSlider.config.targetRange) {
+                            console.log('🔄 Updating HR slider from tag parameters:', parameters.HR.min, '-', parameters.HR.max);
+                            hrSlider.config.targetRange.min = parameters.HR.min;
+                            hrSlider.config.targetRange.max = parameters.HR.max;
+                            hrSlider.currentMin = parameters.HR.min;
+                            hrSlider.currentMax = parameters.HR.max;
+                            if (hrSlider.updateSliderPosition) {
+                                hrSlider.updateSliderPosition();
+                            }
+                            console.log('✅ HR slider updated from tag parameters');
+                        }
+                        
+                        // Update BP slider if tag parameters include BP_Mean
+                        if (parameters.BP_Mean && bpSlider && bpSlider.config && bpSlider.config.targetRange) {
+                            console.log('🔄 Updating BP slider from tag parameters:', parameters.BP_Mean.min, '-', parameters.BP_Mean.max);
+                            bpSlider.config.targetRange.min = parameters.BP_Mean.min;
+                            bpSlider.config.targetRange.max = parameters.BP_Mean.max;
+                            bpSlider.currentMin = parameters.BP_Mean.min;
+                            bpSlider.currentMax = parameters.BP_Mean.max;
+                            if (bpSlider.updateSliderPosition) {
+                                bpSlider.updateSliderPosition();
+                            }
+                            console.log('✅ BP slider updated from tag parameters');
+                        }
                     }
                 }
             });

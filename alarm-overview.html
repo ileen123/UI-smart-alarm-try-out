@@ -593,15 +593,15 @@
             
             console.log('Initializing heart circle components...');
             
-            // Get current heart monitoring level from SharedDataManager
+            // Get EFFECTIVE monitoring levels from SharedDataManager (including tag adjustments)
             let heartLevel = 'low';
             let lungLevel = 'low';
             let tempLevel = 'low';
             if (currentPatientId && window.sharedDataManager) {
-                heartLevel = window.sharedDataManager.getHeartMonitoringLevel(currentPatientId);
-                lungLevel = window.sharedDataManager.getLungMonitoringLevel(currentPatientId);
-                tempLevel = window.sharedDataManager.getTempMonitoringLevel(currentPatientId);
-                console.log(`Loading monitoring levels for patient ${currentPatientId}:`, { heartLevel, lungLevel, tempLevel });
+                heartLevel = window.sharedDataManager.getEffectiveHeartMonitoringLevel(currentPatientId);
+                lungLevel = window.sharedDataManager.getEffectiveLungMonitoringLevel(currentPatientId);
+                tempLevel = window.sharedDataManager.getEffectiveTempMonitoringLevel(currentPatientId);
+                console.log(`Loading EFFECTIVE monitoring levels for patient ${currentPatientId}:`, { heartLevel, lungLevel, tempLevel });
             }
             
             // Store references to the components for later control
@@ -624,6 +624,12 @@
             
             // Update monitoring status labels after all components are initialized
             setTimeout(() => updateMonitoringStatus(), 200);
+            
+            // Refresh monitoring levels to ensure circles match stored data
+            setTimeout(() => {
+                console.log('🔄 Initial monitoring level synchronization...');
+                refreshMonitoringLevels();
+            }, 300);
             
             // Listen for global heart monitoring level changes
             document.addEventListener('heartMonitoringLevelChanged', function(event) {
@@ -690,19 +696,43 @@
             // TAG SYSTEM: Listen for tag-based parameter changes (sepsis, pneumonie)
             window.addEventListener('tagParametersChanged', function(event) {
                 console.log('🏷️ Tag parameters changed event received on alarm overview:', event.detail);
-                const { tag, isActive, patientId, parameters, organStates } = event.detail;
+                const { tag, isActive, patientId, parameters, organStates, changedTags } = event.detail;
                 
                 if (patientId === currentPatientId) {
-                    console.log(`🏷️ Applying ${tag} parameter changes (${isActive ? 'ACTIVE' : 'INACTIVE'}):`, parameters);
+                    // Handle both old single-tag format and new changedTags array format
+                    const tagsToUpdate = changedTags || (tag ? [tag] : []);
+                    
+                    console.log(`🏷️ Processing tag changes for: ${tagsToUpdate.join(', ')}`);
+                    
+                    // Update tag button visual states for all changed tags
+                    tagsToUpdate.forEach(tagName => {
+                        const tagState = window.sharedDataManager.getPatientConditionState(tagName, currentPatientId);
+                        const tagButton = document.querySelector(`.tag-btn[data-condition="${tagName}"]`);
+                        
+                        if (tagButton) {
+                            if (tagState && tagState.isActive) {
+                                tagButton.classList.add('selected');
+                                console.log(`✅ Updated ${tagName} tag button to SELECTED from cross-page sync`);
+                            } else {
+                                tagButton.classList.remove('selected');
+                                console.log(`✅ Updated ${tagName} tag button to DESELECTED from cross-page sync`);
+                            }
+                        }
+                    });
                     
                     // Apply parameter changes with highlighting
                     if (parameters) {
-                        applyTagParameterChangesWithHighlighting(tag, isActive, parameters);
+                        const primaryTag = tag || tagsToUpdate[0];
+                        const primaryTagActive = isActive !== undefined ? isActive : 
+                            (window.sharedDataManager.getPatientConditionState(primaryTag, currentPatientId)?.isActive || false);
+                        
+                        console.log(`🏷️ Applying ${primaryTag} parameter changes (${primaryTagActive ? 'ACTIVE' : 'INACTIVE'}):`, parameters);
+                        applyTagParameterChangesWithHighlighting(primaryTag, primaryTagActive, parameters);
                     }
                     
                     // Update organ circle visual states if tag affected monitoring levels
                     if (organStates && window.organComponents) {
-                        console.log(`🔄 Updating organ states from tag ${tag}:`, organStates);
+                        console.log(`🔄 Updating organ states from tag changes:`, organStates);
                         
                         if (organStates.heart && window.organComponents.heart) {
                             window.organComponents.heart.setRiskLevel(organStates.heart);
@@ -718,17 +748,10 @@
                             window.organComponents.temp.setRiskLevel(organStates.temp);
                             console.log(`✅ Updated temp circle to: ${organStates.temp}`);
                         }
-                    }
-                    
-                    // Update tag button visual state if it exists
-                    const tagButton = document.querySelector(`.tag-btn[data-condition="${tag}"]`);
-                    if (tagButton) {
-                        if (isActive) {
-                            tagButton.classList.add('selected');
-                        } else {
-                            tagButton.classList.remove('selected');
-                        }
-                        console.log(`✅ Updated ${tag} tag button visual state: ${isActive ? 'selected' : 'unselected'}`);
+                        
+                        // Update monitoring status labels after organ state changes
+                        setTimeout(() => updateMonitoringStatus(), 100);
+                        console.log(`🔄 Triggered monitoring status update after tag-based organ state changes`);
                     }
                     
                     console.log('📊 TAG SYNC COMPLETED on alarm overview - parameters AND organ states updated');
@@ -823,6 +846,28 @@
                 }
             });
             
+            // PAGE VISIBILITY: Listen for page focus/visibility changes to refresh monitoring levels
+            // This ensures circles show current monitoring levels when returning from other pages
+            window.addEventListener('focus', function() {
+                console.log('🔍 Page gained focus - refreshing monitoring levels...');
+                setTimeout(() => refreshMonitoringLevels(), 100);
+            });
+            
+            document.addEventListener('visibilitychange', function() {
+                if (!document.hidden) {
+                    console.log('👁️ Page became visible - refreshing monitoring levels...');
+                    setTimeout(() => refreshMonitoringLevels(), 100);
+                }
+            });
+            
+            // Also refresh monitoring levels when page loads completely
+            window.addEventListener('pageshow', function(event) {
+                if (event.persisted) {
+                    console.log('📄 Page loaded from cache - refreshing monitoring levels...');
+                    setTimeout(() => refreshMonitoringLevels(), 100);
+                }
+            });
+            
             // Make all circles appear active since patient is already assigned
             setTimeout(() => {
                 updateAllOpacity(true);
@@ -864,6 +909,62 @@
                     container.style.opacity = active ? '1' : '0.3';
                 }
             });
+        }
+
+        // Function to refresh monitoring levels from SharedDataManager (for page navigation)
+        function refreshMonitoringLevels() {
+            if (!currentPatientId || !window.sharedDataManager || !window.organComponents) {
+                console.log('⏭️ Skipping monitoring level refresh - missing requirements');
+                return;
+            }
+            
+            console.log('🔄 Refreshing monitoring levels from SharedDataManager...');
+            
+            // Get EFFECTIVE monitoring levels (including tag adjustments)
+            const heartLevel = window.sharedDataManager.getEffectiveHeartMonitoringLevel(currentPatientId);
+            const lungLevel = window.sharedDataManager.getEffectiveLungMonitoringLevel(currentPatientId);
+            const tempLevel = window.sharedDataManager.getEffectiveTempMonitoringLevel(currentPatientId);
+            
+            console.log('📊 Current EFFECTIVE monitoring levels (including tag adjustments):', { heartLevel, lungLevel, tempLevel });
+            
+            // Update heart circle if it exists and level has changed
+            if (window.organComponents.heart && heartLevel) {
+                const currentHeartLevel = window.organComponents.heart.getRiskLevel();
+                if (currentHeartLevel !== heartLevel) {
+                    console.log(`💓 Updating heart circle: ${currentHeartLevel} → ${heartLevel}`);
+                    window.organComponents.heart.setRiskLevel(heartLevel);
+                } else {
+                    console.log(`💓 Heart circle already at correct level: ${heartLevel}`);
+                }
+            }
+            
+            // Update lung circle if it exists and level has changed
+            if (window.organComponents.lung && lungLevel) {
+                const currentLungLevel = window.organComponents.lung.getRiskLevel();
+                if (currentLungLevel !== lungLevel) {
+                    console.log(`🫁 Updating lung circle: ${currentLungLevel} → ${lungLevel}`);
+                    window.organComponents.lung.setRiskLevel(lungLevel);
+                } else {
+                    console.log(`🫁 Lung circle already at correct level: ${lungLevel}`);
+                }
+            }
+            
+            // Update temp circle if it exists and level has changed
+            if (window.organComponents.temp && tempLevel) {
+                const currentTempLevel = window.organComponents.temp.getRiskLevel();
+                if (currentTempLevel !== tempLevel) {
+                    console.log(`🌡️ Updating temp circle: ${currentTempLevel} → ${tempLevel}`);
+                    window.organComponents.temp.setRiskLevel(tempLevel);
+                } else {
+                    console.log(`🌡️ Temp circle already at correct level: ${tempLevel}`);
+                }
+            }
+            
+            // Update monitoring status labels after refreshing circles
+            setTimeout(() => {
+                updateMonitoringStatus();
+                console.log('✅ Monitoring levels refresh completed');
+            }, 100);
         }
 
         // Function to update monitoring status text based on circle states
@@ -1086,6 +1187,9 @@
                         console.log(`✅ Applied riskMatrix calculation:`, result.organStates);
                         console.log(`📋 Medical reasoning:`, result.reasoning);
                         
+                        // Update monitoring status labels after risk level change
+                        setTimeout(() => updateMonitoringStatus(), 100);
+                        
                         // HIGHLIGHT PARAMETERS affected by risk level change
                         if (result.targetRanges && oldRiskLevel !== riskLevel) {
                             console.log(`🎨 Risk level changed from ${oldRiskLevel} to ${riskLevel} - highlighting affected parameters`);
@@ -1119,6 +1223,10 @@
                             if (condition === 'sepsis' || condition === 'pneumonie') {
                                 console.log(`🏷️ Deactivating ${condition} tag with parameter adjustments`);
                                 window.sharedDataManager.toggleConditionTag(currentPatientId, condition, false);
+                                
+                                // Update monitoring status labels after tag deselection
+                                // Use longer delay to ensure all events and circle updates have completed
+                                setTimeout(() => updateMonitoringStatus(), 100);
                             } else {
                                 // Use old system for other conditions
                                 window.sharedDataManager.setPatientConditionState(condition, {
@@ -1140,6 +1248,10 @@
                             if (condition === 'sepsis' || condition === 'pneumonie') {
                                 console.log(`🏷️ Activating ${condition} tag with parameter adjustments`);
                                 window.sharedDataManager.toggleConditionTag(currentPatientId, condition, true);
+                                
+                                // Update monitoring status labels after tag selection
+                                // Use longer delay to ensure all events and circle updates have completed
+                                setTimeout(() => updateMonitoringStatus(), 100);
                             } else {
                                 // Use old system for other conditions
                                 window.sharedDataManager.setPatientConditionState(condition, {
@@ -1305,6 +1417,9 @@
                 console.log(`🌡️ Applying stored temp level: ${tempLevel}`);
                 window.organComponents.temp.setRiskLevel(tempLevel);
             }
+            
+            // Update monitoring status labels after applying stored levels
+            setTimeout(() => updateMonitoringStatus(), 100);
             
             console.log('✅ All monitoring levels synchronized');
         }
@@ -1845,6 +1960,9 @@
             console.log('🎯 Current selectedProblem:', selectedProblem);
             console.log('🎯 Current selectedRiskLevel:', selectedRiskLevel);
             console.log('🎯 isActivated:', isActivated);
+            
+            // Update monitoring status labels after applying problem-specific monitoring
+            setTimeout(() => updateMonitoringStatus(), 100);
             
             // Log monitoring level synchronization that happens automatically in SharedDataManager
             if (currentPatientId && window.sharedDataManager) {

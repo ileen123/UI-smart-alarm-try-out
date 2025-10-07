@@ -1223,6 +1223,55 @@
                 
                 // Mark this as a recent manual change to prioritize it over calculated values
                 sessionStorage.setItem('recentLungLevelChange', Date.now().toString());
+                
+                // APPLY TAG MONITORING DELTAS: Check for active tags and apply their monitoring deltas
+                const medicalInfo = window.sharedDataManager.getPatientMedicalInfo(currentPatientId);
+                const selectedProblem = medicalInfo?.selectedProblem || 'none';
+                const selectedRiskLevel = medicalInfo?.selectedRiskLevel || 'low';
+                
+                // Get active condition tags
+                const activeTags = [];
+                const sepsisCondition = window.sharedDataManager.getPatientConditionState('sepsis', currentPatientId);
+                const pneumonieCondition = window.sharedDataManager.getPatientConditionState('pneumonie', currentPatientId);
+                
+                if (sepsisCondition && sepsisCondition.isActive) {
+                    activeTags.push('sepsis');
+                }
+                if (pneumonieCondition && pneumonieCondition.isActive) {
+                    activeTags.push('pneumonie');
+                }
+                
+                if (activeTags.length > 0) {
+                    console.log(`🏷️ Active tags found: ${activeTags.join(', ')} - applying monitoring deltas to lung level`);
+                    
+                    // Apply tag-based monitoring deltas to the manually set level
+                    const baseOrganStates = { heart: 'mid', lung: lungLevel, temp: 'mid' }; // Use current manual level as base
+                    const tagAdjustments = window.sharedDataManager.calculateTagBasedParameterAdjustments(
+                        activeTags, 
+                        {}, // Empty target ranges - we only need organ state adjustments
+                        baseOrganStates, 
+                        selectedRiskLevel
+                    );
+                    
+                    const adjustedLungLevel = tagAdjustments.adjustedOrganStates.lung;
+                    
+                    if (adjustedLungLevel !== lungLevel) {
+                        console.log(`🔄 Tag adjustments changed lung level: ${lungLevel} → ${adjustedLungLevel}`);
+                        
+                        // Update the lung circle with the tag-adjusted level
+                        if (window.respiratoryLungCircle) {
+                            window.respiratoryLungCircle.setRiskLevel(adjustedLungLevel);
+                        }
+                        
+                        // Save the adjusted level
+                        window.sharedDataManager.setLungMonitoringLevel(currentPatientId, adjustedLungLevel);
+                        console.log(`✅ Applied tag-adjusted lung level: ${adjustedLungLevel}`);
+                    } else {
+                        console.log(`ℹ️ No tag adjustment needed for lung level: ${lungLevel}`);
+                    }
+                } else {
+                    console.log(`ℹ️ No active tags - using manual lung level: ${lungLevel}`);
+                }
             }
             
             // Update sliders if they exist
@@ -1404,6 +1453,38 @@
                 } else {
                     console.warn('❌ RESPIRATORY: Pneumonie button not found!');
                 }
+                
+                // Also initialize monitoring level based on current stored level
+                const currentLungLevel = window.sharedDataManager.getLungMonitoringLevel(currentPatientId);
+                if (currentLungLevel && window.respiratoryLungCircle) {
+                    console.log('🫁 Initializing lung monitoring level to:', currentLungLevel);
+                    window.respiratoryLungCircle.setRiskLevel(currentLungLevel);
+                    
+                    // Update monitoring level buttons using existing helper function
+                    const buttonLevel = currentLungLevel === 'low' ? 'loose' : 
+                                      currentLungLevel === 'mid' ? 'mid' : 
+                                      currentLungLevel === 'high' ? 'tight' : 'mid'; // Default to mid
+                    
+                    console.log('🫁 Initializing lung monitoring buttons for level:', currentLungLevel, '→', buttonLevel);
+                    
+                    if (typeof updateButtonStates === 'function') {
+                        updateButtonStates(buttonLevel);
+                        console.log('✅ Initialized monitoring level buttons using helper function');
+                    } else {
+                        // Fallback: Direct button update if helper function not available
+                        document.querySelectorAll('.button-group .btn').forEach(btn => {
+                            btn.classList.remove('selected');
+                        });
+                        
+                        const selectedButton = document.querySelector(`.button-group .btn[data-level="${buttonLevel}"]`);
+                        if (selectedButton) {
+                            selectedButton.classList.add('selected');
+                            console.log('✅ Initialized monitoring level button to:', buttonLevel, 'for lung level:', currentLungLevel);
+                        } else {
+                            console.warn('❌ Could not find monitoring button for level:', buttonLevel, 'lung level:', currentLungLevel);
+                        }
+                    }
+                }
             }
         }
 
@@ -1479,34 +1560,97 @@
             // Listen for tag parameter changes (sepsis/pneumonie)
             window.addEventListener('tagParametersChanged', function(event) {
                 console.log('🏷️ Respiratory page received tag parameters changed:', event.detail);
-                const { patientId, parameters } = event.detail;
+                const { patientId, parameters, changedTags, organStates } = event.detail;
                 
                 // Only update if it's for the current patient
-                if (patientId === currentPatientId && parameters) {
-                    // Update AF slider if tag parameters include AF
-                    if (parameters.AF && afSlider && afSlider.config && afSlider.config.targetRange) {
-                        console.log('🔄 Updating AF slider from tag parameters:', parameters.AF.min, '-', parameters.AF.max);
-                        afSlider.config.targetRange.min = parameters.AF.min;
-                        afSlider.config.targetRange.max = parameters.AF.max;
-                        afSlider.currentMin = parameters.AF.min;
-                        afSlider.currentMax = parameters.AF.max;
-                        if (afSlider.updateSliderPosition) {
-                            afSlider.updateSliderPosition();
+                if (patientId === currentPatientId) {
+                    // Update tag button visual states for changed tags
+                    if (changedTags && changedTags.includes('pneumonie')) {
+                        const pneumonieState = window.sharedDataManager.getPatientConditionState('pneumonie', currentPatientId);
+                        const pneumonieButton = document.querySelector('.circulatory-tag[data-condition="pneumonie"]');
+                        
+                        if (pneumonieButton) {
+                            if (pneumonieState && pneumonieState.isActive) {
+                                pneumonieButton.classList.add('selected');
+                                console.log('✅ Updated pneumonie button to SELECTED from cross-page sync');
+                            } else {
+                                pneumonieButton.classList.remove('selected');
+                                console.log('✅ Updated pneumonie button to DESELECTED from cross-page sync');
+                            }
                         }
-                        console.log('✅ AF slider updated from tag parameters');
                     }
                     
-                    // Update Saturatie slider if tag parameters include Saturatie
-                    if (parameters.Saturatie && saturatieSlider && saturatieSlider.config && saturatieSlider.config.targetRange) {
-                        console.log('🔄 Updating Saturatie slider from tag parameters:', parameters.Saturatie.min, '-', parameters.Saturatie.max);
-                        saturatieSlider.config.targetRange.min = parameters.Saturatie.min;
-                        saturatieSlider.config.targetRange.max = parameters.Saturatie.max;
-                        saturatieSlider.currentMin = parameters.Saturatie.min;
-                        saturatieSlider.currentMax = parameters.Saturatie.max;
-                        if (saturatieSlider.updateSliderPosition) {
-                            saturatieSlider.updateSliderPosition();
+                    // Update lung monitoring level if organ states changed
+                    if (organStates && organStates.lung !== undefined) {
+                        const newLungLevel = organStates.lung;
+                        console.log('🫁 Updating lung monitoring level from tag change:', newLungLevel);
+                        
+                        // Update lung circle visual state
+                        if (window.respiratoryLungCircle) {
+                            window.respiratoryLungCircle.setRiskLevel(newLungLevel);
+                            console.log('✅ Updated respiratory lung circle to:', newLungLevel);
                         }
-                        console.log('✅ Saturatie slider updated from tag parameters');
+                        
+                        // Update monitoring level buttons visual state using existing helper function
+                        const buttonLevel = newLungLevel === 'low' ? 'loose' : 
+                                          newLungLevel === 'mid' ? 'mid' : 
+                                          newLungLevel === 'high' ? 'tight' : 'mid'; // Default to mid
+                        
+                        console.log('🫁 Updating lung monitoring buttons for level:', newLungLevel, '→', buttonLevel);
+                        
+                        // Use existing updateButtonStates helper function for consistency
+                        if (typeof updateButtonStates === 'function') {
+                            updateButtonStates(buttonLevel);
+                            console.log('✅ Updated monitoring level buttons using helper function');
+                        } else {
+                            // Fallback: Direct button update if helper function not available
+                            document.querySelectorAll('.button-group .btn').forEach(btn => {
+                                btn.classList.remove('selected');
+                            });
+                            
+                            const selectedButton = document.querySelector(`.button-group .btn[data-level="${buttonLevel}"]`);
+                            if (selectedButton) {
+                                selectedButton.classList.add('selected');
+                                console.log('✅ Updated monitoring level button to:', buttonLevel, 'for lung level:', newLungLevel);
+                            } else {
+                                console.warn('❌ Could not find monitoring button for level:', buttonLevel, 'lung level:', newLungLevel);
+                            }
+                        }
+                        
+                        // Update sliders to reflect new monitoring level
+                        if (typeof updateSlidersMonitoringLevel === 'function') {
+                            updateSlidersMonitoringLevel(buttonLevel);
+                            console.log('✅ Updated sliders for monitoring level:', buttonLevel);
+                        }
+                    }
+                    
+                    // Update parameter ranges if provided
+                    if (parameters) {
+                        // Update AF slider if tag parameters include AF
+                        if (parameters.AF && afSlider && afSlider.config && afSlider.config.targetRange) {
+                            console.log('🔄 Updating AF slider from tag parameters:', parameters.AF.min, '-', parameters.AF.max);
+                            afSlider.config.targetRange.min = parameters.AF.min;
+                            afSlider.config.targetRange.max = parameters.AF.max;
+                            afSlider.currentMin = parameters.AF.min;
+                            afSlider.currentMax = parameters.AF.max;
+                            if (afSlider.updateSliderPosition) {
+                                afSlider.updateSliderPosition();
+                            }
+                            console.log('✅ AF slider updated from tag parameters');
+                        }
+                        
+                        // Update Saturatie slider if tag parameters include Saturatie
+                        if (parameters.Saturatie && saturatieSlider && saturatieSlider.config && saturatieSlider.config.targetRange) {
+                            console.log('🔄 Updating Saturatie slider from tag parameters:', parameters.Saturatie.min, '-', parameters.Saturatie.max);
+                            saturatieSlider.config.targetRange.min = parameters.Saturatie.min;
+                            saturatieSlider.config.targetRange.max = parameters.Saturatie.max;
+                            saturatieSlider.currentMin = parameters.Saturatie.min;
+                            saturatieSlider.currentMax = parameters.Saturatie.max;
+                            if (saturatieSlider.updateSliderPosition) {
+                                saturatieSlider.updateSliderPosition();
+                            }
+                            console.log('✅ Saturatie slider updated from tag parameters');
+                        }
                     }
                 }
             });

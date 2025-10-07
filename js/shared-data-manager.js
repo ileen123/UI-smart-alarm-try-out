@@ -1079,7 +1079,12 @@ class SharedDataManager {
                         mid: { minDelta: 0, maxDelta: 20, reasoning: 'Sepsis - moderate tachycardia expected' },
                         high: { minDelta: 0, maxDelta: 20, reasoning: 'Sepsis - significant tachycardia monitoring' }
                     },
-                   
+                    // Temperature for infection/sepsis monitoring (fever or hypothermia)
+                    Temperature: {
+                        low: { minDelta: -0.5, maxDelta: +1.0, reasoning: 'Sepsis - fever/hypothermia monitoring range' },
+                        mid: { minDelta: -1.0, maxDelta: +1.5, reasoning: 'Sepsis - enhanced temperature range for infection monitoring' },
+                        high: { minDelta: -1.5, maxDelta: +2.0, reasoning: 'Sepsis - extreme temperature variations monitoring' }
+                    }
                 },
                 // Monitoring level adjustments - increase circulatory monitoring by 1 level
                 monitoringDeltas: {
@@ -1726,6 +1731,11 @@ class SharedDataManager {
         appData.patients[patientId].monitoring.heartLevel = level;
         this.saveAppData(appData);
         console.log(`Heart monitoring level set for patient ${patientId}:`, level);
+        
+        // Dispatch event for cross-page synchronization
+        window.dispatchEvent(new CustomEvent('heartMonitoringLevelChanged', {
+            detail: { patientId, level }
+        }));
     }
 
     /**
@@ -1773,6 +1783,11 @@ class SharedDataManager {
         appData.patients[patientId].monitoring.lungLevel = level;
         this.saveAppData(appData);
         console.log(`Lung monitoring level set for patient ${patientId}:`, level);
+        
+        // Dispatch event for cross-page synchronization
+        window.dispatchEvent(new CustomEvent('lungMonitoringLevelChanged', {
+            detail: { patientId, level }
+        }));
     }
 
     /**
@@ -1812,6 +1827,11 @@ class SharedDataManager {
         appData.patients[patientId].monitoring.tempLevel = level;
         this.saveAppData(appData);
         console.log(`Temp monitoring level set for patient ${patientId}:`, level);
+        
+        // Dispatch event for cross-page synchronization
+        window.dispatchEvent(new CustomEvent('tempMonitoringLevelChanged', {
+            detail: { patientId, level }
+        }));
     }
 
     /**
@@ -1835,6 +1855,118 @@ class SharedDataManager {
             storageCheck: JSON.stringify(appData.patients?.[patientId]?.monitoring || {})
         });
         return hasExplicitValue;
+    }
+
+    /**
+     * Get effective monitoring levels including tag-based adjustments
+     * This is what alarm-overview should use to get the real monitoring levels
+     */
+    getEffectiveMonitoringLevels(patientId) {
+        console.log(`🔍 Calculating effective monitoring levels for patient ${patientId}`);
+        
+        if (!patientId) {
+            console.warn('❌ No patient ID provided for effective monitoring levels');
+            return { heart: 'low', lung: 'low', temp: 'low' };
+        }
+        
+        // Get current medical problem and risk level
+        const medicalInfo = this.getPatientMedicalInfo(patientId);
+        const selectedProblem = medicalInfo?.selectedProblem || 'none';
+        const selectedRiskLevel = medicalInfo?.selectedRiskLevel || 'low';
+        
+        // Get base monitoring levels (matrix-based or manual)
+        let baseHeartLevel = this.getHeartMonitoringLevel(patientId);
+        let baseLungLevel = this.getLungMonitoringLevel(patientId);
+        let baseTempLevel = this.getTempMonitoringLevel(patientId);
+        
+        // If no explicit manual levels, use matrix-based defaults
+        if (!this.hasExplicitHeartMonitoringLevel(patientId) && selectedProblem !== 'none') {
+            const matrixStates = this.calculateAdvancedOrganStates(selectedProblem, selectedRiskLevel);
+            baseHeartLevel = matrixStates.organStates?.heart || baseHeartLevel;
+        }
+        if (!this.hasExplicitLungMonitoringLevel(patientId) && selectedProblem !== 'none') {
+            const matrixStates = this.calculateAdvancedOrganStates(selectedProblem, selectedRiskLevel);
+            baseLungLevel = matrixStates.organStates?.lung || baseLungLevel;
+        }
+        if (!this.hasExplicitTempMonitoringLevel(patientId) && selectedProblem !== 'none') {
+            const matrixStates = this.calculateAdvancedOrganStates(selectedProblem, selectedRiskLevel);
+            baseTempLevel = matrixStates.organStates?.temp || baseTempLevel;
+        }
+        
+        const baseOrganStates = {
+            heart: baseHeartLevel,
+            lung: baseLungLevel,
+            temp: baseTempLevel
+        };
+        
+        console.log(`🎯 Base monitoring levels:`, baseOrganStates);
+        
+        // Get active condition tags
+        const activeTags = [];
+        const sepsisCondition = this.getPatientConditionState('sepsis', patientId);
+        if (sepsisCondition && sepsisCondition.isActive) {
+            activeTags.push('sepsis');
+        }
+        const pneumonieCondition = this.getPatientConditionState('pneumonie', patientId);
+        if (pneumonieCondition && pneumonieCondition.isActive) {
+            activeTags.push('pneumonie');
+        }
+        
+        console.log(`🏷️ Active tags for monitoring adjustment:`, activeTags);
+        
+        // Apply tag-based monitoring level adjustments
+        let effectiveOrganStates = baseOrganStates;
+        if (activeTags.length > 0) {
+            const tagAdjustments = this.calculateTagBasedParameterAdjustments(
+                activeTags, 
+                {}, // Don't need parameter ranges, just monitoring levels
+                baseOrganStates, 
+                selectedRiskLevel
+            );
+            effectiveOrganStates = tagAdjustments.adjustedOrganStates;
+            
+            console.log(`🏷️ Tag-adjusted monitoring levels:`, {
+                originalLevels: baseOrganStates,
+                adjustedLevels: effectiveOrganStates,
+                activeTags: activeTags,
+                adjustmentsApplied: tagAdjustments.appliedAdjustments
+            });
+        } else {
+            console.log(`🏷️ No active tags - using base monitoring levels`);
+        }
+        
+        return {
+            heart: effectiveOrganStates.heart || 'low',
+            lung: effectiveOrganStates.lung || 'low', 
+            temp: effectiveOrganStates.temp || 'low'
+        };
+    }
+
+    /**
+     * Get effective heart monitoring level including tag-based adjustments
+     */
+    getEffectiveHeartMonitoringLevel(patientId) {
+        const levels = this.getEffectiveMonitoringLevels(patientId);
+        console.log(`🔍 Effective heart monitoring level for ${patientId}: ${levels.heart}`);
+        return levels.heart;
+    }
+
+    /**
+     * Get effective lung monitoring level including tag-based adjustments
+     */
+    getEffectiveLungMonitoringLevel(patientId) {
+        const levels = this.getEffectiveMonitoringLevels(patientId);
+        console.log(`🔍 Effective lung monitoring level for ${patientId}: ${levels.lung}`);
+        return levels.lung;
+    }
+
+    /**
+     * Get effective temp monitoring level including tag-based adjustments
+     */
+    getEffectiveTempMonitoringLevel(patientId) {
+        const levels = this.getEffectiveMonitoringLevels(patientId);
+        console.log(`🔍 Effective temp monitoring level for ${patientId}: ${levels.temp}`);
+        return levels.temp;
     }
 
     /**
@@ -2053,6 +2185,7 @@ class SharedDataManager {
                 detail: { 
                     source: 'tagChange',
                     tag: tag,
+                    changedTags: [tag], // Include changed tags for UI synchronization
                     isActive: isActive,
                     patientId: patientId,
                     parameters: result.targetRanges,
@@ -2222,6 +2355,7 @@ class SharedDataManager {
                 detail: { 
                     source: 'matrixReversion',
                     deselectedTag: deselectedTag,
+                    changedTags: [deselectedTag], // Include changed tags for UI synchronization
                     patientId: patientId,
                     parameters: finalRanges,
                     organStates: finalOrganStates
