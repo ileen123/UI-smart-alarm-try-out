@@ -430,8 +430,8 @@ class VitalParameterSlider {
         const xAxis = this.container.querySelector('.x-axis');
         xAxis.innerHTML = ''; // Clear existing labels
         
-        // Create x-axis labels for seconds (0, 5, 10, 15, 20, 25, 30)
-        const timePoints = [0, 5, 10, 15, 20, 25, 30];
+        // Create x-axis labels for seconds (0, 10, 20, 30, 40, 50, 60)
+        const timePoints = [0, 10, 20, 30, 40, 50, 60];
         const chartContainer = this.container.querySelector('.chart-container');
         const chartWidth = chartContainer.offsetWidth - 40; // Subtract y-axis width
         
@@ -439,20 +439,20 @@ class VitalParameterSlider {
             const label = document.createElement('div');
             label.className = 'x-axis-label';
             
-            if (seconds === 30) {
-                // Position "30" at the right edge
+            if (seconds === 60) {
+                // Position "60" at the right edge
                 label.style.left = `${chartWidth}px`;
             } else {
-                // Compress other labels to fit in remaining space
-                label.style.left = `${(seconds / 29) * (chartWidth - 10)}px`;
+                // Distribute other labels evenly across the available space
+                label.style.left = `${(seconds / 60) * (chartWidth - 10)}px`;
             }
             
             label.textContent = seconds;
             xAxis.appendChild(label);
         });
         
-        // Store the 15-second position for slider alignment
-        this.fifteenSecondPosition = (15 / 29) * (chartWidth - 10);
+        // Store the 30-second position for slider alignment (middle of 0-60 timeline)
+        this.thirtySecondPosition = (30 / 60) * (chartWidth - 10);
     }
 
     updateSliderPosition() {
@@ -465,17 +465,17 @@ class VitalParameterSlider {
         const upperPos = this.valueToPixel(this.currentMax);
         const lowerPos = this.valueToPixel(this.currentMin);
         
-        // Calculate 15-second position (middle of 0-30 timeline)
+        // Calculate 30-second position (middle of 0-60 timeline)
         const chartContainer = this.container.querySelector('.chart-container');
         const chartWidth = chartContainer.offsetWidth - 40; // Account for right margin only
-        // The colored rectangle starts at 0 (after padding), so 15s is in the center of the chart area
-        const fifteenSecondPos = (15 / 30) * chartWidth + 0; // 0 is the left edge of the colored area
+        // The colored rectangle starts at 0 (after padding), so 30s is in the center of the chart area
+        const thirtySecondPos = (30 / 60) * chartWidth + 0; // 0 is the left edge of the colored area
         
-        // Update handle positions - align with 15 seconds
+        // Update handle positions - align with 30 seconds
         upperHandle.style.top = `${upperPos}px`;
-        upperHandle.style.left = `${fifteenSecondPos}px`;
+        upperHandle.style.left = `${thirtySecondPos}px`;
         lowerHandle.style.top = `${lowerPos}px`;
-        lowerHandle.style.left = `${fifteenSecondPos}px`;
+        lowerHandle.style.left = `${thirtySecondPos}px`;
         
         // Update target range overlay
         targetRangeOverlay.style.top = `${upperPos}px`;
