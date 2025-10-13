@@ -232,6 +232,107 @@ class VitalParameterSlider {
         upperAreas.innerHTML = '';
         lowerAreas.innerHTML = '';
         
+        // Try to load parameter-specific external SVGs first
+        this.loadParameterSpecificSVG(svg, level, upperAreas, lowerAreas);
+    }
+
+    async loadParameterSpecificSVG(svg, level, upperAreas, lowerAreas) {
+        try {
+            // Define which parameters have external SVGs available
+            const externalSvgConfig = {
+                HR: {
+                    upper: true,  // HR has external upper SVGs
+                    lower: false  // HR uses embedded lower SVGs (for now)
+                },
+                BP_Mean: {
+                    upper: false, // BP uses embedded upper SVGs (for now)
+                    lower: false  // BP uses embedded lower SVGs (for now)
+                },
+                Saturatie: {
+                    upper: false, // Saturatie uses embedded SVGs (for now)
+                    lower: false
+                },
+                AF: {
+                    upper: false, // AF uses embedded SVGs (for now)
+                    lower: false
+                },
+                Temperature: {
+                    upper: false, // Temperature uses embedded SVGs (for now)
+                    lower: false
+                }
+            };
+
+            const paramConfig = externalSvgConfig[this.config.parameter];
+            let upperLoaded = false;
+            let lowerLoaded = false;
+
+            // Load external upper SVG if available
+            if (paramConfig && paramConfig.upper) {
+                upperLoaded = await this.loadExternalSVGArea(upperAreas, 'upper', level);
+            }
+
+            // Load external lower SVG if available
+            if (paramConfig && paramConfig.lower) {
+                lowerLoaded = await this.loadExternalSVGArea(lowerAreas, 'lower', level);
+            }
+
+            // Fallback to embedded SVGs for areas that couldn't load externally
+            if (!upperLoaded || !lowerLoaded) {
+                this.loadEmbeddedSVGFallback(upperAreas, lowerAreas, level, upperLoaded, lowerLoaded);
+            }
+
+        } catch (error) {
+            console.warn(`Error loading external SVGs for ${this.config.parameter}:`, error);
+            // Fallback to embedded SVGs
+            this.loadEmbeddedSVGFallback(upperAreas, lowerAreas, level, false, false);
+        }
+    }
+
+    async loadExternalSVGArea(targetArea, areaType, level) {
+        try {
+            // Construct filename: HR-tight, HR-mid, HR-loose for upper
+            // Future: HR-tight-down, HR-mid-down, HR-loose-down for lower
+            const suffix = areaType === 'lower' ? '-down' : '';
+            const filename = `${this.config.parameter}-${level.toLowerCase()}${suffix}.svg`;
+            const svgPath = `./svg's/${filename}`;
+            
+            console.log(`Loading external SVG: ${svgPath} for ${this.config.parameter} ${areaType}`);
+
+            const response = await fetch(svgPath);
+            if (!response.ok) {
+                console.log(`External SVG not found: ${svgPath}, using embedded fallback`);
+                return false;
+            }
+
+            const svgText = await response.text();
+            const parser = new DOMParser();
+            const svgDoc = parser.parseFromString(svgText, 'image/svg+xml');
+            const svgElement = svgDoc.querySelector('svg');
+
+            if (svgElement) {
+                // Copy all child elements from external SVG to target area
+                while (svgElement.firstChild) {
+                    const child = svgElement.firstChild;
+                    targetArea.appendChild(child);
+                }
+                
+                // Don't apply scaling here - let the parent SVG's viewBox handle it
+                console.log(`✅ Successfully loaded external ${areaType} SVG for ${this.config.parameter}`);
+                return true;
+            } else {
+                console.warn(`Invalid SVG content in ${svgPath}`);
+                return false;
+            }
+
+        } catch (error) {
+            console.warn(`Failed to load external SVG for ${this.config.parameter} ${areaType}:`, error);
+            return false;
+        }
+    }
+
+    loadEmbeddedSVGFallback(upperAreas, lowerAreas, level, upperLoaded, lowerLoaded) {
+        const svg = upperAreas.closest('svg');
+        
         // Define correct SVG content for each monitoring level (copied from actual SVG files)
         const svgDefinitions = {
             tight: {
@@ -278,35 +379,47 @@ class VitalParameterSlider {
             }
         };
         
-        const levelData = svgDefinitions[level.toLowerCase()];
+        let levelData = svgDefinitions[level.toLowerCase()];
         if (!levelData) {
             console.warn(`Unknown monitoring level: ${level}, using tight as fallback`);
             levelData = svgDefinitions.tight;
         }
         
-        // Create upper areas
-        levelData.upper.forEach(elementData => {
-            const element = document.createElementNS('http://www.w3.org/2000/svg', elementData.type);
-            Object.entries(elementData.attrs).forEach(([key, value]) => {
-                element.setAttribute(key, value);
+        // Only create upper areas if not already loaded externally
+        if (!upperLoaded) {
+            levelData.upper.forEach(elementData => {
+                const element = document.createElementNS('http://www.w3.org/2000/svg', elementData.type);
+                Object.entries(elementData.attrs).forEach(([key, value]) => {
+                    element.setAttribute(key, value);
+                });
+                upperAreas.appendChild(element);
             });
-            upperAreas.appendChild(element);
-        });
+            console.log(`📄 Created embedded upper SVG for ${level} level`);
+        } else {
+            console.log(`⚡ Skipped upper SVG creation - external SVG already loaded for ${level}`);
+        }
         
-        // Create lower areas
-        levelData.lower.forEach(elementData => {
-            const element = document.createElementNS('http://www.w3.org/2000/svg', elementData.type);
-            Object.entries(elementData.attrs).forEach(([key, value]) => {
-                element.setAttribute(key, value);
+        // Only create lower areas if not already loaded externally
+        if (!lowerLoaded) {
+            levelData.lower.forEach(elementData => {
+                const element = document.createElementNS('http://www.w3.org/2000/svg', elementData.type);
+                Object.entries(elementData.attrs).forEach(([key, value]) => {
+                    element.setAttribute(key, value);
+                });
+                lowerAreas.appendChild(element);
             });
-            lowerAreas.appendChild(element);
-        });
+            console.log(`📄 Created embedded lower SVG for ${level} level`);
+        } else {
+            console.log(`⚡ Skipped lower SVG creation - external SVG already loaded for ${level}`);
+        }
         
-        // Set the viewBox to match the original SVG
-        svg.setAttribute('viewBox', '0 0 437 270');
-        svg.setAttribute('preserveAspectRatio', 'none');
+        // Set the viewBox to match the original SVG - this will automatically scale content
+        if (svg) {
+            svg.setAttribute('viewBox', '0 0 437 270');
+            svg.setAttribute('preserveAspectRatio', 'none');
+        }
         
-        console.log(`Embedded SVG created for ${level} level with correct original content`);
+        console.log(`✅ SVG fallback completed for ${level} level (upper: ${upperLoaded ? 'external' : 'embedded'}, lower: ${lowerLoaded ? 'external' : 'embedded'})`);
         
         // Position the SVGs immediately after creation
         this.updateGraphPosition();
@@ -394,15 +507,22 @@ class VitalParameterSlider {
         // Move upper-areas group: position so the bottom of the SVG (green area) aligns with the upper dashed line
         const upperAreas = svg.querySelector('.upper-areas');
         if (upperAreas && upperAreas.firstChild) {
-            // Position the SVG so its bottom edge touches the upper dashed line
-            // The SVG extends upward from this line and gets clipped by the chart boundaries
-            upperAreas.setAttribute('transform', `translate(0,${upperPos - 155})`);
+            // Check if we're using external SVGs (HR parameter with external upper SVGs)
+            const isExternalSVG = this.config.parameter === 'HR';
+            
+            if (isExternalSVG) {
+                // External SVGs have height 286, position so bottom aligns with upper dashed line
+                upperAreas.setAttribute('transform', `translate(0,${upperPos - 286})`);
+            } else {
+                // Embedded SVGs have height 155, use original positioning
+                upperAreas.setAttribute('transform', `translate(0,${upperPos - 155})`);
+            }
         }
         
         // Move lower-areas group: attach the TOP of the SVG to the lower dashed line (so it extends downward)
         const lowerAreas = svg.querySelector('.lower-areas');
         if (lowerAreas && lowerAreas.firstChild) {
-            // Attach the top edge of the SVG to the lower dashed line
+            // Lower areas always use embedded SVGs for now, so use original positioning
             lowerAreas.setAttribute('transform', `translate(0,${lowerPos})`);
         }
         
