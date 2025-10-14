@@ -252,6 +252,18 @@
     pointer-events: none;
 }
 
+/* Ensure SVG elements have no spacing issues */
+.upper-areas svg, .lower-areas svg {
+    display: block;
+    margin: 0;
+    padding: 0;
+}
+
+/* Remove any potential gaps in SVG rendering */
+.graph-areas svg {
+    shape-rendering: geometricPrecision;
+}
+
 /* Responsive design for slider component */
 @media (max-width: 768px) {
     .vital-slider {

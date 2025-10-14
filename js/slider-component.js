@@ -240,13 +240,16 @@ class VitalParameterSlider {
     setAppropriateViewBox(svg, upperLoaded, lowerLoaded) {
         if (!svg) return;
         
-        // For Saturation with external lower SVGs (400px wide), adjust viewBox
-        if (this.config.parameter === 'Saturatie' && lowerLoaded) {
-            console.log(`📐 Setting viewBox for Saturatie external SVG: 0 0 400 270`);
+        // For parameters with 400px wide external SVGs, adjust viewBox
+        if ((this.config.parameter === 'Saturatie' && lowerLoaded) || 
+            (this.config.parameter === 'AF' && upperLoaded) ||
+            (this.config.parameter === 'Temperature' && upperLoaded) ||
+            (this.config.parameter === 'BP_Mean' && lowerLoaded)) {
+            console.log(`📐 Setting viewBox for ${this.config.parameter} external SVG (400px): 0 0 400 270`);
             svg.setAttribute('viewBox', '0 0 400 270');
         } else {
             // Use standard viewBox for other parameters or embedded SVGs
-            console.log(`📐 Setting standard viewBox: 0 0 437 270`);
+            console.log(`📐 Setting standard viewBox (437px): 0 0 437 270`);
             svg.setAttribute('viewBox', '0 0 437 270');
         }
         svg.setAttribute('preserveAspectRatio', 'none');
@@ -265,19 +268,19 @@ class VitalParameterSlider {
                 },
                 BP_Mean: {
                     upper: false, // BP uses embedded upper SVGs (for now)
-                    lower: false  // BP uses embedded lower SVGs (for now)
+                    lower: true   // BP has external lower SVGs (BP-tight-down.svg, etc.)
                 },
                 Saturatie: {
                     upper: false, // Saturatie uses embedded upper SVGs (for now)
                     lower: true   // Saturatie has external lower SVGs (Sat-tight-down.svg, etc.)
                 },
                 AF: {
-                    upper: false, // AF uses embedded SVGs (for now)
-                    lower: false
+                    upper: true,  // AF has external upper SVGs (AF-tight.svg, etc.)
+                    lower: false  // AF uses embedded lower SVGs (for now)
                 },
                 Temperature: {
-                    upper: false, // Temperature uses embedded SVGs (for now)
-                    lower: false
+                    upper: true,  // Temperature has external upper SVGs (Temp-tight.svg, etc.)
+                    lower: false  // Temperature uses embedded lower SVGs (for now)
                 }
             };
 
@@ -295,8 +298,11 @@ class VitalParameterSlider {
                 lowerLoaded = await this.loadExternalSVGArea(lowerAreas, 'lower', level);
             }
 
-            // Fallback to embedded SVGs for areas that couldn't load externally
-            if (!upperLoaded || !lowerLoaded) {
+            // Call embedded fallback if no external SVGs were loaded
+            if (!upperLoaded && !lowerLoaded) {
+                this.loadEmbeddedSVGFallback(upperAreas, lowerAreas, level, false, false);
+            } else {
+                // If we have mixed external/embedded, call fallback to fill in missing pieces
                 this.loadEmbeddedSVGFallback(upperAreas, lowerAreas, level, upperLoaded, lowerLoaded);
             }
             
@@ -317,6 +323,15 @@ class VitalParameterSlider {
             if (this.config.parameter === 'Saturatie' && areaType === 'lower') {
                 // Saturation lower SVGs: Sat-tight-down.svg, Sat-mid-down.svg, Sat-loose-down.svg
                 filename = `Sat-${level.toLowerCase()}-down.svg`;
+            } else if (this.config.parameter === 'AF' && areaType === 'upper') {
+                // AF upper SVGs: AF-tight.svg, AF-mid.svg, AF-loose.svg
+                filename = `AF-${level.toLowerCase()}.svg`;
+            } else if (this.config.parameter === 'Temperature' && areaType === 'upper') {
+                // Temperature upper SVGs: Temp-tight.svg, Temp-mid.svg, Temp-loose.svg
+                filename = `Temp-${level.toLowerCase()}.svg`;
+            } else if (this.config.parameter === 'BP_Mean' && areaType === 'lower') {
+                // BP lower SVGs: BP-tight-down.svg, BP-mid-down.svg, BP-loose-down.svg
+                filename = `BP-${level.toLowerCase()}-down.svg`;
             } else {
                 // Standard format: HR-tight, HR-mid, HR-loose for upper
                 // Future: HR-tight-down, HR-mid-down, HR-loose-down for lower
@@ -543,26 +558,36 @@ class VitalParameterSlider {
         // Move upper-areas group: position so the bottom of the SVG (green area) aligns with the upper dashed line
         const upperAreas = svg.querySelector('.upper-areas');
         if (upperAreas && upperAreas.firstChild) {
-            // Check if we're using external SVGs (HR parameter with external upper SVGs)
-            const isExternalSVG = this.config.parameter === 'HR';
+            // Check if we're using external SVGs for upper areas
+            const isExternalUpperSVG = (this.config.parameter === 'HR') || (this.config.parameter === 'AF') || (this.config.parameter === 'Temperature');
             
-            if (isExternalSVG) {
-                // External SVGs have height 286, position so bottom aligns with upper dashed line
-                upperAreas.setAttribute('transform', `translate(0,${upperPos - 286})`);
+            if (isExternalUpperSVG) {
+                // External SVGs: HR has height 286, AF has height 262, Temperature has height 260
+                // Position so bottom aligns with upper dashed line, add 1 extra pixel for perfect alignment without gaps
+                let svgHeight;
+                if (this.config.parameter === 'HR') {
+                    svgHeight = 286;
+                } else if (this.config.parameter === 'AF') {
+                    svgHeight = 262;
+                } else if (this.config.parameter === 'Temperature') {
+                    svgHeight = 260;
+                }
+                upperAreas.setAttribute('transform', `translate(0,${upperPos - svgHeight - 1})`);
             } else {
-                // Embedded SVGs have height 155, use original positioning
-                upperAreas.setAttribute('transform', `translate(0,${upperPos - 155})`);
+                // Embedded SVGs have height 155, position with slight adjustment to eliminate gap
+                // Subtract 1 extra pixel to ensure perfect alignment
+                upperAreas.setAttribute('transform', `translate(0,${upperPos - 155 - 1})`);
             }
         }
         
         // Move lower-areas group: attach the TOP of the SVG to the lower dashed line (so it extends downward)
         const lowerAreas = svg.querySelector('.lower-areas');
         if (lowerAreas && lowerAreas.firstChild) {
-            // Check if we're using external SVGs for lower areas (Saturatie parameter)
-            const isExternalLowerSVG = this.config.parameter === 'Saturatie';
+            // Check if we're using external SVGs for lower areas (Saturatie and BP_Mean parameters)
+            const isExternalLowerSVG = this.config.parameter === 'Saturatie' || this.config.parameter === 'BP_Mean';
             
             if (isExternalLowerSVG) {
-                // External Saturation SVGs: scale and position appropriately
+                // External lower SVGs (Saturatie, BP): scale and position appropriately
                 lowerAreas.setAttribute('transform', `translate(0,${lowerPos})`);
             } else {
                 // Embedded SVGs: use original positioning
