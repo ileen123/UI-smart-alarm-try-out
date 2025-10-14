@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebSocket Test Mode - Smart Alarm System</title>
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Open+Sans:ital,wght@0,300;0,400;0,600;0,700;1,400;1,600&display=swap" rel="stylesheet">
+    
+    <!-- Styles -->
+    <link rel="stylesheet" href="css/styles.css">
+    
+    <style>
+        .test-container {
+            max-width: 900px;
+            margin: 20px auto;
+            padding: 20px;
+        }
+        
+        .test-section {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .test-section h3 {
+            margin-top: 0;
+            color: #2c3e50;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 10px;
+        }
+        
+        .test-buttons {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .test-btn {
+            padding: 12px 20px;
+            border: none;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-align: center;
+        }
+        
+        .test-btn.primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        
+        .test-btn.success {
+            background: linear-gradient(135deg, #4ecdc4 0%, #44a08d 100%);
+            color: white;
+        }
+        
+        .test-btn.warning {
+            background: linear-gradient(135deg, #ffd700 0%, #ffb347 100%);
+            color: #333;
+        }
+        
+        .test-btn.danger {
+            background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
+            color: white;
+        }
+        
+        .test-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+        
+        .status-banner {
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+            text-align: center;
+            font-weight: 600;
+        }
+        
+        .status-test {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        
+        .status-real {
+            background: linear-gradient(135deg, #4ecdc4 0%, #44a08d 100%);
+            color: white;
+        }
+        
+        .info-box {
+            background: #f8f9fa;
+            border-left: 4px solid #3498db;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 0 6px 6px 0;
+        }
+        
+        .scenario-group {
+            background: #f1f2f6;
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 15px;
+        }
+        
+        .scenario-group h4 {
+            margin-top: 0;
+            color: #2c3e50;
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="breadcrumb-nav">
+        <a href="index.html" class="breadcrumb-link">
+            <img src="svg's/Home.svg" alt="Home" class="breadcrumb-icon">
+            Kamer Overzicht
+        </a>
+        <span class="breadcrumb-separator">></span>
+        <span class="breadcrumb-current">WebSocket Test Mode</span>
+    </nav>
+
+    <div class="test-container">
+        <h1>🧪 WebSocket Test Mode - Ping Messages</h1>
+        
+        <div id="status-banner" class="status-banner status-test">
+            🧪 TEST MODE ACTIVE - All messages will generate ping/log messages instead of WebSocket connections
+        </div>
+        
+        <div class="info-box">
+            <strong>💡 What is Test Mode?</strong><br>
+            Test mode allows you to see exactly when and what data would be sent to external monitoring systems without needing an actual server running. 
+            Every message attempt creates a visible "ping" with the data that would be transmitted.
+        </div>
+
+        <!-- Test Controls -->
+        <div class="test-section">
+            <h3>🎛️ Test Mode Controls</h3>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 15px;">
+                <label style="display: flex; align-items: center; cursor: pointer;">
+                    <input type="checkbox" id="test-mode-toggle" checked onchange="toggleTestMode()" style="margin-right: 8px; transform: scale(1.2);">
+                    <span style="font-weight: bold;">Enable Test Mode</span>
+                </label>
+                <label style="display: flex; align-items: center; cursor: pointer;">
+                    <input type="checkbox" id="ping-display-toggle" checked onchange="togglePingDisplay()" style="margin-right: 8px; transform: scale(1.2);">
+                    <span style="font-weight: bold;">Show Ping Messages</span>
+                </label>
+            </div>
+            <div style="display: flex; gap: 10px;">
+                <button class="test-btn primary" onclick="clearAllPings()">Clear All Pings</button>
+                <button class="test-btn success" onclick="toggleToRealMode()">Switch to Real Mode</button>
+            </div>
+        </div>
+
+        <!-- Individual Message Tests -->
+        <div class="test-section">
+            <h3>📤 Individual Message Tests</h3>
+            <div class="test-buttons">
+                <button class="test-btn success" onclick="testPatientSelection()">
+                    👤 Test Patient Selection
+                </button>
+                <button class="test-btn danger" onclick="testPatientDischarge()">
+                    👋 Test Patient Discharge
+                </button>
+                <button class="test-btn warning" onclick="testThresholdChange()">
+                    📊 Test Threshold Change
+                </button>
+                <button class="test-btn primary" onclick="testHeartbeat()">
+                    💓 Test Heartbeat
+                </button>
+            </div>
+        </div>
+
+        <!-- Realistic Scenarios -->
+        <div class="test-section">
+            <h3>🎭 Realistic Scenarios</h3>
+            
+            <div class="scenario-group">
+                <h4>📋 Patient Admission Workflow</h4>
+                <p>Simulates a complete patient admission with risk assessment updates.</p>
+                <button class="test-btn success" onclick="simulatePatientAdmission()">Run Admission Scenario</button>
+            </div>
+            
+            <div class="scenario-group">
+                <h4>⚠️ Risk Level Escalation</h4>
+                <p>Simulates risk level changes from low → medium → high with threshold updates.</p>
+                <button class="test-btn warning" onclick="simulateRiskEscalation()">Run Escalation Scenario</button>
+            </div>
+            
+            <div class="scenario-group">
+                <h4>🔄 Bed Transfer</h4>
+                <p>Simulates patient transfer between beds with discharge and re-admission.</p>
+                <button class="test-btn primary" onclick="simulateBedTransfer()">Run Transfer Scenario</button>
+            </div>
+            
+            <div class="scenario-group">
+                <h4>🌊 Heavy Load Test</h4>
+                <p>Sends multiple messages rapidly to test message queuing and display.</p>
+                <button class="test-btn danger" onclick="simulateHeavyLoad()">Run Load Test</button>
+            </div>
+        </div>
+
+        <!-- Integration Tests -->
+        <div class="test-section">
+            <h3>🔗 Integration Tests</h3>
+            <p>These buttons trigger the actual data change functions to test automatic message generation:</p>
+            <div class="test-buttons">
+                <button class="test-btn success" onclick="triggerSharedDataManagerSave()">
+                    💾 Trigger SharedDataManager Save
+                </button>
+                <button class="test-btn warning" onclick="triggerBedStateChange()">
+                    🛏️ Trigger Bed State Change
+                </button>
+                <button class="test-btn primary" onclick="triggerRiskLevelUpdate()">
+                    📊 Trigger Risk Level Update
+                </button>
+            </div>
+        </div>
+
+        <!-- Instructions -->
+        <div class="test-section">
+            <h3>📖 Instructions</h3>
+            <ul style="line-height: 1.6;">
+                <li><strong>Ping Messages:</strong> Look for the floating panel in the top-right corner showing all ping messages</li>
+                <li><strong>Console Logs:</strong> Open browser developer tools (F12) to see detailed console logs</li>
+                <li><strong>Test Mode Toggle:</strong> Uncheck the test mode to attempt real WebSocket connections</li>
+                <li><strong>URL Parameter:</strong> Add <code>?testMode=true</code> to any page URL to enable test mode automatically</li>
+                <li><strong>Integration:</strong> Test mode works across all pages - try going to patient settings pages</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="js/websocket-outbound-client.js"></script>
+    <script src="js/websocket-connection-manager.js"></script>
+    <script src="js/shared-data-manager.js"></script>
+
+    <script>
+        // Initialize test mode
+        document.addEventListener('DOMContentLoaded', function() {
+            // Force test mode for this page
+            if (window.toggleWebSocketTestMode) {
+                window.toggleWebSocketTestMode(true);
+            }
+            updateStatusBanner();
+        });
+
+        function updateStatusBanner() {
+            const banner = document.getElementById('status-banner');
+            const toggle = document.getElementById('test-mode-toggle');
+            
+            if (window.webSocketManager && window.webSocketManager.testMode) {
+                banner.className = 'status-banner status-test';
+                banner.innerHTML = '🧪 TEST MODE ACTIVE - All messages will generate ping/log messages instead of WebSocket connections';
+                toggle.checked = true;
+            } else {
+                banner.className = 'status-banner status-real';
+                banner.innerHTML = '🌐 REAL MODE ACTIVE - Will attempt actual WebSocket connections to localhost:8080';
+                toggle.checked = false;
+            }
+        }
+
+        function toggleTestMode() {
+            const enabled = document.getElementById('test-mode-toggle').checked;
+            if (window.toggleWebSocketTestMode) {
+                window.toggleWebSocketTestMode(enabled);
+                updateStatusBanner();
+            }
+        }
+
+        function togglePingDisplay() {
+            const enabled = document.getElementById('ping-display-toggle').checked;
+            if (window.toggleWebSocketPings) {
+                window.toggleWebSocketPings(enabled);
+            }
+        }
+
+        function toggleToRealMode() {
+            if (window.toggleWebSocketTestMode) {
+                window.toggleWebSocketTestMode(false);
+                document.getElementById('test-mode-toggle').checked = false;
+                updateStatusBanner();
+            }
+        }
+
+        function clearAllPings() {
+            const pingList = document.getElementById('ping-messages-list');
+            if (pingList) {
+                pingList.innerHTML = '';
+            }
+            if (window.webSocketManager && window.webSocketManager.client) {
+                window.webSocketManager.client.pingCount = 0;
+            }
+            console.clear();
+        }
+
+        // Individual Tests
+        function testPatientSelection() {
+            const testData = {
+                patient: {
+                    id: 'TEST_P' + Date.now(),
+                    name: 'John Test Patient',
+                    age: 45,
+                    gender: 'M',
+                    admissionDate: new Date().toISOString()
+                },
+                bedNumber: Math.floor(Math.random() * 10) + 1
+            };
+            
+            if (window.webSocketManager) {
+                window.webSocketManager.sendPatientSelected(testData.patient, testData.bedNumber);
+            }
+        }
+
+        function testPatientDischarge() {
+            const testData = {
+                patientId: 'TEST_P' + (Date.now() - 1000),
+                bedNumber: Math.floor(Math.random() * 10) + 1,
+                reason: 'test_discharge'
+            };
+            
+            if (window.webSocketManager) {
+                window.webSocketManager.sendPatientDischarged(testData.patientId, testData.bedNumber, testData.reason);
+            }
+        }
+
+        function testThresholdChange() {
+            const riskLevels = ['low', 'medium', 'high'];
+            const randomRisk = riskLevels[Math.floor(Math.random() * riskLevels.length)];
+            
+            const testData = {
+                patientId: 'TEST_P' + Date.now(),
+                riskLevel: randomRisk,
+                medicalInfo: {
+                    selectedRiskLevel: randomRisk,
+                    heartRateRange: { min: 60 + Math.random() * 10, max: 90 + Math.random() * 20 },
+                    bloodPressureRange: { 
+                        systolic: { min: 90 + Math.random() * 10, max: 130 + Math.random() * 20 }, 
+                        diastolic: { min: 60 + Math.random() * 10, max: 80 + Math.random() * 10 } 
+                    },
+                    lastUpdated: new Date().toISOString()
+                }
+            };
+            
+            if (window.webSocketManager) {
+                window.webSocketManager.sendThresholdsAndRiskLevels(testData.patientId, testData.medicalInfo);
+            }
+        }
+
+        function testHeartbeat() {
+            if (window.webSocketManager) {
+                window.webSocketManager.sendMessage('heartbeat', {
+                    timestamp: new Date().toISOString(),
+                    systemStatus: 'healthy',
+                    activeBeds: Math.floor(Math.random() * 15) + 1
+                });
+            }
+        }
+
+        // Realistic Scenarios
+        function simulatePatientAdmission() {
+            console.log('🎭 Starting Patient Admission Scenario');
+            
+            const patientId = 'ADMIT_' + Date.now();
+            const bedNumber = Math.floor(Math.random() * 10) + 1;
+            
+            // Step 1: Patient selection
+            setTimeout(() => {
+                testPatientSelection();
+                console.log('Step 1: Patient admitted to bed');
+            }, 500);
+            
+            // Step 2: Initial risk assessment
+            setTimeout(() => {
+                testThresholdChange();
+                console.log('Step 2: Initial risk assessment completed');
+            }, 1500);
+            
+            // Step 3: Updated risk assessment after observation
+            setTimeout(() => {
+                testThresholdChange();
+                console.log('Step 3: Risk assessment updated after observation');
+            }, 3000);
+        }
+
+        function simulateRiskEscalation() {
+            console.log('🎭 Starting Risk Level Escalation Scenario');
+            
+            const patientId = 'RISK_' + Date.now();
+            
+            // Low risk
+            setTimeout(() => {
+                window.webSocketManager.sendThresholdsAndRiskLevels(patientId, {
+                    selectedRiskLevel: 'low',
+                    heartRateRange: { min: 60, max: 100 },
+                    bloodPressureRange: { systolic: { min: 90, max: 120 }, diastolic: { min: 60, max: 80 } }
+                });
+                console.log('Risk Level: LOW');
+            }, 500);
+            
+            // Medium risk
+            setTimeout(() => {
+                window.webSocketManager.sendThresholdsAndRiskLevels(patientId, {
+                    selectedRiskLevel: 'medium',
+                    heartRateRange: { min: 65, max: 110 },
+                    bloodPressureRange: { systolic: { min: 100, max: 140 }, diastolic: { min: 65, max: 90 } }
+                });
+                console.log('Risk Level: MEDIUM');
+            }, 2000);
+            
+            // High risk
+            setTimeout(() => {
+                window.webSocketManager.sendThresholdsAndRiskLevels(patientId, {
+                    selectedRiskLevel: 'high',
+                    heartRateRange: { min: 70, max: 120 },
+                    bloodPressureRange: { systolic: { min: 110, max: 160 }, diastolic: { min: 70, max: 100 } }
+                });
+                console.log('Risk Level: HIGH');
+            }, 3500);
+        }
+
+        function simulateBedTransfer() {
+            console.log('🎭 Starting Bed Transfer Scenario');
+            
+            const patientId = 'TRANSFER_' + Date.now();
+            
+            // Patient in bed 1
+            setTimeout(() => {
+                window.webSocketManager.sendPatientSelected({
+                    id: patientId,
+                    name: 'Transfer Patient',
+                    age: 67
+                }, 1);
+                console.log('Patient admitted to Bed 1');
+            }, 500);
+            
+            // Discharge from bed 1
+            setTimeout(() => {
+                window.webSocketManager.sendPatientDischarged(patientId, 1, 'transfer');
+                console.log('Patient discharged from Bed 1 for transfer');
+            }, 2000);
+            
+            // Admit to bed 5
+            setTimeout(() => {
+                window.webSocketManager.sendPatientSelected({
+                    id: patientId,
+                    name: 'Transfer Patient',
+                    age: 67
+                }, 5);
+                console.log('Patient admitted to Bed 5');
+            }, 3000);
+        }
+
+        function simulateHeavyLoad() {
+            console.log('🎭 Starting Heavy Load Test');
+            
+            for (let i = 0; i < 10; i++) {
+                setTimeout(() => {
+                    testPatientSelection();
+                }, i * 200);
+                
+                setTimeout(() => {
+                    testThresholdChange();
+                }, i * 200 + 100);
+            }
+        }
+
+        // Integration Tests
+        function triggerSharedDataManagerSave() {
+            if (window.sharedDataManager) {
+                // Simulate saving patient medical info
+                const testPatientId = 'INTEGRATION_' + Date.now();
+                const testMedicalInfo = {
+                    selectedRiskLevel: 'high',
+                    heartRateRange: { min: 60, max: 100 },
+                    bloodPressureRange: { systolic: { min: 90, max: 140 }, diastolic: { min: 60, max: 90 } },
+                    conditions: ['hypertension']
+                };
+                
+                window.sharedDataManager.savePatientMedicalInfo(testPatientId, testMedicalInfo);
+                console.log('🔗 Triggered SharedDataManager.savePatientMedicalInfo()');
+            }
+        }
+
+        function triggerBedStateChange() {
+            if (window.sharedDataManager) {
+                // Simulate bed state change
+                const testBedStates = {
+                    1: { occupied: true, patientId: 'BED_TEST_' + Date.now() },
+                    2: { occupied: false, patientId: null }
+                };
+                
+                window.sharedDataManager.saveBedStates(testBedStates);
+                console.log('🔗 Triggered SharedDataManager.saveBedStates()');
+            }
+        }
+
+        function triggerRiskLevelUpdate() {
+            if (window.sharedDataManager) {
+                // Simulate risk level update
+                const testPatientId = 'RISK_UPDATE_' + Date.now();
+                
+                // First save with low risk
+                window.sharedDataManager.savePatientMedicalInfo(testPatientId, {
+                    selectedRiskLevel: 'low'
+                });
+                
+                // Then update to high risk (this should trigger the message)
+                setTimeout(() => {
+                    window.sharedDataManager.savePatientMedicalInfo(testPatientId, {
+                        selectedRiskLevel: 'high',
+                        heartRateRange: { min: 70, max: 120 }
+                    });
+                    console.log('🔗 Triggered risk level change detection');
+                }, 1000);
+            }
+        }
+    </script>
+</body>
+</html>

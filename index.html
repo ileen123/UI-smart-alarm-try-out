@@ -439,6 +439,9 @@
     </style>
     
     <!-- Shared Data Manager for cross-page data synchronization -->
+    <!-- WebSocket Communication Scripts -->
+    <script src="js/websocket-outbound-client.js"></script>
+    <script src="js/websocket-connection-manager.js"></script>
     <script src="js/shared-data-manager.js"></script>
 </head>
 <body>
@@ -1192,20 +1195,20 @@
             }
         });
 
-        // Clean up WebSocket connection when page is unloaded
-        window.addEventListener('beforeunload', function() {
-            console.log('🧹 Page unloading - cleaning up WebSocket connection');
-            
-            // Clear reconnection interval
-            if (reconnectInterval) {
-                clearInterval(reconnectInterval);
-                reconnectInterval = null;
+        // Listen for storage events to update bed displays when medical info changes
+        window.addEventListener('storage', function(e) {
+            if (e.key && e.key.startsWith('patient_medical_info_')) {
+                console.log('🔄 Storage event detected for patient medical info:', e.key);
+                refreshRiskLevelsFromMedicalInfo();
+                updateDisplay();
             }
-            
-            // Close WebSocket connection
-            if (websocket && websocket.readyState === WebSocket.OPEN) {
-                websocket.close(1000, 'Page unloading');
-            }
+        });
+
+        // Listen for custom events from SharedDataManager when medical info changes
+        window.addEventListener('patientMedicalInfoChanged', function(e) {
+            console.log('🔄 PatientMedicalInfoChanged event detected:', e.detail);
+            refreshRiskLevelsFromMedicalInfo();
+            updateDisplay();
         });
 
         // Test function to manually test risk levels (for debugging)

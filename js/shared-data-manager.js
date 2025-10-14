@@ -15,9 +15,155 @@ class SharedDataManager {
             APP_DATA: 'smartAlarmAppData'
         };
         
+        // Track recent messages to prevent duplicates
+        this.recentMessages = new Map();
+        this.messageDuplicateWindow = 2000; // 2 seconds to prevent duplicates
+        
         this.initializeAppData();
         this.initializeGlobalHRVariables();
         this.initializeGlobalParameterVariables();
+        this.initializeWebSocketClient();
+    }
+
+    /**
+     * Initialize WebSocket outbound communication
+     */
+    initializeWebSocketClient() {
+        try {
+            // Initialize WebSocket connection manager if available
+            if (typeof window.webSocketManager !== 'undefined') {
+                this.webSocketManager = window.webSocketManager;
+                console.log('✅ WebSocket manager connected to SharedDataManager');
+                
+                // Ensure connection is active (reconnect if needed)
+                if (!this.webSocketManager.isConnected()) {
+                    console.log('🔄 WebSocket not connected, attempting to reconnect...');
+                    this.webSocketManager.connect();
+                } else {
+                    console.log('✅ WebSocket already connected');
+                }
+            } else {
+                console.log('⏳ WebSocket manager not yet available, will retry when initialization completes...');
+                
+                // Retry initialization after both DOM and scripts are ready
+                if (document.readyState === 'loading') {
+                    document.addEventListener('DOMContentLoaded', () => {
+                        setTimeout(() => this.initializeWebSocketClient(), 200); // Longer delay for script execution
+                    });
+                } else {
+                    // DOM is ready but WebSocket manager might still be initializing
+                    setTimeout(() => this.initializeWebSocketClient(), 1000); // Even longer delay for late initialization
+                }
+            }
+        } catch (error) {
+            console.error('❌ Error initializing WebSocket client:', error);
+        }
+    }
+
+    /**
+     * Send WebSocket message if connection is available
+     */
+    sendWebSocketMessage(type, data, priority = 'normal') {
+        try {
+            // Create message fingerprint to detect duplicates
+            const messageFingerprint = this.createMessageFingerprint(type, data);
+            
+            // Check if this message was recently sent
+            if (this.isRecentDuplicate(messageFingerprint)) {
+                console.log(`🚫 Duplicate message prevented: ${type} (fingerprint: ${messageFingerprint})`);
+                return false;
+            }
+            
+            if (this.webSocketManager) {
+                // Track this message as sent
+                this.trackSentMessage(messageFingerprint);
+                return this.webSocketManager.sendMessage(type, data, priority);
+            } else {
+                console.warn('⚠️ WebSocket manager not available. Message not sent:', type);
+                return false;
+            }
+        } catch (error) {
+            console.error('❌ Error sending WebSocket message:', error);
+            return false;
+        }
+    }
+    
+    /**
+     * Create a fingerprint for a message to detect duplicates
+     */
+    createMessageFingerprint(type, data) {
+        // Create a simplified fingerprint based on message type and key data
+        let fingerprint = type;
+        
+        if (type === 'patient_selected' && data) {
+            // For patient selection, use patient ID and bed number
+            const patientId = data.patient?.id || data.id;
+            const bedNumber = data.bedNumber;
+            fingerprint += `_${patientId}_bed${bedNumber}`;
+        } else if (type === 'patient_discharged' && data) {
+            // For patient discharge, use patient ID and bed number
+            fingerprint += `_${data.patientId}_bed${data.bedNumber}`;
+        } else if (type === 'thresholds_risk_levels' && data) {
+            // For thresholds, use patient ID and risk level
+            fingerprint += `_${data.patientId}_${data.riskLevel}`;
+        }
+        
+        return fingerprint;
+    }
+    
+    /**
+     * Check if a message fingerprint was recently sent
+     */
+    isRecentDuplicate(fingerprint) {
+        const now = Date.now();
+        const lastSent = this.recentMessages.get(fingerprint);
+        
+        if (lastSent && (now - lastSent) < this.messageDuplicateWindow) {
+            return true; // This is a recent duplicate
+        }
+        
+        return false;
+    }
+    
+    /**
+     * Track a sent message to prevent duplicates
+     */
+    trackSentMessage(fingerprint) {
+        const now = Date.now();
+        this.recentMessages.set(fingerprint, now);
+        
+        // Clean up old entries (older than duplicate window)
+        for (const [key, timestamp] of this.recentMessages.entries()) {
+            if ((now - timestamp) > this.messageDuplicateWindow) {
+                this.recentMessages.delete(key);
+            }
+        }
+    }
+
+    /**
+     * Get WebSocket connection status
+     */
+    getWebSocketStatus() {
+        try {
+            if (this.webSocketManager) {
+                return this.webSocketManager.getConnectionStatus();
+            } else {
+                return { connected: false, error: 'WebSocket manager not available' };
+            }
+        } catch (error) {
+            console.error('❌ Error getting WebSocket status:', error);
+            return { connected: false, error: error.message };
+        }
+    }
+
+    /**
+     * Get WebSocket connection status
+     */
+    getWebSocketStatus() {
+        if (this.webSocketManager) {
+            return this.webSocketManager.getConnectionStatuses();
+        }
+        return { error: 'WebSocket manager not available' };
     }
 
     /**
@@ -331,6 +477,13 @@ class SharedDataManager {
      */
     savePatientMedicalInfo(patientId, medicalInfo) {
         try {
+            // Get current medical info to detect changes
+            const currentMedicalInfo = this.getPatientMedicalInfo(patientId);
+            const oldRiskLevel = currentMedicalInfo?.selectedRiskLevel;
+            const newRiskLevel = medicalInfo?.selectedRiskLevel;
+            const oldProblem = currentMedicalInfo?.selectedProblem;
+            const newProblem = medicalInfo?.selectedProblem;
+            
             // Save individual patient data (legacy compatibility)
             const patientKey = this.storageKeys.PATIENT_PREFIX + patientId + '_medicalInfo';
             localStorage.setItem(patientKey, JSON.stringify(medicalInfo));
@@ -344,6 +497,73 @@ class SharedDataManager {
                 appData.patients[patientId].medicalInfo = medicalInfo;
                 appData.patients[patientId].lastUpdated = new Date().toISOString();
                 this.saveAppData(appData);
+            }
+
+            // Send WebSocket message for any significant medical info change
+            let shouldSendMessage = false;
+            let changeDescription = [];
+
+            // Check for risk level changes (including first-time setting)
+            if (newRiskLevel && (!oldRiskLevel || oldRiskLevel !== newRiskLevel)) {
+                shouldSendMessage = true;
+                if (!oldRiskLevel) {
+                    changeDescription.push(`Risk level set to: ${newRiskLevel}`);
+                    console.log(`📊 Risk level set for patient ${patientId}: ${newRiskLevel}`);
+                } else {
+                    changeDescription.push(`Risk level changed: ${oldRiskLevel} → ${newRiskLevel}`);
+                    console.log(`📊 Risk level changed for patient ${patientId}: ${oldRiskLevel} → ${newRiskLevel}`);
+                }
+            }
+
+            // Check for medical condition changes (including first-time setting)
+            if (newProblem && (!oldProblem || oldProblem !== newProblem)) {
+                shouldSendMessage = true;
+                if (!oldProblem) {
+                    changeDescription.push(`Medical condition set to: ${newProblem}`);
+                    console.log(`🏥 Medical condition set for patient ${patientId}: ${newProblem}`);
+                } else {
+                    changeDescription.push(`Medical condition changed: ${oldProblem} → ${newProblem}`);
+                    console.log(`🏥 Medical condition changed for patient ${patientId}: ${oldProblem} → ${newProblem}`);
+                }
+            }
+
+            // Check for threshold changes (custom thresholds updates)
+            if (medicalInfo.customThresholds && 
+                JSON.stringify(currentMedicalInfo?.customThresholds) !== JSON.stringify(medicalInfo.customThresholds)) {
+                shouldSendMessage = true;
+                changeDescription.push('Custom thresholds updated');
+                console.log(`⚙️ Custom thresholds updated for patient ${patientId}`);
+            }
+
+            // Send WebSocket message if any significant change detected
+            if (shouldSendMessage) {
+                this.sendWebSocketMessage('thresholds_risk_levels', {
+                    patientId: patientId,
+                    riskLevel: newRiskLevel,
+                    medicalCondition: newProblem,
+                    medicalInfo: medicalInfo,
+                    timestamp: new Date().toISOString(),
+                    metadata: {
+                        source: 'shared_data_manager',
+                        action: 'medical_info_update',
+                        changes: changeDescription,
+                        previousRiskLevel: oldRiskLevel,
+                        previousCondition: oldProblem
+                    }
+                });
+                
+                // Dispatch custom event for cross-page synchronization (bed overview updates)
+                window.dispatchEvent(new CustomEvent('patientMedicalInfoChanged', {
+                    detail: {
+                        patientId: patientId,
+                        oldRiskLevel: oldRiskLevel,
+                        newRiskLevel: newRiskLevel,
+                        oldProblem: oldProblem,
+                        newProblem: newProblem,
+                        changes: changeDescription
+                    }
+                }));
+                console.log('🔄 Dispatched patientMedicalInfoChanged event for bed overview update');
             }
 
             console.log('✅ Patient medical info saved for:', patientId, medicalInfo);
@@ -380,6 +600,9 @@ class SharedDataManager {
      */
     saveBedStates(bedStates) {
         try {
+            // Get current bed states to detect changes
+            const currentBedStates = this.getBedStates() || {};
+            
             // Save individual bed states (legacy compatibility)
             localStorage.setItem(this.storageKeys.BED_STATES, JSON.stringify(bedStates));
 
@@ -390,11 +613,98 @@ class SharedDataManager {
                 this.saveAppData(appData);
             }
 
+            // Detect patient assignments/changes and send WebSocket messages
+            this.detectAndSendBedChanges(currentBedStates, bedStates);
+
             console.log('✅ Bed states saved:', bedStates);
             return true;
         } catch (error) {
             console.error('❌ Error saving bed states:', error);
             return false;
+        }
+    }
+
+    /**
+     * Detect bed state changes and send appropriate WebSocket messages
+     */
+    detectAndSendBedChanges(oldBedStates, newBedStates) {
+        try {
+            for (const bedNumber in newBedStates) {
+                const oldBed = oldBedStates[bedNumber] || {};
+                const newBed = newBedStates[bedNumber];
+                
+                // Patient assigned to bed
+                if (!oldBed.occupied && newBed.occupied && newBed.patientId) {
+                    console.log(`👤 Patient ${newBed.patientId} assigned to bed ${bedNumber}`);
+                    
+                    // Get patient details for the message
+                    const patientData = this.getPatientMedicalInfo(newBed.patientId) || {};
+                    
+                    this.sendWebSocketMessage('patient_selected', {
+                        patient: {
+                            id: newBed.patientId,
+                            ...patientData
+                        },
+                        bedNumber: parseInt(bedNumber),
+                        timestamp: new Date().toISOString(),
+                        metadata: {
+                            source: 'bed_overview',
+                            action: 'patient_assignment'
+                        }
+                    });
+                }
+                
+                // Patient discharged from bed
+                if (oldBed.occupied && (!newBed.occupied || !newBed.patientId) && oldBed.patientId) {
+                    console.log(`👋 Patient ${oldBed.patientId} discharged from bed ${bedNumber}`);
+                    
+                    this.sendWebSocketMessage('patient_discharged', {
+                        patientId: oldBed.patientId,
+                        bedNumber: parseInt(bedNumber),
+                        reason: 'manual_discharge',
+                        timestamp: new Date().toISOString(),
+                        metadata: {
+                            source: 'bed_overview',
+                            action: 'patient_discharge'
+                        }
+                    });
+                }
+                
+                // Patient transferred between beds
+                if (oldBed.occupied && newBed.occupied && oldBed.patientId && newBed.patientId && 
+                    oldBed.patientId !== newBed.patientId) {
+                    console.log(`🔄 Bed ${bedNumber} patient changed: ${oldBed.patientId} → ${newBed.patientId}`);
+                    
+                    // Send discharge for old patient
+                    this.sendWebSocketMessage('patient_discharged', {
+                        patientId: oldBed.patientId,
+                        bedNumber: parseInt(bedNumber),
+                        reason: 'patient_transfer',
+                        timestamp: new Date().toISOString(),
+                        metadata: {
+                            source: 'bed_overview',
+                            action: 'patient_transfer'
+                        }
+                    });
+                    
+                    // Send assignment for new patient
+                    const patientData = this.getPatientMedicalInfo(newBed.patientId) || {};
+                    this.sendWebSocketMessage('patient_selected', {
+                        patient: {
+                            id: newBed.patientId,
+                            ...patientData
+                        },
+                        bedNumber: parseInt(bedNumber),
+                        timestamp: new Date().toISOString(),
+                        metadata: {
+                            source: 'bed_overview',
+                            action: 'patient_reassignment'
+                        }
+                    });
+                }
+            }
+        } catch (error) {
+            console.error('❌ Error detecting bed changes:', error);
         }
     }
 
@@ -3307,8 +3617,24 @@ class SharedDataManager {
     }
 }
 
-// Create global instance
-window.sharedDataManager = new SharedDataManager();
+// Initialize SharedDataManager when DOM is ready
+function initializeSharedDataManager() {
+    console.log('🚀 Initializing SharedDataManager with DOM ready...');
+    
+    // Create global instance
+    window.sharedDataManager = new SharedDataManager();
+    
+    console.log('✅ Global SharedDataManager initialized');
+}
+
+// Check if DOM is ready and initialize accordingly
+if (document.readyState === 'loading') {
+    // DOM is still loading, wait for it
+    document.addEventListener('DOMContentLoaded', initializeSharedDataManager);
+} else {
+    // DOM is already ready, initialize immediately
+    initializeSharedDataManager();
+}
 
 // Export for use in other modules
 if (typeof module !== 'undefined' && module.exports) {
