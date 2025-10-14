@@ -1003,8 +1003,9 @@
 
         
         // Store slider references for monitoring level changes
-        let hrSlider = null;
-        let bpSlider = null;
+        // Store slider references globally so they can cross-reference each other's states
+        window.hrSlider = null;
+        window.bpSlider = null;
 
         // ===================================================================
         // CENTRALIZED SYNCHRONIZATION SYSTEM
@@ -1249,37 +1250,37 @@
         // Helper function to update sliders monitoring level (moved outside closure for global access)
         function updateSlidersMonitoringLevel(level) {
             console.log(`🎛️ Updating sliders monitoring level to: ${level}`);
-            console.log('🔍 DEBUG - hrSlider exists:', !!hrSlider);
-            console.log('🔍 DEBUG - bpSlider exists:', !!bpSlider);
+            console.log('🔍 DEBUG - window.hrSlider exists:', !!window.hrSlider);
+            console.log('🔍 DEBUG - window.bpSlider exists:', !!window.bpSlider);
             
-            if (hrSlider) {
-                console.log('🔍 DEBUG - hrSlider type:', typeof hrSlider);
-                console.log('🔍 DEBUG - hrSlider.updateMonitoringLevel exists:', typeof hrSlider.updateMonitoringLevel);
+            if (window.hrSlider) {
+                console.log('🔍 DEBUG - window.hrSlider type:', typeof window.hrSlider);
+                console.log('🔍 DEBUG - window.hrSlider.updateMonitoringLevel exists:', typeof window.hrSlider.updateMonitoringLevel);
             }
             
             // Update HR slider if it exists
-            if (hrSlider && typeof hrSlider.updateMonitoringLevel === 'function') {
-                console.log('🎛️ Calling hrSlider.updateMonitoringLevel with:', level);
-                hrSlider.updateMonitoringLevel(level);
+            if (window.hrSlider && typeof window.hrSlider.updateMonitoringLevel === 'function') {
+                console.log('🎛️ Calling window.hrSlider.updateMonitoringLevel with:', level);
+                window.hrSlider.updateMonitoringLevel(level);
                 console.log('✅ HR slider monitoring level updated to:', level);
             } else {
                 console.warn('❌ HR slider not found or updateMonitoringLevel method not available');
-                console.warn('❌ hrSlider:', hrSlider);
-                if (hrSlider) {
-                    console.warn('❌ Available methods:', Object.getOwnPropertyNames(hrSlider));
+                console.warn('❌ window.hrSlider:', window.hrSlider);
+                if (window.hrSlider) {
+                    console.warn('❌ Available methods:', Object.getOwnPropertyNames(window.hrSlider));
                 }
             }
             
             // Update BP slider if it exists
-            if (bpSlider && typeof bpSlider.updateMonitoringLevel === 'function') {
-                console.log('🎛️ Calling bpSlider.updateMonitoringLevel with:', level);
-                bpSlider.updateMonitoringLevel(level);
+            if (window.bpSlider && typeof window.bpSlider.updateMonitoringLevel === 'function') {
+                console.log('🎛️ Calling window.bpSlider.updateMonitoringLevel with:', level);
+                window.bpSlider.updateMonitoringLevel(level);
                 console.log('✅ BP slider monitoring level updated to:', level);
             } else {
                 console.warn('❌ BP slider not found or updateMonitoringLevel method not available');
-                console.warn('❌ bpSlider:', bpSlider);
-                if (bpSlider) {
-                    console.warn('❌ Available methods:', Object.getOwnPropertyNames(bpSlider));
+                console.warn('❌ window.bpSlider:', window.bpSlider);
+                if (window.bpSlider) {
+                    console.warn('❌ Available methods:', Object.getOwnPropertyNames(window.bpSlider));
                 }
             }
         }
@@ -2046,7 +2047,7 @@
                             { min: 40, max: 140, step: 20 }; // Fallback
                         
                         // Try direct instantiation first
-                        hrSlider = new window.VitalParameterSlider(hrContainer, {
+                        window.hrSlider = new window.VitalParameterSlider(hrContainer, {
                             parameter: 'HR',
                             name: 'HR',
                             unit: 'bpm',
@@ -2058,11 +2059,19 @@
                             onChange: (data) => {
                                 console.log('HR Slider changed:', data);
                                 if (data.type === 'save') {
-                                    console.log('💾 HR Slider SAVE - SIMPLE UPDATE of global variables');
+                                    console.log('💾 HR Slider SAVE - UPDATE of global variables for BOTH sliders');
                                     
-                                    // SIMPLE APPROACH: Direct update of global variables
+                                    // Update HR global variables from this slider
                                     window.HR_MIN = Math.round(data.min);
                                     window.HR_MAX = Math.round(data.max);
+                                    
+                                    // IMPORTANT: Also update BP global variables from the BP slider's current state
+                                    // This prevents the BP slider's unsaved changes from being lost
+                                    if (window.bpSlider) {
+                                        window.BP_MIN = Math.round(window.bpSlider.currentMin);
+                                        window.BP_MAX = Math.round(window.bpSlider.currentMax);
+                                        console.log('🔄 Also updated BP globals from BP slider state:', window.BP_MIN, '-', window.BP_MAX);
+                                    }
                                     
                                     // Save to localStorage
                                     if (window.sharedDataManager) {
@@ -2085,7 +2094,7 @@
                             }
                         });
                         
-                        if (hrSlider) {
+                        if (window.hrSlider) {
                             console.log('✅ HR Slider initialized successfully');
                             // Always sync sliders with current target ranges after initialization
                             setTimeout(() => {
@@ -2126,7 +2135,7 @@
                             { min: 30, max: 100, step: 10 }; // Fallback
                         
                         // Try direct instantiation
-                        bpSlider = new window.VitalParameterSlider(bpContainer, {
+                        window.bpSlider = new window.VitalParameterSlider(bpContainer, {
                             parameter: 'BP_Mean',
                             name: 'BP Mean',
                             unit: 'mmHg',
@@ -2138,11 +2147,19 @@
                             onChange: (data) => {
                                 console.log('BP Slider changed:', data);
                                 if (data.type === 'save') {
-                                    console.log('💾 BP Slider SAVE - SIMPLE UPDATE of global variables');
+                                    console.log('💾 BP Slider SAVE - UPDATE of global variables for BOTH sliders');
                                     
-                                    // SIMPLE APPROACH: Direct update of global variables
+                                    // Update BP global variables from this slider
                                     window.BP_MIN = Math.round(data.min);
                                     window.BP_MAX = Math.round(data.max);
+                                    
+                                    // IMPORTANT: Also update HR global variables from the HR slider's current state
+                                    // This prevents the HR slider's unsaved changes from being lost
+                                    if (window.hrSlider) {
+                                        window.HR_MIN = Math.round(window.hrSlider.currentMin);
+                                        window.HR_MAX = Math.round(window.hrSlider.currentMax);
+                                        console.log('🔄 Also updated HR globals from HR slider state:', window.HR_MIN, '-', window.HR_MAX);
+                                    }
                                     
                                     // Save to localStorage
                                     if (window.sharedDataManager) {
@@ -2163,7 +2180,7 @@
                             }
                         });
                         
-                        if (bpSlider) {
+                        if (window.bpSlider) {
                             console.log('✅ BP Slider initialized successfully');
                         } else {
                             console.error('❌ BP Slider initialization returned null');

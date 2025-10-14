@@ -940,9 +940,9 @@
             }
         }
         
-        // Store slider references for monitoring level changes
-        let saturatieSlider = null;
-        let afSlider = null;
+        // Store slider references globally for cross-slider save synchronization
+        window.saturatieSlider = null;
+        window.afSlider = null;
 
         // ===================================================================
         // CENTRALIZED SYNCHRONIZATION SYSTEM
@@ -967,47 +967,47 @@
             }
 
             // Update AF slider
-            if (afSlider && currentRanges.AF) {
+            if (window.afSlider && currentRanges.AF) {
                 console.log('📊 Syncing AF slider:', currentRanges.AF.min, '-', currentRanges.AF.max);
                 
                 // Update slider config
-                afSlider.config.targetRange.min = currentRanges.AF.min;
-                afSlider.config.targetRange.max = currentRanges.AF.max;
+                window.afSlider.config.targetRange.min = currentRanges.AF.min;
+                window.afSlider.config.targetRange.max = currentRanges.AF.max;
                 
                 // Update current positions
-                afSlider.currentMin = currentRanges.AF.min;
-                afSlider.currentMax = currentRanges.AF.max;
+                window.afSlider.currentMin = currentRanges.AF.min;
+                window.afSlider.currentMax = currentRanges.AF.max;
                 
                 // Update original values so slider doesn't think these are user changes
-                afSlider.originalMin = currentRanges.AF.min;
-                afSlider.originalMax = currentRanges.AF.max;
+                window.afSlider.originalMin = currentRanges.AF.min;
+                window.afSlider.originalMax = currentRanges.AF.max;
                 
                 // Force re-render
-                if (afSlider.updateSliderPosition) {
-                    afSlider.updateSliderPosition();
+                if (window.afSlider.updateSliderPosition) {
+                    window.afSlider.updateSliderPosition();
                     console.log('✅ AF slider synced and re-rendered');
                 }
             }
 
             // Update Saturatie slider  
-            if (saturatieSlider && currentRanges.Saturatie) {
+            if (window.saturatieSlider && currentRanges.Saturatie) {
                 console.log('📊 Syncing Saturatie slider:', currentRanges.Saturatie.min, '-', currentRanges.Saturatie.max);
                 
                 // Update slider config
-                saturatieSlider.config.targetRange.min = currentRanges.Saturatie.min;
-                saturatieSlider.config.targetRange.max = currentRanges.Saturatie.max;
+                window.saturatieSlider.config.targetRange.min = currentRanges.Saturatie.min;
+                window.saturatieSlider.config.targetRange.max = currentRanges.Saturatie.max;
                 
                 // Update current positions
-                saturatieSlider.currentMin = currentRanges.Saturatie.min;
-                saturatieSlider.currentMax = currentRanges.Saturatie.max;
+                window.saturatieSlider.currentMin = currentRanges.Saturatie.min;
+                window.saturatieSlider.currentMax = currentRanges.Saturatie.max;
                 
                 // Update original values
-                saturatieSlider.originalMin = currentRanges.Saturatie.min;
-                saturatieSlider.originalMax = currentRanges.Saturatie.max;
+                window.saturatieSlider.originalMin = currentRanges.Saturatie.min;
+                window.saturatieSlider.originalMax = currentRanges.Saturatie.max;
                 
                 // Force re-render
-                if (saturatieSlider.updateSliderPosition) {
-                    saturatieSlider.updateSliderPosition();
+                if (window.saturatieSlider.updateSliderPosition) {
+                    window.saturatieSlider.updateSliderPosition();
                     console.log('✅ Saturatie slider synced and re-rendered');
                 }
             }
@@ -1144,37 +1144,37 @@
         // Helper function to update sliders monitoring level (moved outside closure for global access)
         function updateSlidersMonitoringLevel(level) {
             console.log(`🎛️ Updating respiratory sliders monitoring level to: ${level}`);
-            console.log('🔍 DEBUG - saturatieSlider exists:', !!saturatieSlider);
-            console.log('🔍 DEBUG - afSlider exists:', !!afSlider);
+            console.log('🔍 DEBUG - window.saturatieSlider exists:', !!window.saturatieSlider);
+            console.log('🔍 DEBUG - window.afSlider exists:', !!window.afSlider);
             
-            if (saturatieSlider) {
-                console.log('🔍 DEBUG - saturatieSlider type:', typeof saturatieSlider);
-                console.log('🔍 DEBUG - saturatieSlider.updateMonitoringLevel exists:', typeof saturatieSlider.updateMonitoringLevel);
+            if (window.saturatieSlider) {
+                console.log('🔍 DEBUG - window.saturatieSlider type:', typeof window.saturatieSlider);
+                console.log('🔍 DEBUG - window.saturatieSlider.updateMonitoringLevel exists:', typeof window.saturatieSlider.updateMonitoringLevel);
             }
             
             // Update Saturatie slider if it exists
-            if (saturatieSlider && typeof saturatieSlider.updateMonitoringLevel === 'function') {
-                console.log('🎛️ Calling saturatieSlider.updateMonitoringLevel with:', level);
-                saturatieSlider.updateMonitoringLevel(level);
+            if (window.saturatieSlider && typeof window.saturatieSlider.updateMonitoringLevel === 'function') {
+                console.log('🎛️ Calling window.saturatieSlider.updateMonitoringLevel with:', level);
+                window.saturatieSlider.updateMonitoringLevel(level);
                 console.log('✅ Saturatie slider monitoring level updated to:', level);
             } else {
                 console.warn('❌ Saturatie slider not found or updateMonitoringLevel method not available');
-                console.warn('❌ saturatieSlider:', saturatieSlider);
-                if (saturatieSlider) {
-                    console.warn('❌ Available methods:', Object.getOwnPropertyNames(saturatieSlider));
+                console.warn('❌ window.saturatieSlider:', window.saturatieSlider);
+                if (window.saturatieSlider) {
+                    console.warn('❌ Available methods:', Object.getOwnPropertyNames(window.saturatieSlider));
                 }
             }
             
             // Update AF slider if it exists - allow monitoring level changes for visual updates
-            if (afSlider && typeof afSlider.updateMonitoringLevel === 'function') {
-                console.log('🎛️ Calling afSlider.updateMonitoringLevel with:', level);
-                afSlider.updateMonitoringLevel(level);
+            if (window.afSlider && typeof window.afSlider.updateMonitoringLevel === 'function') {
+                console.log('🎛️ Calling window.afSlider.updateMonitoringLevel with:', level);
+                window.afSlider.updateMonitoringLevel(level);
                 console.log('✅ AF slider monitoring level updated to:', level);
             } else {
                 console.warn('❌ AF slider not found or updateMonitoringLevel method not available');
-                console.warn('❌ afSlider:', afSlider);
-                if (afSlider) {
-                    console.warn('❌ Available methods:', Object.getOwnPropertyNames(afSlider));
+                console.warn('❌ window.afSlider:', window.afSlider);
+                if (window.afSlider) {
+                    console.warn('❌ Available methods:', Object.getOwnPropertyNames(window.afSlider));
                 }
             }
         }
@@ -1911,7 +1911,7 @@
                     saturatieContainer.innerHTML = '<p style="color: blue;">Loading Saturatie slider...</p>';
                     
                     try {
-                        saturatieSlider = new window.VitalParameterSlider(saturatieContainer, {
+                        window.saturatieSlider = new window.VitalParameterSlider(saturatieContainer, {
                             parameter: 'Saturatie',
                             name: 'Saturatie',
                             unit: '%',
@@ -1923,11 +1923,19 @@
                             onChange: (data) => {
                                 console.log('Saturatie Slider changed:', data);
                                 if (data.type === 'save') {
-                                    console.log('💾 Saturatie Slider SAVE - SIMPLE UPDATE of global variables');
+                                    console.log('💾 Saturatie Slider SAVE - UPDATE of global variables for BOTH sliders');
                                     
-                                    // SIMPLE APPROACH: Direct update of global variables
+                                    // Update Saturatie global variables from this slider
                                     window.SAT_MIN = Math.round(data.min);
                                     window.SAT_MAX = Math.round(data.max);
+                                    
+                                    // IMPORTANT: Also update AF global variables from the AF slider's current state
+                                    // This prevents the AF slider's unsaved changes from being lost
+                                    if (window.afSlider) {
+                                        window.AF_MIN = Math.round(window.afSlider.currentMin);
+                                        window.AF_MAX = Math.round(window.afSlider.currentMax);
+                                        console.log('🔄 Also updated AF globals from AF slider state:', window.AF_MIN, '-', window.AF_MAX);
+                                    }
                                     
                                     // Save to localStorage
                                     if (window.sharedDataManager) {
@@ -1948,7 +1956,7 @@
                             }
                         });
                         
-                        if (saturatieSlider) {
+                        if (window.saturatieSlider) {
                             console.log('✅ Saturatie Slider initialized successfully');
                         } else {
                             console.error('❌ Saturatie Slider initialization returned null');
@@ -2005,7 +2013,7 @@
                     afContainer.innerHTML = '<p style="color: blue;">Loading AF slider...</p>';
                     
                     try {
-                        afSlider = new window.VitalParameterSlider(afContainer, {
+                        window.afSlider = new window.VitalParameterSlider(afContainer, {
                             parameter: 'AF',
                             name: 'Ademfrequentie',
                             unit: '/min',
@@ -2017,11 +2025,19 @@
                             onChange: (data) => {
                                 console.log('AF Slider changed:', data);
                                 if (data.type === 'save') {
-                                    console.log('💾 AF Slider SAVE - SIMPLE UPDATE of global variables');
+                                    console.log('💾 AF Slider SAVE - UPDATE of global variables for BOTH sliders');
                                     
-                                    // SIMPLE APPROACH: Direct update of global variables
+                                    // Update AF global variables from this slider
                                     window.AF_MIN = Math.round(data.min);
                                     window.AF_MAX = Math.round(data.max);
+                                    
+                                    // IMPORTANT: Also update Saturatie global variables from the Saturatie slider's current state
+                                    // This prevents the Saturatie slider's unsaved changes from being lost
+                                    if (window.saturatieSlider) {
+                                        window.SAT_MIN = Math.round(window.saturatieSlider.currentMin);
+                                        window.SAT_MAX = Math.round(window.saturatieSlider.currentMax);
+                                        console.log('🔄 Also updated Saturatie globals from Saturatie slider state:', window.SAT_MIN, '-', window.SAT_MAX);
+                                    }
                                     
                                     // Save to localStorage
                                     if (window.sharedDataManager) {
@@ -2042,7 +2058,7 @@
                             }
                         });
                         
-                        if (afSlider) {
+                        if (window.afSlider) {
                             console.log('✅ AF Slider initialized successfully');
                             
                             // Always update AF slider from current target ranges
@@ -2054,16 +2070,16 @@
                                     console.log('🔄 Updating AF slider to current target ranges:', targetRanges.AF.min, '-', targetRanges.AF.max);
                                     
                                     // Update the slider to use current target ranges
-                                    afSlider.config.targetRange.min = targetRanges.AF.min;
-                                    afSlider.config.targetRange.max = targetRanges.AF.max;
-                                    afSlider.currentMin = targetRanges.AF.min;
-                                    afSlider.currentMax = targetRanges.AF.max;
-                                    afSlider.originalMin = targetRanges.AF.min;
-                                    afSlider.originalMax = targetRanges.AF.max;
+                                    window.afSlider.config.targetRange.min = targetRanges.AF.min;
+                                    window.afSlider.config.targetRange.max = targetRanges.AF.max;
+                                    window.afSlider.currentMin = targetRanges.AF.min;
+                                    window.afSlider.currentMax = targetRanges.AF.max;
+                                    window.afSlider.originalMin = targetRanges.AF.min;
+                                    window.afSlider.originalMax = targetRanges.AF.max;
                                     
                                     // Force re-render the slider to show current ranges
-                                    if (afSlider.updateSliderPosition) {
-                                        afSlider.updateSliderPosition();
+                                    if (window.afSlider.updateSliderPosition) {
+                                        window.afSlider.updateSliderPosition();
                                         console.log('✅ AF slider updated to current target ranges:', targetRanges.AF.min, '-', targetRanges.AF.max, targetRanges.AF.unit);
                                     }
                                 }
