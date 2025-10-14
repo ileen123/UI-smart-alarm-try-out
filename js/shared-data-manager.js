@@ -971,7 +971,7 @@ class SharedDataManager {
                 step: 15     // Updated step size for BP slider
             },
             'AF': {
-                min: 5,      // Keep AF slider as is
+                min: 0,      // Keep AF slider as is
                 max: 30,     // Keep AF slider as is
                 step: 5      // Keep AF slider as is
             },

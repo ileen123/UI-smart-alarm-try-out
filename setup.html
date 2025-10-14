@@ -1108,13 +1108,18 @@
             console.log(`   - oldProblem (${oldProblem}) !== effectiveProblem (${effectiveProblem}):`, oldProblem !== effectiveProblem);
             console.log(`   - shouldOverwriteManualAdjustments:`, shouldOverwriteManualAdjustments);
             
-            if (result.targetRanges && oldProblem !== effectiveProblem && shouldOverwriteManualAdjustments) {
+            // Only highlight if this is a change from one problem to another (not first-time selection)
+            if (result.targetRanges && oldProblem !== effectiveProblem && shouldOverwriteManualAdjustments && oldProblem !== '') {
                 console.log(`🎨 Main problem changed from ${oldProblem} to ${effectiveProblem} - highlighting affected parameters`);
                 setTimeout(() => {
                     highlightParametersForProblemChange(effectiveProblem, oldProblem, result.targetRanges);
                 }, 200);
             } else {
-                console.log(`⏭️ Skipping highlighting - conditions not met`);
+                if (oldProblem === '') {
+                    console.log(`⏭️ Skipping highlighting - first-time problem selection (no previous problem to change from)`);
+                } else {
+                    console.log(`⏭️ Skipping highlighting - other conditions not met`);
+                }
             }
 
             // CONDITIONAL SYNC: Only update displays with global variables if they were actually updated
