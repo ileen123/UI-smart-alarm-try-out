@@ -168,7 +168,8 @@ class VitalParameterSlider {
         const chartWidth = chartContainer.offsetWidth - 40;
         const chartHeight = 270;
         
-        console.log(`generateGraphLines called, loading ${this.config.monitoringLevel} SVG...`);
+        console.log(`generateGraphLines called for ${this.config.parameter}, loading ${this.config.monitoringLevel} SVG...`);
+        console.log(`📏 Container dimensions: ${chartContainer.offsetWidth}px total, ${chartWidth}px chart area, ${chartHeight}px height`);
         
         // Use embedded SVG for all monitoring levels to avoid CORS issues
         this.createEmbeddedSVGForLevel(svg, chartWidth, chartHeight, this.config.monitoringLevel);
@@ -236,6 +237,24 @@ class VitalParameterSlider {
         this.loadParameterSpecificSVG(svg, level, upperAreas, lowerAreas);
     }
 
+    setAppropriateViewBox(svg, upperLoaded, lowerLoaded) {
+        if (!svg) return;
+        
+        // For Saturation with external lower SVGs (400px wide), adjust viewBox
+        if (this.config.parameter === 'Saturatie' && lowerLoaded) {
+            console.log(`📐 Setting viewBox for Saturatie external SVG: 0 0 400 270`);
+            svg.setAttribute('viewBox', '0 0 400 270');
+        } else {
+            // Use standard viewBox for other parameters or embedded SVGs
+            console.log(`📐 Setting standard viewBox: 0 0 437 270`);
+            svg.setAttribute('viewBox', '0 0 437 270');
+        }
+        svg.setAttribute('preserveAspectRatio', 'none');
+        
+        // Position the SVGs immediately after viewBox is set
+        this.updateGraphPosition();
+    }
+
     async loadParameterSpecificSVG(svg, level, upperAreas, lowerAreas) {
         try {
             // Define which parameters have external SVGs available
@@ -249,8 +268,8 @@ class VitalParameterSlider {
                     lower: false  // BP uses embedded lower SVGs (for now)
                 },
                 Saturatie: {
-                    upper: false, // Saturatie uses embedded SVGs (for now)
-                    lower: false
+                    upper: false, // Saturatie uses embedded upper SVGs (for now)
+                    lower: true   // Saturatie has external lower SVGs (Sat-tight-down.svg, etc.)
                 },
                 AF: {
                     upper: false, // AF uses embedded SVGs (for now)
@@ -280,6 +299,9 @@ class VitalParameterSlider {
             if (!upperLoaded || !lowerLoaded) {
                 this.loadEmbeddedSVGFallback(upperAreas, lowerAreas, level, upperLoaded, lowerLoaded);
             }
+            
+            // Set appropriate viewBox based on which external SVGs were loaded
+            this.setAppropriateViewBox(svg, upperLoaded, lowerLoaded);
 
         } catch (error) {
             console.warn(`Error loading external SVGs for ${this.config.parameter}:`, error);
@@ -290,10 +312,17 @@ class VitalParameterSlider {
 
     async loadExternalSVGArea(targetArea, areaType, level) {
         try {
-            // Construct filename: HR-tight, HR-mid, HR-loose for upper
-            // Future: HR-tight-down, HR-mid-down, HR-loose-down for lower
-            const suffix = areaType === 'lower' ? '-down' : '';
-            const filename = `${this.config.parameter}-${level.toLowerCase()}${suffix}.svg`;
+            // Construct filename based on parameter type
+            let filename;
+            if (this.config.parameter === 'Saturatie' && areaType === 'lower') {
+                // Saturation lower SVGs: Sat-tight-down.svg, Sat-mid-down.svg, Sat-loose-down.svg
+                filename = `Sat-${level.toLowerCase()}-down.svg`;
+            } else {
+                // Standard format: HR-tight, HR-mid, HR-loose for upper
+                // Future: HR-tight-down, HR-mid-down, HR-loose-down for lower
+                const suffix = areaType === 'lower' ? '-down' : '';
+                filename = `${this.config.parameter}-${level.toLowerCase()}${suffix}.svg`;
+            }
             const svgPath = `./svg's/${filename}`;
             
             console.log(`Loading external SVG: ${svgPath} for ${this.config.parameter} ${areaType}`);
@@ -415,7 +444,14 @@ class VitalParameterSlider {
         
         // Set the viewBox to match the original SVG - this will automatically scale content
         if (svg) {
-            svg.setAttribute('viewBox', '0 0 437 270');
+            // For Saturation external SVGs that are 400px wide, we need to adjust the viewBox
+            if (this.config.parameter === 'Saturatie' && lowerLoaded) {
+                // Use a viewBox that matches the external SVG dimensions (400px wide)
+                svg.setAttribute('viewBox', '0 0 400 270');
+            } else {
+                // Use standard viewBox for other parameters
+                svg.setAttribute('viewBox', '0 0 437 270');
+            }
             svg.setAttribute('preserveAspectRatio', 'none');
         }
         
@@ -522,8 +558,16 @@ class VitalParameterSlider {
         // Move lower-areas group: attach the TOP of the SVG to the lower dashed line (so it extends downward)
         const lowerAreas = svg.querySelector('.lower-areas');
         if (lowerAreas && lowerAreas.firstChild) {
-            // Lower areas always use embedded SVGs for now, so use original positioning
-            lowerAreas.setAttribute('transform', `translate(0,${lowerPos})`);
+            // Check if we're using external SVGs for lower areas (Saturatie parameter)
+            const isExternalLowerSVG = this.config.parameter === 'Saturatie';
+            
+            if (isExternalLowerSVG) {
+                // External Saturation SVGs: scale and position appropriately
+                lowerAreas.setAttribute('transform', `translate(0,${lowerPos})`);
+            } else {
+                // Embedded SVGs: use original positioning
+                lowerAreas.setAttribute('transform', `translate(0,${lowerPos})`);
+            }
         }
         
         // Both areas are clipped by the chart-frame, so they extend outward from their respective dashed lines
