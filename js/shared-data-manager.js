@@ -672,9 +672,9 @@ class SharedDataManager {
     getPatientInfo(patientId) {
         const patients = {
             "1": { id: "1", name: "S. Groen", gender: "Vrouw", age: 16, weight: 55 },
-            "2": { id: "2", name: "M. Bunnik", gender: "Vrouw", age: 44, weight: 70 },
+            "2": { id: "2", name: "M. Demir", gender: "Man", age: 16, weight: 68 },
             "3": { id: "3", name: "A. De Bruijn", gender: "Man", age: 18, weight: 70 },
-            "4": { id: "4", name: "B. Al Salah", gender: "Man", age: 65, weight: 73 }
+            "4": { id: "4", name: "B. Al Salah", gender: "Vrouw", age: 62, weight: 88 }
         };
         return patients[patientId] || null;
     }
@@ -685,9 +685,9 @@ class SharedDataManager {
     getAvailablePatients() {
         return [
             { id: "1", name: "S. Groen", gender: "Vrouw", age: 16, weight: 55 },
-            { id: "2", name: "M. Bunnik", gender: "Vrouw", age: 44, weight: 70 },
+            { id: "2", name: "M. Demir", gender: "Man", age: 16, weight: 68 },
             { id: "3", name: "A. De Bruijn", gender: "Man", age: 18, weight: 70 },
-            { id: "4", name: "B. Al Salah", gender: "Man", age: 65, weight: 73 }
+            { id: "4", name: "B. Al Salah", gender: "Vrouw", age: 62, weight: 88 }
         ];
     }
 
