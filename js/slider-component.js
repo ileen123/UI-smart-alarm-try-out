@@ -144,7 +144,7 @@ class VitalParameterSlider {
                 </div>
 
                 <div class="unit-label">Seconds</div>
-                <button class="save-button">Save Changes</button>
+                <button class="save-button">Opslaan</button>
             </div>
         `;
 
