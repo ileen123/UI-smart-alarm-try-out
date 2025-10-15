@@ -1088,7 +1088,7 @@ class VitalParameterSlider {
                 window.sharedDataManager.savePatientMedicalInfo(this.config.patientId, medicalInfo);
                 
                 // CRITICAL: Update the target ranges that alarm overview reads from
-                let currentTargetRanges = window.sharedDataManager.getPatientTargetRanges(this.config.patientId) || {};
+                let currentTargetRanges = window.sharedDataManager.getCurrentTargetRanges(this.config.patientId) || {};
                 console.log(`📊 Before updating target ranges for ${this.config.parameter}:`, JSON.stringify(currentTargetRanges));
                 
                 // Only update the specific parameter being changed
@@ -1099,7 +1099,7 @@ class VitalParameterSlider {
                 };
                 
                 console.log(`📊 After updating target ranges for ${this.config.parameter}:`, JSON.stringify(currentTargetRanges));
-                window.sharedDataManager.savePatientTargetRanges(this.config.patientId, currentTargetRanges);
+                window.sharedDataManager.setCurrentTargetRanges(this.config.patientId, currentTargetRanges);
                 
                 console.log(`✅ Saved ${this.config.parameter} settings to SharedDataManager for patient ${this.config.patientId}`);
                 

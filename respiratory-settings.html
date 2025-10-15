@@ -909,20 +909,30 @@
         let currentBed = null;
         let currentSettings = {};
 
-        // Initialize currentSettings from SharedDataManager
+        // SINGLE SOURCE OF TRUTH: Initialize currentSettings from unified data
         function initializeCurrentSettings() {
             if (currentPatientId && window.sharedDataManager) {
-                // Get current target ranges from SharedDataManager
-                const targetRanges = window.sharedDataManager.getPatientTargetRanges(currentPatientId);
-                if (targetRanges) {
+                console.log('🎯 RESPIRATORY: Initializing with single source of truth for patient:', currentPatientId);
+                
+                // Get ALL effective values in one call (prevents stacking)
+                const effectiveValues = window.sharedDataManager.getCurrentEffectiveValues(
+                    currentPatientId, 
+                    { useCache: true } // Use cache during initialization to prevent redundancy
+                );
+                
+                console.log('📦 RESPIRATORY: Received effective values package:', effectiveValues);
+                
+                if (effectiveValues && effectiveValues.parameterRanges) {
+                    const ranges = effectiveValues.parameterRanges;
+                    
                     currentSettings = {
                         saturatie: {
-                            min: targetRanges.Saturatie?.min || window.SAT_MIN || 90,
-                            max: targetRanges.Saturatie?.max || window.SAT_MAX || 100
+                            min: ranges.Saturatie?.min || window.SAT_MIN || 90,
+                            max: ranges.Saturatie?.max || window.SAT_MAX || 100
                         },
                         af: {
-                            min: targetRanges.AF?.min || window.AF_MIN || 12,
-                            max: targetRanges.AF?.max || window.AF_MAX || 25
+                            min: ranges.AF?.min || window.AF_MIN || 12,
+                            max: ranges.AF?.max || window.AF_MAX || 25
                         }
                     };
                 } else {
@@ -2044,7 +2054,7 @@
                     console.log('🔍 DEBUG: currentSettings.af before AF slider creation:', currentSettings.af);
                     
                     // Double-check target ranges right before slider creation
-                    const targetRanges = window.sharedDataManager.getPatientTargetRanges(currentPatientId);
+                    const targetRanges = window.sharedDataManager.getCurrentTargetRanges(currentPatientId);
                     console.log('🔍 DEBUG: Target ranges right before AF slider creation:', targetRanges?.AF);
                     
                     // If pneumonie is active, apply matrix-based adjusted ranges
@@ -2053,7 +2063,7 @@
                         if (pneumonieState && pneumonieState.isActive) {
                             // Get matrix-based adjusted ranges for pneumonie
                             const medicalInfo = window.sharedDataManager.getPatientMedicalInfo(currentPatientId);
-                            const baseTargetRanges = window.sharedDataManager.getPatientTargetRanges(currentPatientId) || {};
+                            const baseTargetRanges = window.sharedDataManager.getCurrentTargetRanges(currentPatientId) || {};
                             const currentRiskLevel = medicalInfo?.selectedRiskLevel || 'low';
                             const selectedProblem = medicalInfo?.selectedProblem || 'none';
                             
@@ -2162,7 +2172,7 @@
                             
                             // Always update AF slider from current target ranges
                             if (currentPatientId && window.sharedDataManager) {
-                                const targetRanges = window.sharedDataManager.getPatientTargetRanges(currentPatientId);
+                                const targetRanges = window.sharedDataManager.getCurrentTargetRanges(currentPatientId);
                                 console.log('🔄 Loading AF target ranges after slider creation:', targetRanges);
                                 
                                 if (targetRanges && targetRanges.AF) {

@@ -914,26 +914,34 @@
         let currentBed = null;
         let currentSettings = {};
 
-        // Initialize currentSettings from Matrix-based system
+        // SINGLE SOURCE OF TRUTH: Initialize currentSettings from unified data
         function initializeCurrentSettings() {
             if (currentPatientId && window.sharedDataManager) {
-                console.log('💓 Initializing currentSettings using Matrix-based approach for patient:', currentPatientId);
+                console.log('🎯 CIRCULATOIR: Initializing with single source of truth for patient:', currentPatientId);
                 
-                // Get current target ranges from SharedDataManager (Matrix-based)
-                const targetRanges = window.sharedDataManager.getPatientTargetRanges(currentPatientId);
-                if (targetRanges && targetRanges.HR && targetRanges.BP_Mean) {
-                    // Use existing Matrix-calculated ranges
+                // Get ALL effective values in one call (prevents stacking)
+                const effectiveValues = window.sharedDataManager.getCurrentEffectiveValues(
+                    currentPatientId, 
+                    { useCache: true } // Use cache during initialization to prevent redundancy
+                );
+                
+                console.log('📦 CIRCULATOIR: Received effective values package:', effectiveValues);
+                
+                if (effectiveValues && effectiveValues.parameterRanges) {
+                    const ranges = effectiveValues.parameterRanges;
+                    
+                    // Use effective ranges for currentSettings
                     currentSettings = {
                         hr: {
-                            min: targetRanges.HR.min,
-                            max: targetRanges.HR.max
+                            min: ranges.HR?.min || 70,
+                            max: ranges.HR?.max || 100
                         },
                         bp: {
-                            min: targetRanges.BP_Mean.min,
-                            max: targetRanges.BP_Mean.max
+                            min: ranges.BP_Mean?.min || 60,
+                            max: ranges.BP_Mean?.max || 90
                         }
                     };
-                    console.log('✅ Using existing Matrix-based target ranges:', currentSettings);
+                    console.log('✅ CIRCULATOIR: Using effective values from single source:', currentSettings);
                 } else {
                     // Generate Matrix-based defaults using patient's medical profile
                     console.log('🎯 No existing target ranges - generating from Matrix system...');
@@ -1129,23 +1137,26 @@
             }
         }
 
-        // Initialize the heart circle component in circulatoir settings
+        // SINGLE SOURCE OF TRUTH: Initialize the heart circle component
         function initializeHeartCircleComponent() {
-            console.log('🫀 Starting initializeHeartCircleComponent...');
+            console.log('🎯 CIRCULATOIR: Initializing heart circle with single source...');
+            
+            if (!currentPatientId || !window.sharedDataManager) {
+                console.warn('⚠️ Cannot initialize heart circle - missing requirements');
+                return;
+            }
+            
+            // Get effective values from single source (prevents multiple calculations)
+            const effectiveValues = window.sharedDataManager.getCurrentEffectiveValues(
+                currentPatientId, 
+                { useCache: true } // Use cache during initialization to prevent redundancy
+            );
+            
+            const initialLevel = effectiveValues.monitoringLevels?.heart || 'mid';
+            console.log('🫀 SINGLE SOURCE: Using heart monitoring level for circle:', initialLevel);
             
             // Use same size as alarm overview
             const circleSize = 130;
-            
-            // Get EFFECTIVE monitoring level from SharedDataManager (including tag adjustments)
-            let initialLevel = 'mid';
-            if (currentPatientId && window.sharedDataManager) {
-                initialLevel = window.sharedDataManager.getEffectiveHeartMonitoringLevel(currentPatientId);
-                console.log(`🫀 Heart circle initialization - Loading EFFECTIVE heart monitoring level for patient ${currentPatientId}:`, initialLevel);
-            } else {
-                console.log('🫀 Heart circle initialization - Using default level (mid) - no patient ID or SharedDataManager');
-                console.log('🫀 Current patient ID:', currentPatientId);
-                console.log('🫀 SharedDataManager available:', !!window.sharedDataManager);
-            }
             
             console.log(`🫀 Creating heart circle component with initialState: ${initialLevel}`);
             
@@ -1154,54 +1165,28 @@
                 initialState: initialLevel 
             });
             setTimeout(() => injectSVG('circulatoir-heart-circle-container', 'heart'), 100);
-            
-            // Map heart circle levels to button levels for initial setup
-            const levelMapping = {
-                'low': 'loose',
-                'mid': 'mid', 
-                'high': 'tight'
-            };
-            
-            const buttonLevel = levelMapping[initialLevel] || 'mid';
-            
-            // Button states are now handled by initializeMonitoringLevelButtons() during DOM ready
-            // No need to update them here as they're already set earlier
-            
-            // Update sliders to match loaded level (wait for sliders to be initialized)
-            setTimeout(() => {
-                updateSlidersMonitoringLevel(buttonLevel);
-            }, 1500); // Wait for sliders to be fully initialized
-            
-            // Listen for global heart monitoring level changes
-            document.addEventListener('heartMonitoringLevelChanged', function(event) {
-                const { patientId, level } = event.detail;
-                if (patientId === currentPatientId) {
-                    console.log(`Received heart monitoring level change for patient ${patientId}:`, level);
-                    if (window.circulatoirHeartCircle) {
-                        window.circulatoirHeartCircle.setRiskLevel(level);
-                    }
-                    
-                    const buttonLevel = levelMapping[level] || 'mid';
-                    updateButtonStates(buttonLevel);
-                    updateSlidersMonitoringLevel(buttonLevel);
-                }
-            });
         }
         
-        // Initialize monitoring level buttons immediately when DOM is ready
+        // SINGLE SOURCE OF TRUTH: Initialize monitoring level buttons 
         function initializeMonitoringLevelButtons() {
-            console.log('🔘 Initializing monitoring level buttons...');
-            console.log('🔍 Current patient ID:', currentPatientId);
-            console.log('🔍 SharedDataManager available:', !!window.sharedDataManager);
+            console.log('🎯 CIRCULATOIR: Initializing monitoring levels with single source...');
             
-            // Get EFFECTIVE monitoring level from SharedDataManager (including tag adjustments)
-            let currentLevel = 'mid'; // default
-            if (currentPatientId && window.sharedDataManager) {
-                currentLevel = window.sharedDataManager.getEffectiveHeartMonitoringLevel(currentPatientId);
-                console.log(`📱 Loaded EFFECTIVE heart monitoring level for patient ${currentPatientId}:`, currentLevel);
-            } else {
-                console.log('⚠️ Using default level (mid) - no patient ID or SharedDataManager');
+            if (!currentPatientId || !window.sharedDataManager) {
+                console.warn('⚠️ Cannot initialize monitoring levels - missing requirements');
+                return;
             }
+            
+            // Get effective values from single source (prevents multiple calculations)
+            const effectiveValues = window.sharedDataManager.getCurrentEffectiveValues(
+                currentPatientId, 
+                { useCache: true } // Use cache during initialization to prevent redundancy
+            );
+            
+            console.log('📦 CIRCULATOIR: Got effective monitoring levels:', effectiveValues.monitoringLevels);
+            
+            // Use heart monitoring level from single source
+            const currentLevel = effectiveValues.monitoringLevels?.heart || 'mid';
+            console.log(`📱 SINGLE SOURCE: Using heart monitoring level: ${currentLevel}`);
             
             // Map heart circle levels to button levels
             const levelMapping = {
@@ -1840,7 +1825,7 @@
             // Function to refresh sliders from current target ranges
             function refreshSlidersFromTargetRanges() {
                 if (currentPatientId && window.sharedDataManager) {
-                    const targetRanges = window.sharedDataManager.getPatientTargetRanges(currentPatientId);
+                    const targetRanges = window.sharedDataManager.getCurrentTargetRanges(currentPatientId);
                     console.log('🔄 Refreshing sliders from target ranges:', targetRanges);
                     
                     if (targetRanges) {
@@ -1985,6 +1970,30 @@
                 }
             });
 
+            // UNIFIED TAG SYSTEM: Listen for immediate UI updates after tag changes
+            window.addEventListener('unifiedTagUIUpdateRequired', function(event) {
+                console.log('🔄 UNIFIED TAG (CIRC): Immediate UI update required:', event.detail);
+                
+                const { patientId, activeTags, targetRanges, organStates } = event.detail;
+                
+                // Only update if it's for the current patient
+                if (patientId === currentPatientId) {
+                    console.log('🏷️ UNIFIED TAG (CIRC): Applying immediate slider updates...');
+                    console.log('🔄 UNIFIED TAG (CIRC): Active tags:', activeTags);
+                    console.log('🔄 UNIFIED TAG (CIRC): Target ranges:', targetRanges);
+                    
+                    // Immediately refresh sliders with new target ranges
+                    if (targetRanges) {
+                        console.log('🔄 UNIFIED TAG (CIRC): Calling refreshSlidersFromTargetRanges()...');
+                        refreshSlidersFromTargetRanges();
+                    }
+                    
+                    console.log('✅ UNIFIED TAG (CIRC): Immediate slider updates completed');
+                } else {
+                    console.log('⏭️ UNIFIED TAG (CIRC): Skipping slider update - different patient');
+                }
+            });
+
             // UNIFIED TAG SYSTEM: Listen for unified tag state synchronization
             window.addEventListener('unifiedTagStateSyncRequired', function(event) {
                 console.log('🔄 UNIFIED TAG (CIRC): Sync required event received:', event.detail);
@@ -2020,6 +2029,11 @@
                             console.log(`🏷️ UNIFIED TAG (CIRC): Synced pneumonie to ${tagStates.pneumonie ? 'SELECTED' : 'DESELECTED'}`);
                         }
                     }
+                    
+                    // ENHANCEMENT: Also refresh sliders when tag states sync from other pages
+                    console.log('🔄 UNIFIED TAG (CIRC): Refreshing sliders after tag state sync...');
+                    refreshSlidersFromTargetRanges();
+                    console.log('✅ UNIFIED TAG (CIRC): Slider refresh completed after sync');
                 }
             });
 
@@ -2192,7 +2206,7 @@
                             // Always sync sliders with current target ranges after initialization
                             setTimeout(() => {
                                 if (currentPatientId && window.sharedDataManager) {
-                                    const targetRanges = window.sharedDataManager.getPatientTargetRanges(currentPatientId);
+                                    const targetRanges = window.sharedDataManager.getCurrentTargetRanges(currentPatientId);
                                     if (targetRanges && targetRanges.HR) {
                                         console.log('🔄 Initializing slider with current target ranges:', targetRanges.HR.min, '-', targetRanges.HR.max);
                                         // Set global values - slider will automatically use these

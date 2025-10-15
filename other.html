@@ -962,16 +962,26 @@
         let currentBed = null;
         let currentSettings = {};
 
-        // Initialize currentSettings from SharedDataManager
+        // SINGLE SOURCE OF TRUTH: Initialize currentSettings from unified data
         function initializeCurrentSettings() {
             if (currentPatientId && window.sharedDataManager) {
-                // Get current target ranges from SharedDataManager
-                const targetRanges = window.sharedDataManager.getPatientTargetRanges(currentPatientId);
-                if (targetRanges) {
+                console.log('🎯 OTHER: Initializing with single source of truth for patient:', currentPatientId);
+                
+                // Get ALL effective values in one call (prevents stacking)
+                const effectiveValues = window.sharedDataManager.getCurrentEffectiveValues(
+                    currentPatientId, 
+                    { useCache: true } // Use cache during initialization to prevent redundancy
+                );
+                
+                console.log('📦 OTHER: Received effective values package:', effectiveValues);
+                
+                if (effectiveValues && effectiveValues.parameterRanges) {
+                    const ranges = effectiveValues.parameterRanges;
+                    
                     currentSettings = {
                         temperature: {
-                            min: targetRanges.Temperature?.min || window.TEMP_MIN || 36.0,
-                            max: targetRanges.Temperature?.max || window.TEMP_MAX || 38.5
+                            min: ranges.Temperature?.min || window.TEMP_MIN || 36.0,
+                            max: ranges.Temperature?.max || window.TEMP_MAX || 38.5
                         }
                     };
                 } else {

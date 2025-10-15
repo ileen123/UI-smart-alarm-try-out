@@ -2891,6 +2891,9 @@ class SharedDataManager {
             patientId: patientId
         });
         
+        // CRITICAL: Invalidate cache since base data changed
+        this.invalidateEffectiveValuesCache(patientId);
+        
         // Apply parameter adjustments based on ALL current tags (not just this one)
         const result = this.applyUnifiedTagAdjustments(patientId);
         
@@ -4256,6 +4259,236 @@ class SharedDataManager {
             console.log('💾 Sessions:', appData.sessions);
             console.log('📱 === END CENTRALIZED APP DATA ===');
         }
+    }
+
+    /**
+     * SINGLE SOURCE OF TRUTH: Get Current Effective Values
+     * This is the ONE method all pages should use to get calculated values
+     * Prevents stacking by always starting from base data + current context
+     * Includes smart caching to prevent redundant calculations during initialization
+     * @param {string} patientId - Patient ID
+     * @param {Object} options - Options: { useCache: boolean, forceRefresh: boolean }
+     * @returns {Object} - Complete effective values: { parameterRanges, monitoringLevels, activeTags, timestamp }
+     */
+    getCurrentEffectiveValues(patientId, options = {}) {
+        const { useCache = true, forceRefresh = false } = options;
+        
+        console.log(`🎯 SINGLE SOURCE: Getting effective values for patient ${patientId} (useCache: ${useCache}, forceRefresh: ${forceRefresh})`);
+        
+        // Initialize cache if not exists
+        if (!this.effectiveValuesCache) {
+            this.effectiveValuesCache = {};
+        }
+        
+        const cacheKey = `patient_${patientId}`;
+        
+        // Check cache validity (prevent redundant calculations during initialization)
+        if (useCache && !forceRefresh && this.effectiveValuesCache[cacheKey]) {
+            const cached = this.effectiveValuesCache[cacheKey];
+            const timeDiff = Date.now() - new Date(cached.timestamp).getTime();
+            
+            if (timeDiff < 2000) { // Cache valid for 2 seconds
+                console.log(`⚡ SINGLE SOURCE: Using cached values (${timeDiff}ms ago) for ${patientId}`);
+                return cached.values;
+            } else {
+                console.log(`🔄 SINGLE SOURCE: Cache expired (${timeDiff}ms), recalculating for ${patientId}`);
+                delete this.effectiveValuesCache[cacheKey];
+            }
+        }
+        
+        console.log(`🔄 SINGLE SOURCE: Performing fresh calculation for ${patientId}`);
+        
+        // === STEP 1: GET IMMUTABLE BASE DATA ===
+        const medicalInfo = this.getPatientMedicalInfo(patientId);
+        const selectedProblem = medicalInfo?.selectedProblem || 'none';
+        const selectedRiskLevel = medicalInfo?.selectedRiskLevel || 'low';
+        
+        console.log(`📋 SINGLE SOURCE: Base medical context - Problem: ${selectedProblem}, Risk: ${selectedRiskLevel}`);
+        
+        // Get pure matrix base values (never adjusted)
+        const matrixBaseRanges = this.getMatrixBasedBaseRanges(selectedProblem, selectedRiskLevel);
+        const matrixOrganStates = this.calculateAdvancedOrganStates(selectedProblem, selectedRiskLevel);
+        
+        // Get base monitoring levels (user-set or default)
+        const baseMonitoringLevels = {
+            heart: this.getHeartMonitoringLevel(patientId) || 'mid',
+            lung: this.getLungMonitoringLevel(patientId) || 'mid', 
+            temp: this.getTempMonitoringLevel(patientId) || 'mid'
+        };
+        
+        console.log(`📊 SINGLE SOURCE: Base values - Ranges:`, matrixBaseRanges);
+        console.log(`📊 SINGLE SOURCE: Base monitoring levels:`, baseMonitoringLevels);
+        
+        // === STEP 2: GET CURRENT DYNAMIC STATE ===
+        const activeTags = this.getAllActiveTagsForPatient(patientId);
+        console.log(`🏷️ SINGLE SOURCE: Active tags:`, activeTags);
+        
+        // === STEP 3: CALCULATE ADJUSTMENTS (NEVER STORED AS BASE) ===
+        let finalRanges = { ...matrixBaseRanges };
+        let finalMonitoringLevels = { ...baseMonitoringLevels };
+        
+        if (activeTags.length > 0) {
+            // Apply tag-based parameter adjustments
+            const parameterAdjustments = this.calculateTagBasedParameterAdjustments(
+                activeTags,
+                matrixBaseRanges,
+                matrixOrganStates.organStates,
+                selectedRiskLevel
+            );
+            
+            // Apply tag-based monitoring level adjustments  
+            const monitoringAdjustments = this.calculateTagBasedMonitoringAdjustments(
+                activeTags,
+                baseMonitoringLevels,
+                selectedRiskLevel
+            );
+            
+            finalRanges = parameterAdjustments.adjustedRanges;
+            finalMonitoringLevels = monitoringAdjustments.adjustedLevels;
+            
+            console.log(`🏷️ SINGLE SOURCE: Tag adjustments applied:`, {
+                parameterChanges: parameterAdjustments.appliedAdjustments?.length || 0,
+                monitoringChanges: Object.keys(monitoringAdjustments.adjustedLevels).length,
+                finalRanges: finalRanges,
+                finalMonitoringLevels: finalMonitoringLevels
+            });
+        } else {
+            console.log(`📊 SINGLE SOURCE: No active tags - using base values only`);
+        }
+        
+        // === STEP 4: CREATE RESULT PACKAGE ===
+        const result = {
+            parameterRanges: finalRanges,
+            monitoringLevels: finalMonitoringLevels,
+            activeTags: activeTags,
+            baseContext: {
+                problem: selectedProblem,
+                riskLevel: selectedRiskLevel,
+                matrixBase: matrixBaseRanges,
+                baseMonitoringLevels: baseMonitoringLevels
+            },
+            timestamp: new Date().toISOString()
+        };
+        
+        // === STEP 5: CACHE RESULT ===
+        this.effectiveValuesCache[cacheKey] = {
+            values: result,
+            timestamp: result.timestamp
+        };
+        
+        console.log(`✅ SINGLE SOURCE: Fresh calculation completed for ${patientId}`);
+        console.log(`📦 SINGLE SOURCE: Result package:`, {
+            parameterCount: Object.keys(result.parameterRanges).length,
+            monitoringLevels: result.monitoringLevels,
+            activeTagCount: result.activeTags.length
+        });
+        
+        return result;
+    }
+
+    /**
+     * Invalidate Effective Values Cache
+     * Call this when base data changes (tags, medical info, explicit monitoring levels)
+     * @param {string} patientId - Patient ID to invalidate, or null for all patients
+     */
+    invalidateEffectiveValuesCache(patientId = null) {
+        if (!this.effectiveValuesCache) return;
+        
+        if (patientId) {
+            const cacheKey = `patient_${patientId}`;
+            delete this.effectiveValuesCache[cacheKey];
+            console.log(`🗑️ SINGLE SOURCE: Cache invalidated for patient ${patientId}`);
+        } else {
+            this.effectiveValuesCache = {};
+            console.log(`🗑️ SINGLE SOURCE: All cache invalidated`);
+        }
+    }
+
+    /**
+     * Calculate Tag-Based Monitoring Adjustments
+     * Separate method for monitoring level adjustments (similar to parameter adjustments)
+     * @param {Array} activeTags - Array of active condition tags
+     * @param {Object} baseMonitoringLevels - Base monitoring levels
+     * @param {string} riskLevel - Current risk level
+     * @returns {Object} - Adjusted monitoring levels
+     */
+    calculateTagBasedMonitoringAdjustments(activeTags, baseMonitoringLevels, riskLevel) {
+        console.log(`🏷️ MONITORING ADJUST: Calculating monitoring adjustments for tags:`, activeTags);
+        
+        let adjustedLevels = { ...baseMonitoringLevels };
+        const appliedAdjustments = [];
+        
+        // Apply monitoring level deltas for each active tag
+        activeTags.forEach(tag => {
+            const tagDeltas = this.getTagMonitoringDeltas(tag, riskLevel);
+            
+            if (tagDeltas) {
+                Object.keys(tagDeltas).forEach(organ => {
+                    const delta = tagDeltas[organ];
+                    const currentLevel = adjustedLevels[organ];
+                    const newLevel = this.adjustMonitoringLevel(currentLevel, delta);
+                    
+                    if (newLevel !== currentLevel) {
+                        adjustedLevels[organ] = newLevel;
+                        appliedAdjustments.push({
+                            tag: tag,
+                            organ: organ,
+                            change: `${currentLevel} → ${newLevel}`,
+                            delta: delta
+                        });
+                        console.log(`✅ MONITORING ADJUST: ${tag} → ${organ}: ${currentLevel} + ${delta} = ${newLevel}`);
+                    }
+                });
+            }
+        });
+        
+        return {
+            adjustedLevels: adjustedLevels,
+            appliedAdjustments: appliedAdjustments,
+            baseValues: baseMonitoringLevels
+        };
+    }
+
+    /**
+     * Get Tag Monitoring Deltas
+     * Returns monitoring level adjustments for a specific tag
+     * @param {string} tag - Condition tag
+     * @param {string} riskLevel - Risk level context
+     * @returns {Object} - Monitoring deltas by organ
+     */
+    getTagMonitoringDeltas(tag, riskLevel) {
+        // Same logic as existing tag delta calculation but for monitoring levels
+        const monitoringDeltas = {
+            sepsis: {
+                low: { heart: 1, temp: 1 },
+                mid: { heart: 1, temp: 1 },
+                high: { heart: 2, temp: 1 }
+            },
+            pneumonie: {
+                low: { lung: 1, temp: 1 },
+                mid: { lung: 1, temp: 1 },  
+                high: { lung: 2, temp: 1 }
+            }
+        };
+        
+        return monitoringDeltas[tag]?.[riskLevel] || null;
+    }
+
+    /**
+     * Adjust Monitoring Level
+     * Apply delta to monitoring level (low/mid/high)
+     * @param {string} currentLevel - Current monitoring level
+     * @param {number} delta - Delta to apply
+     * @returns {string} - New monitoring level
+     */
+    adjustMonitoringLevel(currentLevel, delta) {
+        const levels = ['low', 'mid', 'high'];
+        const currentIndex = levels.indexOf(currentLevel);
+        
+        if (currentIndex === -1) return currentLevel;
+        
+        const newIndex = Math.max(0, Math.min(levels.length - 1, currentIndex + delta));
+        return levels[newIndex];
     }
 }
 
