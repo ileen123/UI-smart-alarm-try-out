@@ -503,68 +503,121 @@
          * Called on page load to ensure displays match the source of truth
          */
         function syncDisplaysWithCentralizedRanges() {
-            console.log('🌐 SIMPLE SYNC: Updating alarm overview displays with global variables...');
+            console.log('🌐 EFFECTIVE VALUES SYNC: Updating alarm overview displays with effective values...');
 
             // Check if user is manually changing problems - if so, apply highlighting after updates
             const isUserChangingProblem = window.sharedDataManager?.isUserManuallyChangingProblem();
             console.log('🎨 SYNC: User changing problem?', isUserChangingProblem);
 
-            // Update parameter displays - simple direct approach
+            // Get effective values instead of global variables
+            if (!currentPatientId) {
+                console.log('❌ SYNC: No current patient ID - cannot get effective values');
+                return;
+            }
+
+            const effectiveValues = window.sharedDataManager.getCurrentEffectiveValues(
+                currentPatientId, 
+                { forceRefresh: true }
+            );
+            
+            if (!effectiveValues || !effectiveValues.parameterRanges) {
+                console.log('❌ SYNC: No effective values available for patient:', currentPatientId);
+                return;
+            }
+
+            const ranges = effectiveValues.parameterRanges;
+            const hasManualOverrides = effectiveValues.manualOverrides && Object.keys(effectiveValues.manualOverrides).length > 0;
+            
+            console.log('📊 SYNC: Using effective values for patient:', currentPatientId);
+            console.log('🔧 SYNC: Manual overrides detected:', hasManualOverrides);
+            if (hasManualOverrides) {
+                console.log('🔧 SYNC: Manual override parameters:', Object.keys(effectiveValues.manualOverrides));
+            }
+
+            // Update parameter displays with effective values
             const valueNumbers = document.querySelectorAll('.value-number');
             
-            if (valueNumbers.length >= 5) {
-                // Update HR display from global variables
-                if (valueNumbers[0]) {
-                    valueNumbers[0].textContent = `${window.HR_MIN} - ${window.HR_MAX} bpm`;
-                    console.log('📊 Updated HR display:', valueNumbers[0].textContent);
+            if (valueNumbers.length >= 5 && ranges) {
+                // Update HR display from effective values
+                if (valueNumbers[0] && ranges.HR) {
+                    const hrText = `${ranges.HR.min} - ${ranges.HR.max} ${ranges.HR.unit || 'bpm'}`;
+                    valueNumbers[0].textContent = hrText;
+                    console.log('📊 Updated HR display from effective values:', hrText);
                     
-                    // Apply highlighting if user is changing problems
-                    if (isUserChangingProblem) {
+                    // Apply highlighting if user is changing problems OR if manual override
+                    if (isUserChangingProblem || (hasManualOverrides && effectiveValues.manualOverrides.HR)) {
                         setTimeout(() => {
-                            highlightParameterChange(valueNumbers[0], 'highlight', 'Problem change affected HR');
-                            console.log('🎨 SYNC: Applied highlighting to HR after sync');
+                            const reason = effectiveValues.manualOverrides.HR ? 'Manual override active' : 'Problem change affected HR';
+                            highlightParameterChange(valueNumbers[0], 'highlight', reason);
+                            console.log('🎨 SYNC: Applied highlighting to HR:', reason);
                         }, 50);
                     }
                 }
 
-                // Update BP display from global variables
-                if (valueNumbers[1]) {
-                    valueNumbers[1].textContent = `${window.BP_MIN} - ${window.BP_MAX} mmHg`;
-                    console.log('📊 Updated BP display:', valueNumbers[1].textContent);
+                // Update BP display from effective values
+                if (valueNumbers[1] && ranges.BP_Mean) {
+                    const bpText = `${ranges.BP_Mean.min} - ${ranges.BP_Mean.max} ${ranges.BP_Mean.unit || 'mmHg'}`;
+                    valueNumbers[1].textContent = bpText;
+                    console.log('📊 Updated BP display from effective values:', bpText);
                     
-                    // Apply highlighting if user is changing problems
-                    if (isUserChangingProblem) {
+                    // Apply highlighting if user is changing problems OR if manual override
+                    if (isUserChangingProblem || (hasManualOverrides && effectiveValues.manualOverrides.BP_Mean)) {
                         setTimeout(() => {
-                            highlightParameterChange(valueNumbers[1], 'highlight', 'Problem change affected BP');
-                            console.log('🎨 SYNC: Applied highlighting to BP after sync');
+                            const reason = effectiveValues.manualOverrides.BP_Mean ? 'Manual override active' : 'Problem change affected BP';
+                            highlightParameterChange(valueNumbers[1], 'highlight', reason);
+                            console.log('🎨 SYNC: Applied highlighting to BP:', reason);
                         }, 50);
                     }
                 }
 
-                // Update Saturatie display from global variables
-                if (valueNumbers[2]) {
-                    valueNumbers[2].textContent = `${window.SAT_MIN} - ${window.SAT_MAX}%`;
-                    console.log('📊 Updated Saturatie display:', valueNumbers[2].textContent);
+                // Update Saturatie display from effective values
+                if (valueNumbers[2] && ranges.Saturatie) {
+                    const satText = `${ranges.Saturatie.min} - ${ranges.Saturatie.max}${ranges.Saturatie.unit || '%'}`;
+                    valueNumbers[2].textContent = satText;
+                    console.log('📊 Updated Saturatie display from effective values:', satText);
+                    
+                    // Apply highlighting if manual override
+                    if (hasManualOverrides && effectiveValues.manualOverrides.Saturatie) {
+                        setTimeout(() => {
+                            highlightParameterChange(valueNumbers[2], 'highlight', 'Manual override active');
+                            console.log('🎨 SYNC: Applied highlighting to Saturatie: Manual override active');
+                        }, 50);
+                    }
                 }
 
-                // Update AF display from global variables
+                // Update AF display from effective values
                 const afDisplay = document.getElementById('af-range-display-overview');
-                if (afDisplay) {
-                    afDisplay.textContent = `${window.AF_MIN} - ${window.AF_MAX} /min`;
-                    console.log('📊 Updated AF display:', afDisplay.textContent);
+                if (afDisplay && ranges.AF) {
+                    const afText = `${ranges.AF.min} - ${ranges.AF.max} ${ranges.AF.unit || '/min'}`;
+                    afDisplay.textContent = afText;
+                    console.log('📊 Updated AF display from effective values:', afText);
                     
-                    // NOTE: AF highlighting is handled by highlightParametersForProblemChange() 
-                    // with smart medical logic - don't highlight here to avoid conflicts
+                    // Apply highlighting if manual override (problem highlighting handled elsewhere)
+                    if (hasManualOverrides && effectiveValues.manualOverrides.AF) {
+                        setTimeout(() => {
+                            highlightParameterChange(afDisplay, 'highlight', 'Manual override active');
+                            console.log('🎨 SYNC: Applied highlighting to AF: Manual override active');
+                        }, 50);
+                    }
                 }
 
-                // Update Temperature display from global variables
-                if (valueNumbers[4]) {
-                    valueNumbers[4].textContent = `${window.TEMP_MIN} - ${window.TEMP_MAX}°C`;
-                    console.log('📊 Updated Temperature display:', valueNumbers[4].textContent);
+                // Update Temperature display from effective values
+                if (valueNumbers[4] && ranges.Temperature) {
+                    const tempText = `${ranges.Temperature.min} - ${ranges.Temperature.max}${ranges.Temperature.unit || '°C'}`;
+                    valueNumbers[4].textContent = tempText;
+                    console.log('📊 Updated Temperature display from effective values:', tempText);
+                    
+                    // Apply highlighting if manual override
+                    if (hasManualOverrides && effectiveValues.manualOverrides.Temperature) {
+                        setTimeout(() => {
+                            highlightParameterChange(valueNumbers[4], 'highlight', 'Manual override active');
+                            console.log('🎨 SYNC: Applied highlighting to Temperature: Manual override active');
+                        }, 50);
+                    }
                 }
             }
 
-            console.log('✅ All alarm overview displays updated with global variables');
+            console.log('✅ All alarm overview displays updated with effective values (including manual overrides)');
             
             // Reset the user changing problem flag after highlighting is applied
             if (isUserChangingProblem && window.sharedDataManager) {
@@ -723,9 +776,24 @@
             // SIMPLE SYSTEM: Listen for global parameter changes from slider adjustments
             window.addEventListener('globalParametersChanged', function(event) {
                 console.log('🌐 Global parameters changed event received on alarm overview:', event.detail);
-                console.log('� Updating alarm overview displays with new global variables...');
+                console.log('🔄 Updating alarm overview displays with new global variables...');
                 syncDisplaysWithCentralizedRanges();
                 console.log('📊 SYNC COMPLETED on alarm overview');
+            });
+
+            // MANUAL OVERRIDE SYSTEM: Listen for manual override changes
+            window.addEventListener('manualOverrideChanged', function(event) {
+                console.log('🔧 Manual override changed event received on alarm overview:', event.detail);
+                const { patientId, parameter, action } = event.detail;
+                
+                if (patientId === currentPatientId) {
+                    console.log(`🔧 Processing manual override for patient ${patientId}: ${parameter} (${action})`);
+                    // Force refresh displays with manual overrides
+                    syncDisplaysWithCentralizedRanges();
+                    console.log('📊 MANUAL OVERRIDE SYNC COMPLETED on alarm overview');
+                } else {
+                    console.log(`⏸️ Ignoring manual override - patient mismatch (${patientId} vs ${currentPatientId})`);
+                }
             });
 
             // TAG SYSTEM: Listen for tag-based parameter changes (sepsis, pneumonie)
@@ -1036,16 +1104,21 @@
             
             console.log('🎯 ALARM-OVERVIEW: Initializing with single source of truth...');
             
+            // Force cache refresh to ensure manual overrides are included
+            window.sharedDataManager.invalidateEffectiveValuesCache(currentPatientId);
+            console.log('🗑️ ALARM-OVERVIEW: Cache invalidated to ensure fresh data with manual overrides');
+            
             // Get ALL effective values in one call (prevents stacking)
             const effectiveValues = window.sharedDataManager.getCurrentEffectiveValues(
                 currentPatientId, 
-                { useCache: true } // Use cache during initialization to prevent redundancy
+                { forceRefresh: true } // Force refresh to get manual overrides
             );
             
             console.log('📦 ALARM-OVERVIEW: Received effective values package:', {
                 parameterCount: Object.keys(effectiveValues.parameterRanges).length,
                 monitoringLevels: effectiveValues.monitoringLevels,
                 activeTagCount: effectiveValues.activeTags.length,
+                manualOverrides: effectiveValues.manualOverrides ? Object.keys(effectiveValues.manualOverrides).length : 0,
                 baseContext: effectiveValues.baseContext
             });
             

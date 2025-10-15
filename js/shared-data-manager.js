@@ -4430,11 +4430,28 @@ class SharedDataManager {
             console.log(`📊 SINGLE SOURCE: No active tags - using base values only`);
         }
         
-        // === STEP 4: CREATE RESULT PACKAGE ===
+        // === STEP 4: APPLY MANUAL OVERRIDES (HIGHEST PRIORITY) ===
+        const manualOverrides = this.getManualOverrides(patientId);
+        if (Object.keys(manualOverrides).length > 0) {
+            console.log(`🔧 SINGLE SOURCE: Applying manual overrides:`, manualOverrides);
+            
+            Object.keys(manualOverrides).forEach(parameter => {
+                if (finalRanges[parameter] && manualOverrides[parameter].range) {
+                    const originalRange = { ...finalRanges[parameter] };
+                    finalRanges[parameter] = { ...manualOverrides[parameter].range };
+                    console.log(`🔧 Manual override applied: ${parameter} = ${originalRange.min}-${originalRange.max} → ${finalRanges[parameter].min}-${finalRanges[parameter].max}`);
+                }
+            });
+        } else {
+            console.log(`📊 SINGLE SOURCE: No manual overrides for patient ${patientId}`);
+        }
+        
+        // === STEP 5: CREATE RESULT PACKAGE ===
         const result = {
             parameterRanges: finalRanges,
             monitoringLevels: finalMonitoringLevels,
             activeTags: activeTags,
+            manualOverrides: manualOverrides,
             baseContext: {
                 problem: selectedProblem,
                 riskLevel: selectedRiskLevel,
@@ -4444,7 +4461,7 @@ class SharedDataManager {
             timestamp: new Date().toISOString()
         };
         
-        // === STEP 5: CACHE RESULT ===
+        // === STEP 6: CACHE RESULT ===
         this.effectiveValuesCache[cacheKey] = {
             values: result,
             timestamp: result.timestamp
@@ -4592,6 +4609,10 @@ class SharedDataManager {
         localStorage.setItem(overrideKey, JSON.stringify(overrides));
         
         console.log(`✅ MANUAL OVERRIDE: Stored ${parameter} manual override for patient ${patientId}`);
+        
+        // Invalidate cache to ensure fresh calculations include manual overrides
+        this.invalidateEffectiveValuesCache(patientId);
+        console.log(`🗑️ MANUAL OVERRIDE: Cache invalidated for patient ${patientId}`);
         
         // Fire event for cross-page synchronization
         this.fireManualOverrideChangedEvent(patientId, parameter, range, 'set');

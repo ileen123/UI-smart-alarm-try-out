@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manual Override Fix Test</title>
+</head>
+<body>
+    <h1>Manual Override Fix Test</h1>
+    <div id="results"></div>
+    
+    <script src="js/shared-data-manager.js"></script>
+    <script>
+        const results = document.getElementById('results');
+        
+        function log(message) {
+            console.log(message);
+            results.innerHTML += `<p>${message}</p>`;
+        }
+        
+        async function testManualOverrideFix() {
+            log('🧪 Testing Manual Override Fix...');
+            
+            // Initialize shared data manager
+            const manager = new SharedDataManager();
+            window.sharedDataManager = manager;
+            
+            const testPatientId = 'test-patient-1';
+            
+            // 1. Test basic effective values (no manual overrides)
+            log('📊 Testing base effective values...');
+            const baseValues = manager.getCurrentEffectiveValues(testPatientId);
+            log(`Base values has parameterRanges: ${!!baseValues.parameterRanges}`);
+            log(`Base values has manualOverrides: ${!!baseValues.manualOverrides}`);
+            
+            // 2. Set a manual override
+            log('🔧 Setting manual override for HR...');
+            manager.setManualOverride(testPatientId, 'HR', { min: 80, max: 120, unit: 'bpm' });
+            
+            // 3. Test effective values with manual override
+            log('📊 Testing effective values with manual override...');
+            const overrideValues = manager.getCurrentEffectiveValues(testPatientId, { forceRefresh: true });
+            log(`Override values has parameterRanges: ${!!overrideValues.parameterRanges}`);
+            log(`Override values has manualOverrides: ${!!overrideValues.manualOverrides}`);
+            
+            if (overrideValues.manualOverrides && overrideValues.manualOverrides.HR) {
+                log(`✅ Manual override detected for HR: ${overrideValues.manualOverrides.HR.range.min}-${overrideValues.manualOverrides.HR.range.max}`);
+            } else {
+                log('❌ Manual override NOT detected in effective values');
+            }
+            
+            // 4. Check if HR range in parameterRanges reflects the manual override
+            if (overrideValues.parameterRanges && overrideValues.parameterRanges.HR) {
+                const hrRange = overrideValues.parameterRanges.HR;
+                log(`HR parameter range: ${hrRange.min}-${hrRange.max}`);
+                
+                if (hrRange.min === 80 && hrRange.max === 120) {
+                    log('✅ SUCCESS: HR parameter range reflects manual override!');
+                } else {
+                    log('❌ FAILURE: HR parameter range does NOT reflect manual override');
+                }
+            } else {
+                log('❌ No HR parameter range found in effective values');
+            }
+            
+            // 5. Test cache invalidation
+            log('🗑️ Testing cache invalidation...');
+            manager.invalidateEffectiveValuesCache(testPatientId);
+            const freshValues = manager.getCurrentEffectiveValues(testPatientId);
+            
+            if (freshValues.manualOverrides && freshValues.manualOverrides.HR) {
+                log('✅ Cache invalidation working - manual override persists');
+            } else {
+                log('❌ Cache invalidation issue - manual override lost');
+            }
+            
+            log('🧪 Manual Override Fix Test Complete!');
+        }
+        
+        // Run test when page loads
+        document.addEventListener('DOMContentLoaded', testManualOverrideFix);
+    </script>
+</body>
+</html>
