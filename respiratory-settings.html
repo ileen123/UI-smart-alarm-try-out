@@ -1778,57 +1778,81 @@
                 }
             });
             
-            // Set up circulatory tag button listeners
+            // UNIFIED TAG HANDLING: Set up respiratory tag button listeners
             const circulatoryTagButtons = document.querySelectorAll('.circulatory-tag');
             circulatoryTagButtons.forEach(button => {
                 button.addEventListener('click', function() {
                     const tagCondition = this.dataset.condition;
+                    const isCurrentlySelected = this.classList.contains('selected');
+                    const newState = !isCurrentlySelected;
                     
-                    if (this.classList.contains('selected')) {
-                        // Deselect tag
-                        this.classList.remove('selected');
+                    console.log(`🏷️ UNIFIED TAG (RESP): ${tagCondition} clicked, changing from ${isCurrentlySelected} to ${newState}`);
+                    
+                    // Use unified tag system for pneumonie
+                    if (tagCondition === 'pneumonie' && currentPatientId && window.sharedDataManager) {
+                        const result = window.sharedDataManager.toggleConditionTag(currentPatientId, 'pneumonie', newState);
                         
-                        // Handle pneumonie deselection using the same system as alarm-overview
-                        if (tagCondition === 'pneumonie' && currentPatientId && window.sharedDataManager) {
-                            console.log('🏷️ Deactivating pneumonie tag with parameter adjustments (respiratory-settings)');
-                            window.sharedDataManager.toggleConditionTag(currentPatientId, 'pneumonie', false);
-                            
-                            console.log('🫁 Pneumonie deselected - automatic matrix-based reversion handled by toggleConditionTag');
+                        if (result && result.skipped) {
+                            console.log(`⚠️ UNIFIED TAG (RESP): Tag ${tagCondition} toggle skipped - ${result.reason}`);
+                            return; // Don't update UI if operation was skipped
                         }
-                    } else {
-                        // Select tag
-                        this.classList.add('selected');
                         
-                        // Handle pneumonie selection using the same system as alarm-overview
-                        if (tagCondition === 'pneumonie' && currentPatientId && window.sharedDataManager) {
-                            console.log('🏷️ Activating pneumonie tag with parameter adjustments (respiratory-settings)');
-                            window.sharedDataManager.toggleConditionTag(currentPatientId, 'pneumonie', true);
-                            
-                            console.log('🫁 Pneumonie selected - automatic matrix-based adjustments handled by toggleConditionTag');
+                        // Update local UI
+                        if (newState) {
+                            this.classList.add('selected');
+                        } else {
+                            this.classList.remove('selected');
                         }
+                        
+                        console.log(`🏷️ UNIFIED TAG (RESP): ${tagCondition} ${newState ? 'selected' : 'deselected'} via unified system`);
                     }
                 });
             });
             
-            // Listen for condition state changes from other pages to update our button
+            // UNIFIED TAG SYSTEM: Listen for unified tag state synchronization
+            window.addEventListener('unifiedTagStateSyncRequired', function(event) {
+                console.log('🔄 UNIFIED TAG (RESP): Sync required event received:', event.detail);
+                
+                const { patientId, tagStates } = event.detail;
+                
+                // Only update if it's for the current patient
+                if (patientId === currentPatientId) {
+                    console.log('🏷️ UNIFIED TAG (RESP): Syncing UI with tag states:', tagStates);
+                    
+                    // Update pneumonie button
+                    if (tagStates.hasOwnProperty('pneumonie')) {
+                        const pneumonieButton = document.querySelector('.circulatory-tag[data-condition="pneumonie"]');
+                        if (pneumonieButton) {
+                            if (tagStates.pneumonie) {
+                                pneumonieButton.classList.add('selected');
+                            } else {
+                                pneumonieButton.classList.remove('selected');
+                            }
+                            console.log(`🏷️ UNIFIED TAG (RESP): Synced pneumonie to ${tagStates.pneumonie ? 'SELECTED' : 'DESELECTED'}`);
+                        }
+                    }
+                }
+            });
+            
+            // LEGACY: Listen for condition state changes from other pages (for backward compatibility)
             window.addEventListener('patientConditionStateChanged', function(event) {
-                console.log('🫁 Condition state changed event received on respiratory page:', event.detail);
+                console.log('🫁 LEGACY (RESP): Condition state changed event received:', event.detail);
                 
                 const { condition, state } = event.detail;
                 
-                // Only update if it's for the current patient and it's a pneumonie condition
-                if (state.patientId === currentPatientId && condition === 'pneumonie') {
+                // Only handle pneumonie and current patient, but skip unified triggers
+                if (condition === 'pneumonie' && state.patientId === currentPatientId && state.triggeredBy !== 'unified_toggle') {
                     const pneumonieButton = document.querySelector('.circulatory-tag[data-condition="pneumonie"]');
                     if (pneumonieButton) {
                         if (state.isActive) {
                             if (!pneumonieButton.classList.contains('selected')) {
                                 pneumonieButton.classList.add('selected');
-                                console.log('✅ Synced pneumonie button to selected state from external change (respiratory)');
+                                console.log('✅ LEGACY (RESP): Synced pneumonie button to selected state from external change');
                             }
                         } else {
                             if (pneumonieButton.classList.contains('selected')) {
                                 pneumonieButton.classList.remove('selected');
-                                console.log('✅ Synced pneumonie button to deselected state from external change (respiratory)');
+                                console.log('✅ LEGACY (RESP): Synced pneumonie button to deselected state from external change');
                             }
                         }
                     }

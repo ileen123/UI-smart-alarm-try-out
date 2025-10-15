@@ -1614,7 +1614,7 @@ class SharedDataManager {
     getMatrixBasedBaseRanges(problemValue, overallRiskLevel = 'low') {
         console.log(`📋 Getting matrix-based base ranges for: ${problemValue} + ${overallRiskLevel}`);
         
-        // Require both problem and risk level for proper matrix lookup
+        // If no medical problem selected, return default standard ranges for tag testing
         if (!problemValue || problemValue === '' || problemValue === 'none') {
             console.log('🚫 No medical problem specified - returning empty ranges (requires problem + risk level selection)');
             return {};
@@ -1751,8 +1751,13 @@ class SharedDataManager {
             // Apply parameter delta modifications for this tag
             if (tagConfig.parameterDeltas) {
                 Object.entries(tagConfig.parameterDeltas).forEach(([parameter, riskLevels]) => {
+                    console.log(`🔍 TAG DEBUG: Processing ${tag} → ${parameter}, available risk levels:`, Object.keys(riskLevels));
+                    
                     const deltaConfig = riskLevels[overallRiskLevel];
+                    console.log(`🔍 TAG DEBUG: Delta config for ${parameter} at risk ${overallRiskLevel}:`, deltaConfig);
+                    
                     if (deltaConfig && adjustedRanges[parameter]) {
+                        console.log(`🔍 TAG DEBUG: Current ${parameter} range before adjustment:`, adjustedRanges[parameter]);
                         
                         // Handle placeholder values - should not occur with proper matrix-based approach
                         let baseMin = adjustedRanges[parameter].min;
@@ -1761,7 +1766,7 @@ class SharedDataManager {
                         // If we have placeholder values ("-"), this indicates improper matrix usage
                         if (baseMin === '-' || baseMax === '-') {
                             console.warn(`⚠️ Placeholder values found for ${parameter} - this indicates missing problem + risk level selection. Tag adjustments require valid base ranges from matrix.`);
-                            console.log(`� Skipping tag adjustment for ${parameter} - requires proper matrix-based base ranges`);
+                            console.log(`❌ Skipping tag adjustment for ${parameter} - requires proper matrix-based base ranges`);
                             return; // Skip this parameter - matrix selection is required
                         }
                         
@@ -1772,8 +1777,12 @@ class SharedDataManager {
                         const newMin = original.min + deltaConfig.minDelta;
                         const newMax = original.max + deltaConfig.maxDelta;
                         
+                        console.log(`🔍 TAG DEBUG: Applying ${tag} deltas to ${parameter}: ${original.min} + ${deltaConfig.minDelta} = ${newMin}, ${original.max} + ${deltaConfig.maxDelta} = ${newMax}`);
+                        
                         adjustedRanges[parameter].min = newMin;
                         adjustedRanges[parameter].max = newMax;
+                        
+                        console.log(`🔍 TAG DEBUG: ${parameter} range after adjustment:`, adjustedRanges[parameter]);
                         
                         appliedAdjustments.push({
                             tag: tag,
@@ -1788,6 +1797,11 @@ class SharedDataManager {
                         reasoning.push(`${parameter}: ${deltaConfig.reasoning} (${original.min}→${newMin}, ${original.max}→${newMax})`);
                         
                         console.log(`✅ ${tag} → ${parameter}: ${original.min}-${original.max} + (${deltaConfig.minDelta},${deltaConfig.maxDelta}) = ${newMin}-${newMax}`);
+                    } else {
+                        console.log(`🔍 TAG DEBUG: Skipping ${parameter} - deltaConfig:`, !!deltaConfig, 'adjustedRanges has parameter:', !!adjustedRanges[parameter]);
+                        if (adjustedRanges[parameter]) {
+                            console.log(`🔍 TAG DEBUG: ${parameter} range exists but no delta config:`, adjustedRanges[parameter]);
+                        }
                     }
                 });
             }
@@ -2854,28 +2868,327 @@ class SharedDataManager {
 
     /**
      * Toggle Condition Tag and Apply Parameter Changes
-     * Convenience method that combines tag state change with parameter adjustments
+     * UNIFIED TAG HANDLING: Single source of truth for all pages
      * @param {string} patientId - Patient ID
      * @param {string} tag - Condition tag ('sepsis', 'pneumonie')
      * @param {boolean} isActive - Whether to activate or deactivate the tag
      */
     toggleConditionTag(patientId, tag, isActive) {
-        console.log(`🏷️ Toggling condition tag: ${tag} = ${isActive ? 'ON' : 'OFF'} for patient ${patientId}`);
+        console.log(`🏷️ UNIFIED TAG HANDLING: Toggling condition tag: ${tag} = ${isActive ? 'ON' : 'OFF'} for patient ${patientId}`);
         
-        // Update the condition state
+        // CRITICAL: Check current state to prevent double toggling/stacking
+        const currentState = this.getPatientConditionState(tag, patientId);
+        if (currentState && currentState.isActive === isActive) {
+            console.log(`⚠️ UNIFIED TAG: Tag ${tag} already in state ${isActive}, skipping to prevent stacking`);
+            return { skipped: true, reason: 'already_in_state', currentState: currentState };
+        }
+        
+        // Update the condition state - single source of truth
         this.setPatientConditionState(tag, {
             isActive: isActive,
             timestamp: new Date().toISOString(),
-            triggeredBy: 'manual',
+            triggeredBy: 'unified_toggle',
             patientId: patientId
         });
         
-        // Apply parameter adjustments
-        const result = this.applyTagParameterAdjustments(patientId, tag, isActive);
+        // Apply parameter adjustments based on ALL current tags (not just this one)
+        const result = this.applyUnifiedTagAdjustments(patientId);
         
-        console.log(`✅ Condition tag ${tag} ${isActive ? 'activated' : 'deactivated'} with parameter adjustments`);
+        console.log(`✅ UNIFIED TAG: Condition tag ${tag} ${isActive ? 'activated' : 'deactivated'} with unified parameter adjustments`);
+        
+        // Broadcast unified tag state change event
+        this.broadcastUnifiedTagStateChange(patientId, tag, isActive);
         
         return result;
+    }
+
+    /**
+     * Apply Unified Tag Adjustments
+     * Recalculates all parameters from scratch based on current tag states
+     * Prevents stacking by always starting from matrix base values
+     * @param {string} patientId - Patient ID
+     */
+    applyUnifiedTagAdjustments(patientId) {
+        console.log(`🔄 UNIFIED TAG: Applying unified tag adjustments for patient ${patientId}`);
+        
+        if (!patientId) {
+            console.warn('❌ UNIFIED TAG: No patient ID provided');
+            return null;
+        }
+        
+        // SET FLAG: Mark that tag parameter changes are in progress
+        sessionStorage.setItem('tagParameterChangeInProgress', 'true');
+        console.log('🚩 UNIFIED TAG: SET tagParameterChangeInProgress flag');
+        
+        // Get current medical context
+        const medicalInfo = this.getPatientMedicalInfo(patientId);
+        const selectedProblem = medicalInfo?.selectedProblem || 'none';
+        const selectedRiskLevel = medicalInfo?.selectedRiskLevel || 'low';
+        
+        // Get ALL currently active tags
+        const activeTags = this.getAllActiveTagsForPatient(patientId);
+        console.log(`🏷️ UNIFIED TAG: Active tags for ${patientId}:`, activeTags);
+        
+        // Start from MATRIX BASE VALUES - never from current values to prevent stacking
+        const matrixBaseValues = this.getMatrixBasedBaseRanges(selectedProblem, selectedRiskLevel);
+        const matrixOrganStates = this.calculateAdvancedOrganStates(selectedProblem, selectedRiskLevel);
+        
+        console.log(`📊 UNIFIED TAG: Starting from matrix base:`, { 
+            problem: selectedProblem, 
+            riskLevel: selectedRiskLevel, 
+            matrixValues: matrixBaseValues,
+            matrixOrganStates: matrixOrganStates.organStates
+        });
+        
+        // Apply ALL tag adjustments to base values
+        let finalRanges = { ...matrixBaseValues };
+        let finalOrganStates = { ...matrixOrganStates.organStates };
+        
+        if (activeTags.length > 0) {
+            const tagAdjustments = this.calculateTagBasedParameterAdjustments(
+                activeTags,
+                matrixBaseValues,
+                matrixOrganStates.organStates,
+                selectedRiskLevel
+            );
+            
+            finalRanges = tagAdjustments.adjustedRanges;
+            finalOrganStates = tagAdjustments.adjustedOrganStates;
+            
+            console.log(`🏷️ UNIFIED TAG: Applied adjustments for tags [${activeTags.join(', ')}]:`, {
+                originalRanges: matrixBaseValues,
+                finalRanges: finalRanges,
+                originalOrganStates: matrixOrganStates.organStates,
+                finalOrganStates: finalOrganStates,
+                appliedAdjustments: tagAdjustments.appliedAdjustments
+            });
+        } else {
+            console.log(`🏷️ UNIFIED TAG: No active tags - using matrix base values`);
+        }
+        
+        // Update stored monitoring levels
+        this.setHeartMonitoringLevel(patientId, finalOrganStates.heart, 'unified_tag_adjustment');
+        this.setLungMonitoringLevel(patientId, finalOrganStates.lung, 'unified_tag_adjustment');
+        this.setTempMonitoringLevel(patientId, finalOrganStates.temp, 'unified_tag_adjustment');
+        
+        // Update parameter ranges
+        this.setCurrentTargetRanges(patientId, finalRanges, 'unified-tag-adjustment');
+        
+        // Update global variables for sliders
+        this.updateGlobalVariablesFromRanges(finalRanges);
+        
+        console.log('💾 UNIFIED TAG: All storage operations completed');
+        
+        // CRITICAL FIX: Ensure storage is fully committed before UI reads from it
+        // Use setTimeout to allow storage operations to complete
+        setTimeout(() => {
+            console.log('📡 UNIFIED TAG: Broadcasting UI update event after storage completion');
+            
+            // IMMEDIATE: Broadcast UI update event to all pages AFTER storage is complete
+            window.dispatchEvent(new CustomEvent('unifiedTagUIUpdateRequired', {
+                detail: {
+                    patientId: patientId,
+                    activeTags: activeTags,
+                    targetRanges: finalRanges,
+                    organStates: finalOrganStates,
+                    timestamp: new Date().toISOString()
+                }
+            }));
+            console.log('📡 UNIFIED TAG: Broadcasted immediate UI update event');
+        }, 10); // Small delay to ensure storage operations complete
+        
+        // Delayed websocket trigger - increased delay to account for UI update timing
+        setTimeout(() => {
+            if (this.webSocketManager) {
+                this.sendUnifiedTagWebSocketMessage(patientId, activeTags, finalRanges, finalOrganStates);
+            } else {
+                console.warn('⚠️ WebSocket manager not available - unified tag websocket message not sent');
+            }
+            
+            // Clear flag
+            sessionStorage.removeItem('tagParameterChangeInProgress');
+            console.log('🚩 UNIFIED TAG: CLEARED tagParameterChangeInProgress flag');
+        }, 520); // Slightly longer delay to ensure UI updates complete first
+        
+        return {
+            targetRanges: finalRanges,
+            organStates: finalOrganStates,
+            activeTags: activeTags,
+            reasoning: 'unified-tag-adjustment'
+        };
+    }
+
+    /**
+     * Get All Active Tags for Patient
+     * @param {string} patientId - Patient ID
+     * @returns {Array} - Array of active tag names
+     */
+    getAllActiveTagsForPatient(patientId) {
+        const activeTags = [];
+        
+        // Check sepsis
+        const sepsisState = this.getPatientConditionState('sepsis', patientId);
+        if (sepsisState && sepsisState.isActive) {
+            activeTags.push('sepsis');
+        }
+        
+        // Check pneumonie
+        const pneumonieState = this.getPatientConditionState('pneumonie', patientId);
+        if (pneumonieState && pneumonieState.isActive) {
+            activeTags.push('pneumonie');
+        }
+        
+        // Add more tags here as needed
+        
+        return activeTags;
+    }
+
+    /**
+     * Update Global Variables from Ranges
+     * @param {Object} ranges - Parameter ranges object
+     */
+    updateGlobalVariablesFromRanges(ranges) {
+        if (ranges.HR && ranges.HR.min !== '-') {
+            window.HR_MIN = ranges.HR.min;
+            window.HR_MAX = ranges.HR.max;
+        }
+        if (ranges.BP_Mean && ranges.BP_Mean.min !== '-') {
+            window.BP_MIN = ranges.BP_Mean.min;
+            window.BP_MAX = ranges.BP_Mean.max;
+        }
+        if (ranges.AF && ranges.AF.min !== '-') {
+            window.AF_MIN = ranges.AF.min;
+            window.AF_MAX = ranges.AF.max;
+        }
+        if (ranges.Saturatie && ranges.Saturatie.min !== '-') {
+            window.SAT_MIN = ranges.Saturatie.min;
+            window.SAT_MAX = ranges.Saturatie.max;
+        }
+        if (ranges.Temperature && ranges.Temperature.min !== '-') {
+            window.TEMP_MIN = ranges.Temperature.min;
+            window.TEMP_MAX = ranges.Temperature.max;
+        }
+        
+        console.log('🔄 UNIFIED TAG: Updated global variables for sliders');
+    }
+
+    /**
+     * Send Unified Tag WebSocket Message
+     * @param {string} patientId - Patient ID
+     * @param {Array} activeTags - Array of active tag names
+     * @param {Object} ranges - Final parameter ranges
+     * @param {Object} organStates - Final organ states
+     */
+    sendUnifiedTagWebSocketMessage(patientId, activeTags, ranges, organStates) {
+        const bedStates = this.getBedStates() || {};
+        let bedNumber = null;
+        
+        for (const [bed, data] of Object.entries(bedStates)) {
+            if (data.patientId === patientId) {
+                bedNumber = parseInt(bed);
+                break;
+            }
+        }
+        
+        // Format thresholds with units
+        const formattedThresholds = {};
+        if (ranges) {
+            Object.keys(ranges).forEach(param => {
+                formattedThresholds[param] = {
+                    min: ranges[param].min,
+                    max: ranges[param].max,
+                    unit: param === 'HR' ? 'bpm' : 
+                          param === 'BP_Mean' ? 'mmHg' : 
+                          param === 'AF' ? '/min' : 
+                          param === 'Saturatie' ? '%' : 
+                          param === 'Temperature' ? '°C' : ''
+                };
+            });
+        }
+        
+        const messageData = {
+            patientId: patientId,
+            bedNumber: bedNumber,
+            changeType: 'unified_tag_adjustment',
+            activeTags: activeTags,
+            riskLevels: {
+                circulatoir: organStates.heart || 'mid',
+                respiratoire: organStates.lung || 'mid',
+                temperature: organStates.temp || 'mid'
+            },
+            thresholds: formattedThresholds,
+            dataSource: 'unified_tag_system',
+            timestamp: new Date().toISOString()
+        };
+        
+        this.sendWebSocketMessage('thresholds_risk_levels', messageData);
+        console.log('🚀 UNIFIED TAG: WebSocket message sent:', messageData);
+    }
+
+    /**
+     * Broadcast Unified Tag State Change Event
+     * @param {string} patientId - Patient ID
+     * @param {string} tag - Tag name
+     * @param {boolean} isActive - Whether tag is active
+     */
+    broadcastUnifiedTagStateChange(patientId, tag, isActive) {
+        // Dispatch event for UI synchronization across pages
+        window.dispatchEvent(new CustomEvent('unifiedTagStateChanged', {
+            detail: {
+                patientId: patientId,
+                tag: tag,
+                isActive: isActive,
+                allActiveTags: this.getAllActiveTagsForPatient(patientId),
+                timestamp: new Date().toISOString()
+            }
+        }));
+        
+        console.log(`📡 UNIFIED TAG: Broadcasted state change for ${tag} = ${isActive}`);
+    }
+
+    /**
+     * Get Current Tag States for Patient
+     * Returns object with all tag states for UI synchronization
+     * @param {string} patientId - Patient ID
+     * @returns {Object} - Object with tag names as keys and boolean states as values
+     */
+    getCurrentTagStatesForPatient(patientId) {
+        if (!patientId) return {};
+        
+        const tagStates = {};
+        
+        // Get sepsis state
+        const sepsisState = this.getPatientConditionState('sepsis', patientId);
+        tagStates.sepsis = sepsisState ? sepsisState.isActive : false;
+        
+        // Get pneumonie state
+        const pneumonieState = this.getPatientConditionState('pneumonie', patientId);
+        tagStates.pneumonie = pneumonieState ? pneumonieState.isActive : false;
+        
+        // Add more tags here as the system expands
+        
+        console.log(`🏷️ UNIFIED TAG: Current tag states for ${patientId}:`, tagStates);
+        return tagStates;
+    }
+
+    /**
+     * Sync UI Elements with Current Tag States
+     * Helper method to update UI elements across all pages
+     * @param {string} patientId - Patient ID
+     */
+    syncUIWithTagStates(patientId) {
+        const tagStates = this.getCurrentTagStatesForPatient(patientId);
+        
+        // Dispatch unified event for all pages to sync their UI
+        window.dispatchEvent(new CustomEvent('unifiedTagStateSyncRequired', {
+            detail: {
+                patientId: patientId,
+                tagStates: tagStates,
+                timestamp: new Date().toISOString()
+            }
+        }));
+        
+        console.log(`🔄 UNIFIED TAG: Dispatched UI sync event for patient ${patientId}`);
     }
 
     /**

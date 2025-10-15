@@ -849,14 +849,94 @@
             });
             */
             
-            // Listen for condition state changes from other pages
+            // UNIFIED TAG SYSTEM: Listen for immediate UI updates after tag changes
+            window.addEventListener('unifiedTagUIUpdateRequired', function(event) {
+                console.log('🔄 UNIFIED TAG: Immediate UI update required:', event.detail);
+                console.log('🔄 UNIFIED TAG: About to call updateParameterRanges()...');
+                
+                const { patientId, activeTags, targetRanges, organStates } = event.detail;
+                
+                // Only update if it's for the current patient
+                if (patientId === currentPatientId) {
+                    console.log('🏷️ UNIFIED TAG: Applying immediate UI updates...');
+                    console.log('   - Active tags:', activeTags);
+                    console.log('   - Target ranges:', targetRanges);
+                    console.log('   - Organ states:', organStates);
+                    
+                    // Update monitoring levels and displays immediately
+                    refreshMonitoringLevels();
+                    updateMonitoringStatus();
+                    
+                    console.log('🔄 UNIFIED TAG: Calling updateParameterRanges() now...');
+                    updateParameterRanges();
+                    console.log('🔄 UNIFIED TAG: updateParameterRanges() call completed');
+                    
+                    // DEBUG: Log current values after update
+                    console.log('🔍 UNIFIED TAG DEBUG: Post-update verification...');
+                    if (window.sharedDataManager && currentPatientId) {
+                        const currentRanges = window.sharedDataManager.getCurrentTargetRanges(currentPatientId);
+                        const heartLevel = window.sharedDataManager.getHeartMonitoringLevel(currentPatientId);
+                        const lungLevel = window.sharedDataManager.getLungMonitoringLevel(currentPatientId);
+                        console.log('   - Current target ranges:', currentRanges);
+                        console.log('   - Current heart level:', heartLevel);
+                        console.log('   - Current lung level:', lungLevel);
+                    }
+                    
+                    console.log('✅ UNIFIED TAG: Immediate UI updates completed');
+                } else {
+                    console.log('⏭️ UNIFIED TAG: Skipping UI update - different patient');
+                }
+            });
+            
+            // UNIFIED TAG SYSTEM: Listen for unified tag state synchronization
+            window.addEventListener('unifiedTagStateSyncRequired', function(event) {
+                console.log('🔄 UNIFIED TAG: Sync required event received:', event.detail);
+                
+                const { patientId, tagStates } = event.detail;
+                
+                // Only update if it's for the current patient
+                if (patientId === currentPatientId) {
+                    console.log('🏷️ UNIFIED TAG: Syncing UI with tag states:', tagStates);
+                    
+                    // Update each tag button based on current states
+                    Object.keys(tagStates).forEach(tagName => {
+                        const isActive = tagStates[tagName];
+                        const tagButton = document.querySelector(`.tag-btn[data-condition="${tagName}"]`);
+                        
+                        if (tagButton) {
+                            if (isActive && !tagButton.classList.contains('selected')) {
+                                tagButton.classList.add('selected');
+                                if (!selectedTags.includes(tagName)) {
+                                    selectedTags.push(tagName);
+                                }
+                                console.log(`🏷️ UNIFIED TAG: Synced ${tagName} to SELECTED`);
+                            } else if (!isActive && tagButton.classList.contains('selected')) {
+                                tagButton.classList.remove('selected');
+                                selectedTags = selectedTags.filter(t => t !== tagName);
+                                console.log(`🏷️ UNIFIED TAG: Synced ${tagName} to DESELECTED`);
+                            }
+                        }
+                    });
+                    
+                    // Refresh monitoring levels and UI
+                    setTimeout(() => {
+                        console.log('🔄 UNIFIED TAG: Refreshing UI after sync event...');
+                        refreshMonitoringLevels();
+                        updateMonitoringStatus();
+                        updateParameterRanges(); // Also refresh parameter displays
+                        console.log('✅ UNIFIED TAG: UI refresh completed after sync');
+                    }, 100);
+                }
+            });
+            
+            // LEGACY: Listen for condition state changes from other pages (for non-unified tags)
             window.addEventListener('patientConditionStateChanged', function(event) {
-                console.log('🏥 Condition state changed event received:', event.detail);
+                console.log('🏥 LEGACY: Condition state changed event received:', event.detail);
                 
                 const { condition, state } = event.detail;
                 
-                // Only update if it's for the current patient
-                if (state.patientId === currentPatientId) {
+                // Only handle non-unified tags here (sepsis and pneumonie are handled by unified system)
+                if (condition !== 'sepsis' && condition !== 'pneumonie' && state.patientId === currentPatientId) {
                     const conditionButton = document.querySelector(`.tag-btn[data-condition="${condition}"]`);
                     if (conditionButton) {
                         if (state.isActive) {
@@ -865,13 +945,13 @@
                                 if (!selectedTags.includes(condition)) {
                                     selectedTags.push(condition);
                                 }
-                                console.log(`✅ Synced ${condition} button to selected state from external change`);
+                                console.log(`✅ LEGACY: Synced ${condition} button to selected state from external change`);
                             }
                         } else {
                             if (conditionButton.classList.contains('selected')) {
                                 conditionButton.classList.remove('selected');
                                 selectedTags = selectedTags.filter(t => t !== condition);
-                                console.log(`✅ Synced ${condition} button to deselected state from external change`);
+                                console.log(`✅ LEGACY: Synced ${condition} button to deselected state from external change`);
                             }
                         }
                         
@@ -1412,70 +1492,75 @@
                 });
             });
 
-            // Event listeners for tag buttons (matching setup page structure)
+            // UNIFIED TAG HANDLING: Event listeners for tag buttons
             document.querySelectorAll('.tag-btn').forEach(button => {
                 button.addEventListener('click', function() {
                     const condition = this.dataset.condition;
-                    if (this.classList.contains('selected')) {
-                        // Deselect tag
-                        this.classList.remove('selected');
-                        selectedTags = selectedTags.filter(t => t !== condition);
+                    const isCurrentlySelected = this.classList.contains('selected');
+                    const newState = !isCurrentlySelected;
+                    
+                    console.log(`🏷️ UNIFIED TAG: ${condition} clicked, changing from ${isCurrentlySelected} to ${newState}`);
+                    
+                    // Handle condition using unified tag system for sepsis and pneumonie
+                    if (currentPatientId && window.sharedDataManager && (condition === 'sepsis' || condition === 'pneumonie')) {
+                        // Use unified tag system
+                        const result = window.sharedDataManager.toggleConditionTag(currentPatientId, condition, newState);
                         
-                        // Handle condition deselection using new condition state system
-                        if (currentPatientId && window.sharedDataManager) {
-                            // Use new tag parameter system for sepsis and pneumonie
-                            if (condition === 'sepsis' || condition === 'pneumonie') {
-                                console.log(`🏷️ Deactivating ${condition} tag with parameter adjustments`);
-                                window.sharedDataManager.toggleConditionTag(currentPatientId, condition, false);
-                                
-                                // CRITICAL: Apply tag adjustments to organ monitoring levels with deselection logic
-                                applyTagAdjustmentsToOrganLevels(currentPatientId, condition);
-                                
-                                // Update monitoring status labels after tag deselection
-                                // Use longer delay to ensure all events and circle updates have completed
-                                setTimeout(() => updateMonitoringStatus(), 200);
-                            } else {
-                                // Use old system for other conditions
-                                window.sharedDataManager.setPatientConditionState(condition, {
-                                    isActive: false,
-                                    patientId: currentPatientId,
-                                    timestamp: Date.now(),
-                                    source: 'alarm-overview'
-                                });
-                            }
+                        if (result && result.skipped) {
+                            console.log(`⚠️ UNIFIED TAG: Tag ${condition} toggle skipped - ${result.reason}`);
+                            return; // Don't update UI if operation was skipped
                         }
-                    } else {
-                        // Select tag
-                        this.classList.add('selected');
-                        selectedTags.push(condition);
                         
-                        // Handle condition selection using new condition state system
-                        if (currentPatientId && window.sharedDataManager) {
-                            // Use new tag parameter system for sepsis and pneumonie
-                            if (condition === 'sepsis' || condition === 'pneumonie') {
-                                console.log(`🏷️ Activating ${condition} tag with parameter adjustments`);
-                                window.sharedDataManager.toggleConditionTag(currentPatientId, condition, true);
-                                
-                                // CRITICAL: Apply tag adjustments to organ monitoring levels (matching individual pages)
-                                applyTagAdjustmentsToOrganLevels(currentPatientId);
-                                
-                                // Update monitoring status labels after tag selection
-                                // Use longer delay to ensure all events and circle updates have completed
-                                setTimeout(() => updateMonitoringStatus(), 200);
-                            } else {
-                                // Use old system for other conditions
-                                window.sharedDataManager.setPatientConditionState(condition, {
-                                    isActive: true,
-                                    patientId: currentPatientId,
-                                    timestamp: Date.now(),
-                                    source: 'alarm-overview'
-                                });
-                            }
+                        // Update local UI
+                        if (newState) {
+                            this.classList.add('selected');
+                            selectedTags.push(condition);
+                        } else {
+                            this.classList.remove('selected');
+                            selectedTags = selectedTags.filter(t => t !== condition);
                         }
+                        
+                        console.log(`🏷️ UNIFIED TAG: ${condition} ${newState ? 'selected' : 'deselected'} via unified system`);
+                        
+                        // DEBUG: Log immediate state after toggle
+                        console.log('🔍 UNIFIED TAG DEBUG: Immediate post-toggle state...');
+                        if (window.sharedDataManager) {
+                            const tagStates = window.sharedDataManager.getCurrentTagStatesForPatient(currentPatientId);
+                            const targetRanges = window.sharedDataManager.getCurrentTargetRanges(currentPatientId);
+                            console.log('   - All tag states:', tagStates);
+                            console.log('   - Target ranges (immediate):', targetRanges);
+                            
+                            // Force immediate UI update as backup
+                            setTimeout(() => {
+                                console.log('🔄 BACKUP: Forcing parameter range update...');
+                                updateParameterRanges();
+                            }, 50);
+                        }
+                        
+                        // UI updates now handled by unifiedTagUIUpdateRequired event from SharedDataManager
+                    } else if (currentPatientId && window.sharedDataManager) {
+                        // Use old system for other conditions
+                        if (newState) {
+                            this.classList.add('selected');
+                            selectedTags.push(condition);
+                        } else {
+                            this.classList.remove('selected');
+                            selectedTags = selectedTags.filter(t => t !== condition);
+                        }
+                        
+                        window.sharedDataManager.setPatientConditionState(condition, {
+                            isActive: newState,
+                            patientId: currentPatientId,
+                            timestamp: Date.now(),
+                            source: 'alarm-overview'
+                        });
+                        
+                        console.log(`🏷️ OLD SYSTEM: ${condition} ${newState ? 'selected' : 'deselected'} via old system`);
                     }
+                    
                     console.log('Selected tags:', selectedTags);
                     
-                    // Update parameter ranges based on selected conditions (but not for pneumonie or sepsis - they handle their own ranges)
+                    // Update parameter ranges for non-sepsis/pneumonie conditions
                     if (condition !== 'pneumonie' && condition !== 'sepsis') {
                         updateParameterRanges();
                     }
@@ -1582,6 +1667,9 @@
                 
                 console.log('✅ DEBUG: Loaded existing settings:', savedMedicalInfo);
                 
+                // UNIFIED TAG SYSTEM: Load and sync tag states
+                loadAndSyncUnifiedTagStates();
+                
                 // Update organ circles based on loaded data
                 if (selectedProblem && selectedRiskLevel) {
                     console.log('✅ DEBUG: Updating organ circles with:', selectedProblem, selectedRiskLevel);
@@ -1590,10 +1678,54 @@
             } else {
                 console.log('❌ DEBUG: No existing medical info found for patient:', currentPatientId);
                 
+                // UNIFIED TAG SYSTEM: Still load tag states even if no medical info
+                loadAndSyncUnifiedTagStates();
+                
                 // Debug: show all available data
                 console.log('🔍 DEBUG: All patients data:', window.sharedDataManager.getAllPatients());
                 window.sharedDataManager.debugLocalStorage();
             }
+        }
+
+        // UNIFIED TAG SYSTEM: Load and sync tag states from SharedDataManager
+        function loadAndSyncUnifiedTagStates() {
+            if (!currentPatientId || !window.sharedDataManager) {
+                console.log('⏸️ Cannot load unified tag states - missing dependencies');
+                return;
+            }
+            
+            console.log('🏷️ UNIFIED TAG: Loading and syncing tag states for patient:', currentPatientId);
+            
+            // Get current tag states from SharedDataManager
+            const tagStates = window.sharedDataManager.getCurrentTagStatesForPatient(currentPatientId);
+            
+            // Update UI for each tag
+            Object.keys(tagStates).forEach(tagName => {
+                const isActive = tagStates[tagName];
+                const tagButton = document.querySelector(`.tag-btn[data-condition="${tagName}"]`);
+                
+                if (tagButton) {
+                    if (isActive) {
+                        if (!tagButton.classList.contains('selected')) {
+                            tagButton.classList.add('selected');
+                            if (!selectedTags.includes(tagName)) {
+                                selectedTags.push(tagName);
+                            }
+                        }
+                        console.log(`🏷️ UNIFIED TAG: Loaded ${tagName} as SELECTED`);
+                    } else {
+                        if (tagButton.classList.contains('selected')) {
+                            tagButton.classList.remove('selected');
+                            selectedTags = selectedTags.filter(t => t !== tagName);
+                        }
+                        console.log(`🏷️ UNIFIED TAG: Loaded ${tagName} as DESELECTED`);
+                    }
+                } else {
+                    console.log(`⚠️ UNIFIED TAG: No button found for tag: ${tagName}`);
+                }
+            });
+            
+            console.log('🏷️ UNIFIED TAG: Final selectedTags after loading:', selectedTags);
         }
 
         // Comprehensive function to synchronize all monitoring levels
@@ -1745,15 +1877,48 @@
             // Get patient-specific target ranges first
             let targetRanges = null;
             if (currentPatientId && window.sharedDataManager) {
-                targetRanges = window.sharedDataManager.getPatientTargetRanges(currentPatientId);
-                console.log('🎯 Patient target ranges:', targetRanges);
+                targetRanges = window.sharedDataManager.getCurrentTargetRanges(currentPatientId);
+                console.log('🎯 DEBUG: Retrieved target ranges from getCurrentTargetRanges:', targetRanges);
+                
+                // If no target ranges exist, force a recalculation
+                if (!targetRanges || Object.keys(targetRanges).length === 0) {
+                    console.warn('⚠️ DEBUG: No target ranges found, forcing recalculation...');
+                    
+                    // Get medical info to force matrix calculation
+                    const medicalInfo = window.sharedDataManager.getPatientMedicalInfo(currentPatientId);
+                    const problem = medicalInfo?.selectedProblem || 'none';
+                    const riskLevel = medicalInfo?.selectedRiskLevel || 'mid';
+                    
+                    console.log('🏥 DEBUG: Medical context for range calculation:', { problem, riskLevel });
+                    
+                    if (problem !== 'none') {
+                        // Force unified tag adjustment to recalculate everything
+                        const result = window.sharedDataManager.applyUnifiedTagAdjustments(currentPatientId);
+                        if (result && result.targetRanges) {
+                            targetRanges = result.targetRanges;
+                            console.log('✅ DEBUG: Forced recalculation successful, new ranges:', targetRanges);
+                        }
+                    }
+                }
+                
+                // Also get current tag states from SharedDataManager for verification
+                const currentTagStates = window.sharedDataManager.getCurrentTagStatesForPatient(currentPatientId);
+                console.log('🏷️ DEBUG: Current tag states from SharedDataManager:', currentTagStates);
+            } else {
+                console.warn('⚠️ DEBUG: Missing currentPatientId or SharedDataManager');
             }
             
             // If we have target ranges, use them; otherwise fall back to condition-based logic
             if (targetRanges) {
-                // Check which conditions are currently active
-                const hasSepsis = selectedTags.some(tag => tag.toLowerCase().includes('sepsis'));
-                const hasPneumonie = selectedTags.some(tag => tag.toLowerCase().includes('pneumonie'));
+                // Check which conditions are currently active using SharedDataManager instead of selectedTags
+                const hasSepsis = window.sharedDataManager ? 
+                    window.sharedDataManager.getCurrentTagStatesForPatient(currentPatientId).sepsis : 
+                    selectedTags.some(tag => tag.toLowerCase().includes('sepsis'));
+                const hasPneumonie = window.sharedDataManager ? 
+                    window.sharedDataManager.getCurrentTagStatesForPatient(currentPatientId).pneumonie :
+                    selectedTags.some(tag => tag.toLowerCase().includes('pneumonie'));
+                
+                console.log('🏷️ DEBUG: Active conditions - sepsis:', hasSepsis, 'pneumonie:', hasPneumonie);
                 
                 // Always update HR display if target ranges exist (for manual adjustments)
                 if (targetRanges.HR) {
@@ -1762,15 +1927,30 @@
                     
                     if (hrRange) {
                         const hr = targetRanges.HR;
-                        hrRange.textContent = Math.round(hr.min) + ' - ' + Math.round(hr.max) + ' ' + (hr.unit || 'bpm');
-                        console.log('🎯 Updated HR range from target ranges:', Math.round(hr.min) + ' - ' + Math.round(hr.max) + ' ' + (hr.unit || 'bpm'));
+                        const newText = Math.round(hr.min) + ' - ' + Math.round(hr.max) + ' ' + (hr.unit || 'bpm');
+                        hrRange.textContent = newText;
+                        
+                        // Remove inactive-text class to make the text visible
+                        hrRange.classList.remove('inactive-text');
+                        
+                        // Also make the label visible
+                        const hrLabel = circulatoryCard?.querySelector('.parameter-row[data-parameter="HR"] .value-label');
+                        if (hrLabel) {
+                            hrLabel.classList.remove('inactive-text');
+                        }
+                        
+                        console.log('🎯 DEBUG: Updated HR range display to:', newText, 'from values:', hr);
                         
                         // Apply highlighting only if sepsis is active AND we should highlight (tag button clicked) AND it's sepsis-specific
                         if (hasSepsis && shouldHighlight && (highlightCondition === 'sepsis' || highlightCondition === null)) {
                             window.sharedDataManager.highlightElement(hrRange, 'highlight-blue', 1500);
                             console.log('✅ Applied sepsis highlighting to HR display');
                         }
+                    } else {
+                        console.warn('❌ DEBUG: HR range display element not found');
                     }
+                } else {
+                    console.warn('❌ DEBUG: No HR data in target ranges:', targetRanges);
                 }
                 
                 // Always update BP display if target ranges exist (for manual adjustments)
@@ -1782,6 +1962,16 @@
                         if (bpRange) {
                             const bp = targetRanges.BP_Mean;
                             bpRange.textContent = Math.round(bp.min) + ' - ' + Math.round(bp.max) + ' ' + (bp.unit || 'mmHg');
+                            
+                            // Remove inactive-text class to make the text visible
+                            bpRange.classList.remove('inactive-text');
+                            
+                            // Also make the label visible
+                            const bpLabel = bpCards[0]?.querySelector('.parameter-row[data-parameter="BP_Mean"] .value-label');
+                            if (bpLabel) {
+                                bpLabel.classList.remove('inactive-text');
+                            }
+                            
                             console.log('🎯 Updated BP range from target ranges:', Math.round(bp.min) + ' - ' + Math.round(bp.max) + ' ' + (bp.unit || 'mmHg'));
                             
                             // Apply highlighting only if sepsis is active AND we should highlight (tag button clicked) AND it's sepsis-specific
@@ -1813,6 +2003,12 @@
                         
                         // Remove inactive-text class if present
                         afRangeDisplay.classList.remove('inactive-text');
+                        
+                        // Also make the label visible
+                        const afLabel = document.querySelector('.parameter-row[data-parameter="AF"] .value-label');
+                        if (afLabel) {
+                            afLabel.classList.remove('inactive-text');
+                        }
                     } else {
                         console.warn('❌ AF range display element not found with ID: af-range-display-overview');
                     }
@@ -1833,6 +2029,12 @@
                             
                             // Remove inactive-text class if present to make the text visible
                             saturatieRange.classList.remove('inactive-text');
+                            
+                            // Also make the label visible
+                            const saturatieLabel = respiratoryCards[1]?.querySelector('.parameter-row[data-parameter="Saturatie"] .value-label');
+                            if (saturatieLabel) {
+                                saturatieLabel.classList.remove('inactive-text');
+                            }
                         } else {
                             console.warn('❌ Saturatie range element not found');
                         }
@@ -1856,6 +2058,12 @@
                             
                             // Remove inactive-text class if present to make the text visible
                             temperatureRange.classList.remove('inactive-text');
+                            
+                            // Also make the label visible
+                            const temperatureLabel = temperatureCards[2]?.querySelector('.parameter-row[data-parameter="Temperature"] .value-label');
+                            if (temperatureLabel) {
+                                temperatureLabel.classList.remove('inactive-text');
+                            }
                         } else {
                             console.warn('❌ Temperature range element not found');
                         }
@@ -2115,7 +2323,7 @@
                 
                 setTimeout(() => {
                     // Get the updated target ranges
-                    const targetRanges = window.sharedDataManager.getPatientTargetRanges(currentPatientId);
+                    const targetRanges = window.sharedDataManager.getCurrentTargetRanges(currentPatientId);
                     if (targetRanges) {
                         highlightParametersForProblemChange(selectedProblem, oldProblem, targetRanges);
                     }
