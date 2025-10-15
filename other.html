@@ -1660,6 +1660,26 @@
                                     if (window.sharedDataManager) {
                                         window.sharedDataManager.saveGlobalParameterVariables();
                                         console.log('💾 Saved global variables to localStorage');
+                                        
+                                        // CRITICAL: Save to patient-specific storage for WebSocket messaging
+                                        
+                                        // DEBUG: Check data BEFORE saving
+                                        console.log('🔍 BEFORE SAVE - Current target ranges:', window.sharedDataManager.getCurrentTargetRanges(currentPatientId));
+                                        console.log('🔍 BEFORE SAVE - New Temperature:', window.TEMP_MIN, '-', window.TEMP_MAX);
+                                        console.log('🔍 BEFORE SAVE - PatientId:', currentPatientId);
+                                        
+                                        window.sharedDataManager.updateCurrentTargetRange(currentPatientId, 'Temperature', {
+                                            min: window.TEMP_MIN,
+                                            max: window.TEMP_MAX,
+                                            unit: '°C'
+                                        }, 'slider-save');
+                                        
+                                        // DEBUG: Check data AFTER saving
+                                        console.log('🔍 AFTER SAVE - Updated target ranges:', window.sharedDataManager.getCurrentTargetRanges(currentPatientId));
+                                        
+                                        // SEND WEBSOCKET MESSAGE: Manual threshold adjustment completed
+                                        console.log('📤 Sending WebSocket message for manual Temperature threshold adjustment');
+                                        window.sharedDataManager.sendFullThresholdsRiskLevels(currentPatientId);
                                     }
                                     
                                     // Update all displays on all pages immediately

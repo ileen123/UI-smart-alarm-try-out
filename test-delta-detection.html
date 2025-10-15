@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Full Configuration Test</title>
+</head>
+<body>
+    <h1>Full Configuration Test Page</h1>
+    <button onclick="testFullConfigurationMessaging()">Test Full Configuration Messaging</button>
+    <button onclick="testActualMonitoringLevels()">Test Actual Monitoring Levels</button>
+    <button onclick="testCalculatedThresholds()">Test Calculated Thresholds (Pneumonie)</button>
+    <button onclick="testTagWebSocketMessaging()">🆕 Test Tag WebSocket Timing Fix</button>
+    <button onclick="testManualThresholdAdjustment()">🔍 Test Manual Save Button WebSocket</button>
+    <div id="output"></div>
+
+    <script src="js/websocket-outbound-client.js"></script>
+    <script src="js/shared-data-manager.js"></script>
+    
+    <script>
+        function testFullConfigurationMessaging() {
+            const output = document.getElementById('output');
+            output.innerHTML = '<h2>Testing Full Configuration Messaging...</h2>';
+            
+            console.log('🧪 Starting full configuration test');
+            
+            // Test case: Send full configuration for a patient
+            const testPatientId = '1';
+            
+            console.log('🧪 Test case: Send full configuration message');
+            
+            // Test the new simplified approach
+            const manager = window.sharedDataManager;
+            if (manager) {
+                // First, set up some test patient data
+                const testMedicalInfo = {
+                    selectedProblem: 'sepsis',
+                    selectedRiskLevel: 'mid',
+                    patientId: testPatientId
+                };
+                
+                console.log('🧪 Setting up test patient medical info:', testMedicalInfo);
+                manager.savePatientMedicalInfo(testPatientId, testMedicalInfo);
+                
+                output.innerHTML += '<p>✅ Test completed - check console for detailed output</p>';
+                output.innerHTML += '<p>✅ Full configuration message should be sent automatically</p>';
+                output.innerHTML += '<p>📊 Expected message structure:</p>';
+                output.innerHTML += '<pre>{\n  "type": "thresholds_risk_levels",\n  "data": {\n    "patientId": "1",\n    "bedNumber": null,\n    "changeType": "full_config",\n    "medicalProblem": "sepsis",\n    "riskLevels": {\n      "circulatoir": "low",\n      "respiratoire": "low"\n    },\n    "thresholds": {\n      "HR": {"min": 80, "max": 120},\n      "BP_Mean": {"min": 50, "max": 80},\n      ...\n    }\n  }\n}</pre>';
+            } else {
+                output.innerHTML += '<p>❌ SharedDataManager not available</p>';
+            }
+        }
+
+        function testActualMonitoringLevels() {
+            const output = document.getElementById('output');
+            output.innerHTML = '<h2>Testing Actual Stored Monitoring Levels...</h2>';
+            
+            console.log('🧪 Testing actual monitoring levels vs calculated ones');
+            
+            const testPatientId = '1';
+            const manager = window.sharedDataManager;
+            
+            if (manager) {
+                // Set some specific monitoring levels
+                console.log('🔧 Setting specific monitoring levels for testing:');
+                console.log('   - Heart: mid');
+                console.log('   - Lung: high'); 
+                console.log('   - Temp: mid');
+                
+                manager.setHeartMonitoringLevel(testPatientId, 'mid');
+                manager.setLungMonitoringLevel(testPatientId, 'high');
+                manager.setTempMonitoringLevel(testPatientId, 'mid');
+                
+                // Now test collection
+                console.log('📊 Testing collection of current configuration...');
+                const config = manager.collectCurrentMedicalConfiguration(testPatientId);
+                
+                if (config) {
+                    console.log('✅ Configuration collected successfully');
+                    console.log('📊 Risk levels in config:', config.riskLevels);
+                    
+                    output.innerHTML += '<p>✅ Test completed - check console for detailed comparison</p>';
+                    output.innerHTML += '<p>📊 Expected risk levels: circulatoir=mid, respiratoire=high, temperature=mid</p>';
+                    output.innerHTML += `<p>📊 Actual risk levels: circulatoir=${config.riskLevels.circulatoir}, respiratoire=${config.riskLevels.respiratoire}, temperature=${config.riskLevels.temperature}</p>`;
+                } else {
+                    output.innerHTML += '<p>❌ Failed to collect configuration</p>';
+                }
+            } else {
+                output.innerHTML += '<p>❌ SharedDataManager not available</p>';
+            }
+        }
+
+        function testCalculatedThresholds() {
+            const output = document.getElementById('output');
+            output.innerHTML = '<h2>Testing Calculated Thresholds for Medical Problems...</h2>';
+            
+            console.log('🧪 Testing calculated thresholds vs manual thresholds');
+            
+            const testPatientId = '1';
+            const manager = window.sharedDataManager;
+            
+            if (manager) {
+                console.log('🔧 Setting up medical problem: pneumonie with risk level: mid');
+                
+                // First, set a medical problem that should calculate specific thresholds
+                const testMedicalInfo = {
+                    selectedProblem: 'pneumonie',
+                    selectedRiskLevel: 'mid',
+                    patientId: testPatientId
+                };
+                
+                // Save medical info (this should trigger target range calculation)
+                manager.savePatientMedicalInfo(testPatientId, testMedicalInfo);
+                
+                // Also manually apply the problem-specific monitoring to ensure ranges are calculated
+                console.log('🎯 Applying problem-specific monitoring for pneumonie...');
+                const result = manager.applyProblemSpecificMonitoring(
+                    'pneumonie', 
+                    null, // no organ components
+                    testPatientId, 
+                    'mid', // risk level
+                    true // should overwrite manual adjustments
+                );
+                
+                console.log('📊 Problem-specific result:', result);
+                
+                // Now test if WebSocket messages contain the calculated values
+                console.log('📤 Testing WebSocket configuration collection...');
+                const config = manager.collectCurrentMedicalConfiguration(testPatientId);
+                
+                if (config) {
+                    console.log('✅ Configuration collected for WebSocket');
+                    console.log('📊 Thresholds in WebSocket message:', config.thresholds);
+                    
+                    // Compare with what matrix should give for pneumonie + mid
+                    const expectedMatrix = manager.getMatrixBasedBaseRanges('pneumonie', 'mid');
+                    console.log('🎯 Expected matrix ranges for pneumonie + mid:', expectedMatrix);
+                    
+                    output.innerHTML += '<p>✅ Test completed - check console for threshold comparison</p>';
+                    output.innerHTML += '<p>📊 Medical Problem: pneumonie, Risk Level: mid</p>';
+                    output.innerHTML += `<p>📊 WebSocket HR Threshold: ${config.thresholds.HR.min}-${config.thresholds.HR.max}</p>`;
+                    output.innerHTML += `<p>📊 Expected Matrix HR: ${expectedMatrix.HR?.min}-${expectedMatrix.HR?.max}</p>`;
+                    output.innerHTML += `<p>📊 WebSocket AF Threshold: ${config.thresholds.AF.min}-${config.thresholds.AF.max}</p>`;
+                    output.innerHTML += `<p>📊 Expected Matrix AF: ${expectedMatrix.AF?.min}-${expectedMatrix.AF?.max}</p>`;
+                    
+                    // Test if thresholds match expected matrix values
+                    const hrMatches = config.thresholds.HR.min === expectedMatrix.HR?.min && 
+                                     config.thresholds.HR.max === expectedMatrix.HR?.max;
+                    const afMatches = config.thresholds.AF.min === expectedMatrix.AF?.min && 
+                                     config.thresholds.AF.max === expectedMatrix.AF?.max;
+                    
+                    output.innerHTML += `<p style="color: ${hrMatches ? 'green' : 'red'}">HR Match: ${hrMatches ? '✅' : '❌'}</p>`;
+                    output.innerHTML += `<p style="color: ${afMatches ? 'green' : 'red'}">AF Match: ${afMatches ? '✅' : '❌'}</p>`;
+                    
+                } else {
+                    output.innerHTML += '<p>❌ Failed to collect WebSocket configuration</p>';
+                }
+            } else {
+                output.innerHTML += '<p>❌ SharedDataManager not available</p>';
+            }
+        }
+
+        function testTagWebSocketMessaging() {
+            const output = document.getElementById('output');
+            output.innerHTML = '<h2>Testing Tag Selection WebSocket Messaging...</h2>';
+            
+            console.log('🧪 Testing WebSocket messages for tag selection with timing fix');
+            
+            const testPatientId = '1';
+            const manager = window.sharedDataManager;
+            
+            if (manager) {
+                console.log('🔧 Setting up base medical problem first...');
+                
+                // First set a base medical problem
+                const testMedicalInfo = {
+                    selectedProblem: 'respiratoire-insufficientie',
+                    selectedRiskLevel: 'mid',
+                    patientId: testPatientId
+                };
+                manager.savePatientMedicalInfo(testPatientId, testMedicalInfo);
+                
+                // Set some initial monitoring levels
+                manager.setHeartMonitoringLevel(testPatientId, 'low');
+                manager.setLungMonitoringLevel(testPatientId, 'mid');  
+                manager.setTempMonitoringLevel(testPatientId, 'low');
+                
+                // Get baseline configuration
+                console.log('📊 Getting baseline configuration before tag selection...');
+                const baselineConfig = manager.collectCurrentMedicalConfiguration(testPatientId);
+                console.log('📊 Baseline thresholds:', baselineConfig?.thresholds);
+                console.log('📊 Baseline risk levels:', baselineConfig?.riskLevels);
+                
+                // Now test tag selection - this should trigger DELAYED WebSocket message
+                console.log('🏷️ Activating sepsis tag (should trigger DELAYED WebSocket message)...');
+                manager.toggleConditionTag(testPatientId, 'sepsis', true);
+                
+                // Wait for the delayed WebSocket message and then check configuration
+                setTimeout(() => {
+                    console.log('📊 Getting configuration after sepsis tag activation (after delay)...');
+                    const taggedConfig = manager.collectCurrentMedicalConfiguration(testPatientId);
+                    console.log('📊 Tag-adjusted thresholds:', taggedConfig?.thresholds);
+                    console.log('📊 Tag-adjusted risk levels:', taggedConfig?.riskLevels);
+                    
+                    // Compare baseline vs tagged configuration
+                    const hrChanged = baselineConfig?.thresholds.HR.min !== taggedConfig?.thresholds.HR.min ||
+                                     baselineConfig?.thresholds.HR.max !== taggedConfig?.thresholds.HR.max;
+                    
+                    const heartLevelChanged = baselineConfig?.riskLevels.circulatoir !== taggedConfig?.riskLevels.circulatoir;
+                    
+                    output.innerHTML += '<p>✅ Tag WebSocket timing test completed - check console for detailed output</p>';
+                    output.innerHTML += '<p>📊 Base Problem: respiratoire-insufficientie + mid</p>';
+                    output.innerHTML += '<p>🏷️ Tag Selected: sepsis</p>';
+                    output.innerHTML += `<p>📊 Baseline HR: ${baselineConfig?.thresholds.HR.min}-${baselineConfig?.thresholds.HR.max}</p>`;
+                    output.innerHTML += `<p>📊 Tag-Adjusted HR: ${taggedConfig?.thresholds.HR.min}-${taggedConfig?.thresholds.HR.max}</p>`;
+                    output.innerHTML += `<p style="color: ${hrChanged ? 'green' : 'orange'}">HR Changed by Tag: ${hrChanged ? '✅ YES' : '⚠️ NO'}</p>`;
+                    output.innerHTML += `<p>📊 Baseline Heart Level: ${baselineConfig?.riskLevels.circulatoir}</p>`;
+                    output.innerHTML += `<p>📊 Tag-Adjusted Heart Level: ${taggedConfig?.riskLevels.circulatoir}</p>`;
+                    output.innerHTML += `<p style="color: ${heartLevelChanged ? 'green' : 'orange'}">Heart Level Changed: ${heartLevelChanged ? '✅ YES' : '⚠️ NO'}</p>`;
+                    output.innerHTML += '<p>🔍 <strong>Key Test:</strong> Check console for "📤 Sending WebSocket message... (delayed for consistency)" log</p>';
+                    output.innerHTML += '<p>⏰ <strong>Timing Fix:</strong> WebSocket message sent AFTER organ state changes (100ms delay)</p>';
+                    
+                }, 200); // Wait for the 100ms delay plus some buffer
+                
+                // Test deactivation as well
+                setTimeout(() => {
+                    console.log('🏷️ Deactivating sepsis tag (should also trigger DELAYED WebSocket message)...');
+                    manager.toggleConditionTag(testPatientId, 'sepsis', false);
+                    output.innerHTML += '<p>🔄 Also tested tag deactivation - check console for second delayed WebSocket message</p>';
+                }, 1500);
+                
+            } else {
+                output.innerHTML += '<p>❌ SharedDataManager not available</p>';
+            }
+        }
+
+        function testManualThresholdAdjustment() {
+            const output = document.getElementById('output');
+            output.innerHTML = '<h2>Testing Manual Threshold Save Button WebSocket Messaging...</h2>';
+            
+            console.log('🧪 Testing if manual threshold SAVE BUTTONS trigger WebSocket messages');
+            
+            const testPatientId = '1';
+            const manager = window.sharedDataManager;
+            
+            if (manager) {
+                console.log('🔧 Setting up base medical problem first...');
+                
+                // First set a base medical problem
+                const testMedicalInfo = {
+                    selectedProblem: 'respiratoire-insufficientie',
+                    selectedRiskLevel: 'mid',
+                    patientId: testPatientId
+                };
+                manager.savePatientMedicalInfo(testPatientId, testMedicalInfo);
+                
+                // Get baseline configuration
+                console.log('📊 Getting baseline configuration before manual adjustment...');
+                const baselineConfig = manager.collectCurrentMedicalConfiguration(testPatientId);
+                console.log('📊 Baseline HR threshold:', baselineConfig?.thresholds.HR);
+                
+                // Count WebSocket calls before manual adjustment
+                let webSocketCallCount = 0;
+                const originalSendWebSocketMessage = manager.sendWebSocketMessage;
+                manager.sendWebSocketMessage = function(type, data) {
+                    if (type === 'thresholds_risk_levels') {
+                        webSocketCallCount++;
+                        console.log(`📤 WebSocket call #${webSocketCallCount} detected: Manual save button triggered WebSocket message`);
+                        console.log('📊 Message data:', data);
+                    }
+                    return originalSendWebSocketMessage.call(this, type, data);
+                };
+                
+                // Now test manual threshold adjustment using save button approach
+                console.log('🎚️ Simulating manual save button click (updateCurrentTargetRange with slider-save)...');
+                console.log('🔍 Current HR threshold before adjustment:', baselineConfig?.thresholds.HR);
+                
+                // Simulate save button click by calling updateCurrentTargetRange with 'slider-save' source
+                const newHRRange = {
+                    min: 80,  // Changed from baseline
+                    max: 120, // Changed from baseline
+                    unit: 'bpm'
+                };
+                
+                console.log('🎚️ Setting new HR range via slider-save method:', newHRRange);
+                manager.updateCurrentTargetRange(testPatientId, 'HR', newHRRange, 'slider-save');
+                
+                // Also simulate direct sendFullThresholdsRiskLevels call (as implemented in the pages)
+                console.log('📤 Also testing direct sendFullThresholdsRiskLevels call...');
+                manager.sendFullThresholdsRiskLevels(testPatientId);
+                
+                // Check results
+                setTimeout(() => {
+                    console.log('📊 Getting configuration after manual save button simulation...');
+                    const adjustedConfig = manager.collectCurrentMedicalConfiguration(testPatientId);
+                    console.log('📊 Adjusted HR threshold:', adjustedConfig?.thresholds.HR);
+                    
+                    // Compare baseline vs adjusted configuration
+                    const hrChanged = baselineConfig?.thresholds.HR.min !== adjustedConfig?.thresholds.HR.min ||
+                                     baselineConfig?.thresholds.HR.max !== adjustedConfig?.thresholds.HR.max;
+                    
+                    output.innerHTML += '<p>✅ Manual save button test completed - check console for results</p>';
+                    output.innerHTML += '<p>📊 Base Problem: respiratoire-insufficientie + mid</p>';
+                    output.innerHTML += '<p>🎚️ Manual Save: HR threshold saved via slider-save + sendFullThresholdsRiskLevels</p>';
+                    output.innerHTML += `<p>📊 Baseline HR: ${baselineConfig?.thresholds.HR.min}-${baselineConfig?.thresholds.HR.max}</p>`;
+                    output.innerHTML += `<p>📊 Adjusted HR: ${adjustedConfig?.thresholds.HR.min}-${adjustedConfig?.thresholds.HR.max}</p>`;
+                    output.innerHTML += `<p style="color: ${hrChanged ? 'green' : 'red'}">HR Changed: ${hrChanged ? '✅ YES' : '❌ NO'}</p>`;
+                    output.innerHTML += `<p style="color: ${webSocketCallCount > 0 ? 'green' : 'red'}">WebSocket Triggered: ${webSocketCallCount > 0 ? '✅ YES (' + webSocketCallCount + ' calls)' : '❌ NO'}</p>`;
+                    
+                    if (webSocketCallCount > 0) {
+                        output.innerHTML += '<p style="color: green">✅ <strong>FIXED:</strong> Manual save buttons now trigger WebSocket messages!</p>';
+                        output.innerHTML += '<p>💡 <strong>Implementation:</strong> Save buttons call updateCurrentTargetRange + sendFullThresholdsRiskLevels</p>';
+                        output.innerHTML += '<p>🎯 <strong>Behavior:</strong> Sliders during dragging = NO messages, Save button click = WebSocket message</p>';
+                    } else {
+                        output.innerHTML += '<p style="color: red">🚨 <strong>ISSUE:</strong> Save buttons do not trigger WebSocket messages!</p>';
+                    }
+                    
+                    // Restore original method
+                    manager.sendWebSocketMessage = originalSendWebSocketMessage;
+                    
+                }, 100);
+                
+            } else {
+                output.innerHTML += '<p>❌ SharedDataManager not available</p>';
+            }
+        }
+    </script>
+</body>
+</html>

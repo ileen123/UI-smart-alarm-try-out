@@ -451,15 +451,17 @@ class WebSocketOutboundClient {
     }
     
     /**
-     * Send thresholds and risk levels data (combined message type)
+     * Send thresholds and risk levels data (delta-based message type)
      */
     sendThresholdsAndRiskLevels(patientId, data) {
         return this.sendMessage('thresholds_risk_levels', {
             patientId: patientId,
-            ...data,
-            metadata: {
-                source: 'settings_page',
-                action: 'thresholds_risk_update'
+            bedNumber: data.bedNumber,
+            changeType: 'delta',
+            changes: {
+                medicalProblem: data.changes?.medicalProblem || {},
+                riskLevels: data.changes?.riskLevels || {},
+                thresholds: data.changes?.thresholds || {}
             }
         });
     }

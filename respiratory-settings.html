@@ -1944,6 +1944,36 @@
                                     if (window.sharedDataManager) {
                                         window.sharedDataManager.saveGlobalParameterVariables();
                                         console.log('💾 Saved global variables to localStorage');
+                                        
+                                        // CRITICAL: Save to patient-specific storage for WebSocket messaging
+                                        
+                                        // DEBUG: Check data BEFORE saving
+                                        console.log('🔍 BEFORE SAVE - Current target ranges:', window.sharedDataManager.getCurrentTargetRanges(currentPatientId));
+                                        console.log('🔍 BEFORE SAVE - New Saturatie:', window.SAT_MIN, '-', window.SAT_MAX);
+                                        console.log('🔍 BEFORE SAVE - New AF:', window.AF_MIN, '-', window.AF_MAX);
+                                        console.log('🔍 BEFORE SAVE - PatientId:', currentPatientId);
+                                        
+                                        // Get current ranges and update both parameters at once to avoid race conditions
+                                        const currentRanges = window.sharedDataManager.getCurrentTargetRanges(currentPatientId);
+                                        currentRanges.Saturatie = {
+                                            min: window.SAT_MIN,
+                                            max: window.SAT_MAX,
+                                            unit: '%'
+                                        };
+                                        currentRanges.AF = {
+                                            min: window.AF_MIN,
+                                            max: window.AF_MAX,
+                                            unit: '/min'
+                                        };
+                                        // Save all ranges at once
+                                        window.sharedDataManager.setCurrentTargetRanges(currentPatientId, currentRanges, 'slider-save');
+                                        
+                                        // DEBUG: Check data AFTER saving
+                                        console.log('🔍 AFTER SAVE - Updated target ranges:', window.sharedDataManager.getCurrentTargetRanges(currentPatientId));
+                                        
+                                        // SEND WEBSOCKET MESSAGE: Manual threshold adjustment completed
+                                        console.log('📤 Sending WebSocket message for manual Saturatie/AF threshold adjustment');
+                                        window.sharedDataManager.sendFullThresholdsRiskLevels(currentPatientId);
                                     }
                                     
                                     // Update all displays on all pages immediately
@@ -2046,6 +2076,36 @@
                                     if (window.sharedDataManager) {
                                         window.sharedDataManager.saveGlobalParameterVariables();
                                         console.log('💾 Saved global variables to localStorage');
+                                        
+                                        // CRITICAL: Save to patient-specific storage for WebSocket messaging
+                                        
+                                        // DEBUG: Check data BEFORE saving
+                                        console.log('🔍 BEFORE SAVE - Current target ranges:', window.sharedDataManager.getCurrentTargetRanges(currentPatientId));
+                                        console.log('🔍 BEFORE SAVE - New AF:', window.AF_MIN, '-', window.AF_MAX);
+                                        console.log('🔍 BEFORE SAVE - New Saturatie:', window.SAT_MIN, '-', window.SAT_MAX);
+                                        console.log('🔍 BEFORE SAVE - PatientId:', currentPatientId);
+                                        
+                                        // Get current ranges and update both parameters at once to avoid race conditions
+                                        const currentRanges = window.sharedDataManager.getCurrentTargetRanges(currentPatientId);
+                                        currentRanges.AF = {
+                                            min: window.AF_MIN,
+                                            max: window.AF_MAX,
+                                            unit: '/min'
+                                        };
+                                        currentRanges.Saturatie = {
+                                            min: window.SAT_MIN,
+                                            max: window.SAT_MAX,
+                                            unit: '%'
+                                        };
+                                        // Save all ranges at once
+                                        window.sharedDataManager.setCurrentTargetRanges(currentPatientId, currentRanges, 'slider-save');
+                                        
+                                        // DEBUG: Check data AFTER saving
+                                        console.log('🔍 AFTER SAVE - Updated target ranges:', window.sharedDataManager.getCurrentTargetRanges(currentPatientId));
+                                        
+                                        // SEND WEBSOCKET MESSAGE: Manual threshold adjustment completed
+                                        console.log('📤 Sending WebSocket message for manual AF/Saturatie threshold adjustment');
+                                        window.sharedDataManager.sendFullThresholdsRiskLevels(currentPatientId);
                                     }
                                     
                                     // Update all displays on all pages immediately

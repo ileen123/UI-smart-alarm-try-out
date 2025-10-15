@@ -620,18 +620,272 @@ class SharedDataManager {
     /**
      * Save patient medical information
      */
+    /**
+     * Initialize or update patient medical configuration and send delta message
+     * Can be called from setup pages or when patient assignments change
+     */
+    updatePatientMedicalConfiguration(patientId, updates = {}) {
+        try {
+            // Get current medical info
+            const currentMedicalInfo = this.getPatientMedicalInfo(patientId) || {};
+            
+            // Merge updates with current info
+            const updatedMedicalInfo = {
+                ...currentMedicalInfo,
+                ...updates,
+                lastUpdated: new Date().toISOString()
+            };
+            
+            // Save and trigger delta message
+            return this.savePatientMedicalInfo(patientId, updatedMedicalInfo);
+        } catch (error) {
+            console.error('❌ Error updating patient medical configuration:', error);
+            return false;
+        }
+    }
+
+    /**
+     * Collect complete current medical configuration for a patient
+     * Returns the full current state - no delta detection, just current values
+     */
+    collectCurrentMedicalConfiguration(patientId) {
+        try {
+            console.log(`� Collecting current medical configuration for patient ${patientId}`);
+            
+            const medicalInfo = this.getPatientMedicalInfo(patientId) || {};
+            const bedStates = this.getBedStates() || {};
+            
+            // Find patient's bed number
+            let bedNumber = null;
+            for (const [bed, data] of Object.entries(bedStates)) {
+                if (data.patientId === patientId) {
+                    bedNumber = parseInt(bed);
+                    break;
+                }
+            }
+            
+            // Get the current medical problem and risk level
+            const medicalProblem = medicalInfo.selectedProblem || null;
+            const selectedRiskLevel = medicalInfo.selectedRiskLevel || 'low';
+            
+            // Calculate current risk levels per organ system
+            let riskLevels = { circulatoir: 'low', respiratoire: 'low' }; // Safe defaults
+            if (medicalProblem && medicalProblem !== 'none') {
+                const organStates = this.calculateAdvancedOrganStates(medicalProblem, selectedRiskLevel);
+                riskLevels = {
+                    circulatoir: organStates?.heart || 'low',
+                    respiratoire: organStates?.lung || 'low'
+                };
+            }
+            
+            // Get current thresholds
+            let thresholds = {
+                HR: { min: 70, max: 100 },
+                BP_Mean: { min: 60, max: 90 },
+                AF: { min: 12, max: 20 },
+                Saturatie: { min: 92, max: 100 },
+                Temperature: { min: 36.0, max: 38.5 }
+            }; // Safe defaults
+            
+            if (medicalProblem && medicalProblem !== 'none') {
+                const matrixRanges = this.getMatrixBasedBaseRanges(medicalProblem, selectedRiskLevel);
+                if (matrixRanges && Object.keys(matrixRanges).length > 0) {
+                    thresholds = {
+                        HR: matrixRanges.HR || thresholds.HR,
+                        BP_Mean: matrixRanges.BP_Mean || thresholds.BP_Mean,
+                        AF: matrixRanges.AF || thresholds.AF,
+                        Saturatie: matrixRanges.Saturatie || thresholds.Saturatie,
+                        Temperature: matrixRanges.Temperature || thresholds.Temperature
+                    };
+                }
+            }
+            
+            const config = {
+                patientId: patientId,
+                bedNumber: bedNumber,
+                medicalProblem: medicalProblem,
+                riskLevels: riskLevels,
+                thresholds: thresholds
+            };
+            
+            console.log(`✅ Current configuration for patient ${patientId}:`, config);
+            return config;
+        } catch (error) {
+            console.error('❌ Error collecting current medical configuration:', error);
+            return null;
+        }
+    }
+
+    /**
+     * Send complete thresholds_risk_levels message
+     * Always sends the full current configuration - no delta detection
+     */
+    sendFullThresholdsRiskLevels(patientId) {
+        console.log(`📤 Sending full thresholds_risk_levels for patient ${patientId}`);
+        
+        const currentConfig = this.collectCurrentMedicalConfiguration(patientId);
+        
+        if (!currentConfig) {
+            console.error('❌ Could not collect current configuration for patient:', patientId);
+            return;
+        }
+        
+        const messageData = {
+            patientId: currentConfig.patientId,
+            bedNumber: currentConfig.bedNumber,
+            changeType: 'full_config',
+            medicalProblem: currentConfig.medicalProblem,
+            riskLevels: currentConfig.riskLevels,
+            thresholds: currentConfig.thresholds
+        };
+        
+        console.log(`📤 Sending complete configuration:`, messageData);
+        
+        // Send the full configuration message
+        this.sendWebSocketMessage('thresholds_risk_levels', messageData);
+        
+        console.log('✅ Full thresholds_risk_levels message sent for patient:', patientId);
+    }
+
+    /**
+     * Utility function for deep equality comparison
+     */
+    deepEqual(obj1, obj2) {
+        
+        const changes = {
+            medicalProblem: {},
+            riskLevels: {},
+            thresholds: {}
+        };
+        
+        // Check medical problem changes
+        if (!oldConfig || oldConfig.medicalProblem !== newConfig.medicalProblem) {
+            changes.medicalProblem = {
+                oldValue: oldConfig?.medicalProblem || null,
+                newValue: newConfig.medicalProblem
+            };
+            console.log(`🏥 Medical problem change detected:`, changes.medicalProblem);
+        }
+        
+        // Check risk level changes
+        if (!oldConfig || !this.deepEqual(oldConfig.riskLevels, newConfig.riskLevels)) {
+            console.log(`📊 Risk level changes being checked...`);
+            for (const organSystem of ['circulatoir', 'respiratoire']) {
+                if (!oldConfig || oldConfig.riskLevels[organSystem] !== newConfig.riskLevels[organSystem]) {
+                    changes.riskLevels[organSystem] = {
+                        oldValue: oldConfig?.riskLevels?.[organSystem] || null,
+                        newValue: newConfig.riskLevels[organSystem]
+                    };
+                    console.log(`📊 Risk level change for ${organSystem}:`, changes.riskLevels[organSystem]);
+                }
+            }
+        }
+        
+        // Check threshold changes
+        if (!oldConfig || !this.deepEqual(oldConfig.thresholds, newConfig.thresholds)) {
+            console.log(`⚙️ Threshold changes being checked...`);
+            for (const parameter of ['HR', 'BP_Mean', 'AF', 'Saturatie', 'Temperature']) {
+                const oldThreshold = oldConfig?.thresholds?.[parameter];
+                const newThreshold = newConfig.thresholds[parameter];
+                
+                console.log(`⚙️ Checking ${parameter}: old=${JSON.stringify(oldThreshold)}, new=${JSON.stringify(newThreshold)}`);
+                
+                if (!oldConfig || !this.deepEqual(oldThreshold, newThreshold)) {
+                    changes.thresholds[parameter] = {};
+                    
+                    // Check min/max changes
+                    if (!oldThreshold || oldThreshold.min !== newThreshold.min) {
+                        changes.thresholds[parameter].min = {
+                            oldValue: oldThreshold?.min || null,
+                            newValue: newThreshold.min
+                        };
+                        console.log(`⚙️ ${parameter} min change:`, changes.thresholds[parameter].min);
+                    }
+                    
+                    if (!oldThreshold || oldThreshold.max !== newThreshold.max) {
+                        changes.thresholds[parameter].max = {
+                            oldValue: oldThreshold?.max || null,
+                            newValue: newThreshold.max
+                        };
+                        console.log(`⚙️ ${parameter} max change:`, changes.thresholds[parameter].max);
+                    }
+                }
+            }
+        }
+        
+        console.log(`✅ Final detected changes:`, changes);
+        return changes;
+    }
+    
+    /**
+     * Send delta-based thresholds_risk_levels message
+     */
+    sendDeltaThresholdsRiskLevels(patientId, oldConfig, newConfig) {
+        const changes = this.detectMedicalConfigurationChanges(oldConfig, newConfig);
+        
+        console.log(`📤 Preparing delta message for patient ${patientId}:`);
+        console.log(`📊 Delta changes:`, changes);
+        
+        const messageData = {
+            patientId: patientId,
+            bedNumber: newConfig.bedNumber,
+            changeType: 'delta',
+            changes: changes
+        };
+        
+        console.log(`📤 Final message data:`, messageData);
+        
+        // Always send message with all three sections, even if empty
+        this.sendWebSocketMessage('thresholds_risk_levels', messageData);
+        
+        console.log('� Delta thresholds_risk_levels message sent for patient:', patientId);
+    }
+
+    /**
+     * Utility function for deep equality comparison
+     */
+    deepEqual(obj1, obj2) {
+        if (obj1 === obj2) return true;
+        if (!obj1 || !obj2) return false;
+        if (typeof obj1 !== 'object' || typeof obj2 !== 'object') return obj1 === obj2;
+        
+        const keys1 = Object.keys(obj1);
+        const keys2 = Object.keys(obj2);
+        
+        if (keys1.length !== keys2.length) return false;
+        
+        for (const key of keys1) {
+            if (!keys2.includes(key) || !this.deepEqual(obj1[key], obj2[key])) {
+                return false;
+            }
+        }
+        
+        return true;
+    }
+
     savePatientMedicalInfo(patientId, medicalInfo) {
         try {
-            // Get current medical info to detect changes
+            console.log(`💾 Saving medical info for patient ${patientId}:`, medicalInfo);
+            
+            // Collect current configuration BEFORE making changes
+            const oldConfig = this.collectMedicalConfiguration(patientId);
+            console.log(`📋 Old configuration collected BEFORE saving:`, oldConfig);
+            
+            // Get current medical info to detect changes (for legacy change detection)
             const currentMedicalInfo = this.getPatientMedicalInfo(patientId);
+            console.log(`📋 Current medical info from storage:`, currentMedicalInfo);
+            
             const oldRiskLevel = currentMedicalInfo?.selectedRiskLevel;
             const newRiskLevel = medicalInfo?.selectedRiskLevel;
             const oldProblem = currentMedicalInfo?.selectedProblem;
             const newProblem = medicalInfo?.selectedProblem;
             
+            console.log(`📊 Legacy change detection: Risk(${oldRiskLevel} → ${newRiskLevel}), Problem(${oldProblem} → ${newProblem})`);
+            
             // Save individual patient data (legacy compatibility)
             const patientKey = this.storageKeys.PATIENT_PREFIX + patientId + '_medicalInfo';
             localStorage.setItem(patientKey, JSON.stringify(medicalInfo));
+            console.log(`💾 Saved to localStorage key: ${patientKey}`);
 
             // Also save to centralized app data
             const appData = this.getAppData();
@@ -642,9 +896,14 @@ class SharedDataManager {
                 appData.patients[patientId].medicalInfo = medicalInfo;
                 appData.patients[patientId].lastUpdated = new Date().toISOString();
                 this.saveAppData(appData);
+                console.log(`💾 Saved to app data for patient ${patientId}`);
             }
 
-            // Send WebSocket message for any significant medical info change
+            // Collect new configuration AFTER making changes
+            const newConfig = this.collectMedicalConfiguration(patientId);
+            console.log(`📋 New configuration collected AFTER saving:`, newConfig);
+            
+            // FORCE a delta message for testing if we detect basic changes
             let shouldSendMessage = false;
             let changeDescription = [];
 
@@ -680,11 +939,14 @@ class SharedDataManager {
                 console.log(`⚙️ Custom thresholds updated for patient ${patientId}`);
             }
 
-            // Send full configuration message if any significant change detected
+            // ALWAYS send delta message when there are basic changes for debugging
             if (shouldSendMessage) {
-                console.log(`📤 Will send full configuration message for patient ${patientId} with changes:`, changeDescription);
+                console.log(`📤 Will send delta message for patient ${patientId} with changes:`, changeDescription);
+                console.log(`📊 Comparison configs for delta detection:`);
+                console.log(`  - Old config:`, JSON.stringify(oldConfig, null, 2));
+                console.log(`  - New config:`, JSON.stringify(newConfig, null, 2));
                 
-                this.sendFullThresholdsRiskLevels(patientId);
+                this.sendDeltaThresholdsRiskLevels(patientId, oldConfig, newConfig);
                 
                 // Dispatch custom event for cross-page synchronization (bed overview updates)
                 window.dispatchEvent(new CustomEvent('patientMedicalInfoChanged', {
@@ -698,6 +960,11 @@ class SharedDataManager {
                     }
                 }));
                 console.log('🔄 Dispatched patientMedicalInfoChanged event for bed overview update');
+            } else {
+                console.log(`ℹ️ No significant changes detected for patient ${patientId}, skipping WebSocket message`);
+                console.log(`📊 For reference - collected configs:`);
+                console.log(`  - Old config:`, oldConfig);
+                console.log(`  - New config:`, newConfig);
             }
 
             console.log('✅ Patient medical info saved for:', patientId, medicalInfo);
@@ -706,179 +973,6 @@ class SharedDataManager {
             console.error('❌ Error saving patient medical info:', error);
             return false;
         }
-    }
-
-    /**
-     * Collect complete current medical configuration for a patient
-     * Returns the full current state - no delta detection, just current values
-     */
-    collectCurrentMedicalConfiguration(patientId) {
-        try {
-            console.log(`📋 Collecting current medical configuration for patient ${patientId}`);
-            
-            const medicalInfo = this.getPatientMedicalInfo(patientId) || {};
-            const bedStates = this.getBedStates() || {};
-            
-            // Find patient's bed number
-            let bedNumber = null;
-            for (const [bed, data] of Object.entries(bedStates)) {
-                if (data.patientId === patientId) {
-                    bedNumber = parseInt(bed);
-                    break;
-                }
-            }
-            
-            // Get the current medical problem and risk level
-            const medicalProblem = medicalInfo.selectedProblem || null;
-            const selectedRiskLevel = medicalInfo.selectedRiskLevel || 'low';
-            
-            // Get ACTUAL stored monitoring levels (not calculated ones)
-            const actualHeartLevel = this.getHeartMonitoringLevel(patientId) || 'low';
-            const actualLungLevel = this.getLungMonitoringLevel(patientId) || 'low';
-            const actualTempLevel = this.getTempMonitoringLevel(patientId) || 'low';
-            
-            console.log(`📊 Reading actual stored monitoring levels for patient ${patientId}:`);
-            console.log(`  - Heart: ${actualHeartLevel}`);
-            console.log(`  - Lung: ${actualLungLevel}`);
-            console.log(`  - Temp: ${actualTempLevel}`);
-            
-            // Map the stored monitoring levels to the WebSocket risk levels structure
-            // Note: 'circulatoir' corresponds to heart, 'respiratoire' corresponds to lung
-            const riskLevels = {
-                circulatoir: actualHeartLevel,
-                respiratoire: actualLungLevel,
-                temperature: actualTempLevel  // Adding temperature to the structure
-            };
-            
-            // Get current thresholds - try to get actual stored ranges first
-            let thresholds = {
-                HR: { min: 70, max: 100 },
-                BP_Mean: { min: 60, max: 90 },
-                AF: { min: 12, max: 20 },
-                Saturatie: { min: 92, max: 100 },
-                Temperature: { min: 36.0, max: 38.5 }
-            }; // Safe defaults
-            
-            // First, try to get the actual stored target ranges for this patient
-            const storedRanges = this.getCurrentTargetRanges(patientId);
-            console.log(`🔍 DEBUG: Retrieved stored ranges for patient ${patientId}:`, storedRanges);
-            console.log(`🔍 DEBUG: Type of storedRanges:`, typeof storedRanges);
-            console.log(`🔍 DEBUG: Keys in storedRanges:`, Object.keys(storedRanges || {}));
-            
-            if (storedRanges && Object.keys(storedRanges).length > 0) {
-                console.log(`📊 Using stored target ranges for patient ${patientId}:`, storedRanges);
-                thresholds = {
-                    HR: storedRanges.HR || thresholds.HR,
-                    BP_Mean: storedRanges.BP_Mean || thresholds.BP_Mean,
-                    AF: storedRanges.AF || thresholds.AF,
-                    Saturatie: storedRanges.Saturatie || thresholds.Saturatie,
-                    Temperature: storedRanges.Temperature || thresholds.Temperature
-                };
-                console.log(`🔍 DEBUG: Final thresholds object after merging:`, thresholds);
-            } else if (medicalProblem && medicalProblem !== 'none') {
-                // Fallback to matrix-based ranges if no stored ranges available
-                let matrixRanges = this.getMatrixBasedBaseRanges(medicalProblem, selectedRiskLevel);
-                
-                // ENHANCED: Check for active condition tags (pneumonie, sepsis) that might affect thresholds
-                if (matrixRanges && Object.keys(matrixRanges).length > 0) {
-                    console.log(`📊 Base matrix-based ranges for ${medicalProblem}:`, matrixRanges);
-                    
-                    // Check for active condition states that might require threshold adjustments
-                    const activeTags = [];
-                    const sepsisCondition = this.getPatientConditionState('sepsis', patientId);
-                    if (sepsisCondition && sepsisCondition.isActive) {
-                        activeTags.push('sepsis');
-                    }
-                    const pneumonieCondition = this.getPatientConditionState('pneumonie', patientId);
-                    if (pneumonieCondition && pneumonieCondition.isActive) {
-                        activeTags.push('pneumonie');
-                    }
-                    
-                    // Apply tag-based adjustments if any active conditions found
-                    if (activeTags.length > 0) {
-                        console.log(`🏷️ Active condition tags found for threshold calculation:`, activeTags);
-                        const tagAdjustments = this.calculateTagBasedParameterAdjustments(
-                            activeTags, 
-                            matrixRanges, 
-                            {}, // Empty organ states for threshold calculation
-                            selectedRiskLevel
-                        );
-                        if (tagAdjustments && tagAdjustments.adjustedRanges) {
-                            matrixRanges = tagAdjustments.adjustedRanges;
-                            console.log(`📊 Tag-adjusted ranges for WebSocket:`, matrixRanges);
-                        }
-                    }
-                    
-                    thresholds = {
-                        HR: matrixRanges.HR || thresholds.HR,
-                        BP_Mean: matrixRanges.BP_Mean || thresholds.BP_Mean,
-                        AF: matrixRanges.AF || thresholds.AF,
-                        Saturatie: matrixRanges.Saturatie || thresholds.Saturatie,
-                        Temperature: matrixRanges.Temperature || thresholds.Temperature
-                    };
-                    
-                    console.log(`📊 Using matrix + tag-adjusted ranges for patient ${patientId}:`, thresholds);
-                }
-            }
-            
-            console.log(`📊 Final thresholds for patient ${patientId}:`, thresholds);
-            
-            const config = {
-                patientId: patientId,
-                bedNumber: bedNumber,
-                medicalProblem: medicalProblem,
-                riskLevels: riskLevels,
-                thresholds: thresholds
-            };
-            
-            console.log(`✅ Complete configuration being returned for patient ${patientId}:`);
-            console.log(`   📋 Medical Problem: ${medicalProblem}`);
-            console.log(`   🏥 Bed Number: ${bedNumber}`);
-            console.log(`   📊 Risk Levels: circulatoir=${riskLevels.circulatoir}, respiratoire=${riskLevels.respiratoire}, temperature=${riskLevels.temperature}`);
-            console.log(`   ⚙️ Thresholds:`, thresholds);
-            
-            return config;
-        } catch (error) {
-            console.error('❌ Error collecting current medical configuration:', error);
-            return null;
-        }
-    }
-
-    /**
-     * Send complete thresholds_risk_levels message
-     * Always sends the full current configuration - no delta detection
-     */
-    sendFullThresholdsRiskLevels(patientId) {
-        console.log(`📤 Sending full thresholds_risk_levels for patient ${patientId}`);
-        
-        // DEBUG: Show the exact moment when we collect the configuration
-        console.log(`🔍 DEBUG: About to collect current medical configuration for patient ${patientId}`);
-        
-        const currentConfig = this.collectCurrentMedicalConfiguration(patientId);
-        
-        console.log(`🔍 DEBUG: Collected configuration:`, currentConfig);
-        console.log(`🔍 DEBUG: Thresholds in config:`, currentConfig?.thresholds);
-        
-        if (!currentConfig) {
-            console.error('❌ Could not collect current configuration for patient:', patientId);
-            return;
-        }
-        
-        const messageData = {
-            patientId: currentConfig.patientId,
-            bedNumber: currentConfig.bedNumber,
-            changeType: 'full_config',
-            medicalProblem: currentConfig.medicalProblem,
-            riskLevels: currentConfig.riskLevels,
-            thresholds: currentConfig.thresholds
-        };
-        
-        console.log(`📤 Sending complete configuration:`, messageData);
-        
-        // Send the full configuration message
-        this.sendWebSocketMessage('thresholds_risk_levels', messageData);
-        
-        console.log('✅ Full thresholds_risk_levels message sent for patient:', patientId);
     }
 
     /**
@@ -2099,17 +2193,6 @@ class SharedDataManager {
             this.saveAppData(appData);
         }
         
-        // CRITICAL FIX: Also save target ranges to patient-specific storage
-        // This ensures WebSocket messages reflect actual calculated values instead of defaults
-        if (patientId && targetRanges && Object.keys(targetRanges).length > 0) {
-            this.setCurrentTargetRanges(patientId, targetRanges, 'main-problem-change');
-            console.log(`📊 FIXED: Saved calculated target ranges to patient-specific storage for WebSocket messaging`);
-            console.log(`   Patient: ${patientId}`);
-            console.log(`   Problem: ${problemValue}`);
-            console.log(`   Risk Level: ${overallRiskLevel}`);
-            console.log(`   Ranges:`, targetRanges);
-        }
-        
         // Dispatch global parameters changed event to notify all pages
         if (shouldOverwriteManualAdjustments) {
             setTimeout(() => {
@@ -2809,12 +2892,6 @@ class SharedDataManager {
             reasoning: result.reasoning
         });
         
-        // CRITICAL: Save tag-adjusted ranges to patient-specific storage for WebSocket messaging
-        if (result.targetRanges && Object.keys(result.targetRanges).length > 0) {
-            this.setCurrentTargetRanges(patientId, result.targetRanges, 'tag-adjustment');
-            console.log(`📊 Saved tag-adjusted ranges to patient storage for WebSocket messaging`);
-        }
-        
         // UPDATE GLOBAL VARIABLES: Apply delta-adjusted ranges to global variables
         // so that sliders reflect the tag-adjusted parameter values
         if (result.targetRanges) {
@@ -2845,13 +2922,7 @@ class SharedDataManager {
         }
         
         // Dispatch event to notify all pages about parameter AND monitoring level changes
-        // TIMING FIX: Delay WebSocket message to ensure organ state changes are applied first
         setTimeout(() => {
-            // CRITICAL FIX: Send WebSocket message AFTER organ state changes complete
-            // This ensures external systems receive tag-adjusted thresholds AND updated monitoring levels
-            console.log(`📤 Sending WebSocket message for tag-based parameter change: ${tag} = ${isActive ? 'ACTIVE' : 'INACTIVE'} (delayed for consistency)`);
-            this.sendFullThresholdsRiskLevels(patientId);
-            
             window.dispatchEvent(new CustomEvent('tagParametersChanged', {
                 detail: { 
                     source: 'tagChange',
@@ -2875,7 +2946,7 @@ class SharedDataManager {
                 }
             }));
             console.log(`🔄 Dispatched globalParametersChanged event for tag-based slider updates`);
-        }, 100); // Increased delay to ensure organ state changes complete before WebSocket message
+        }, 10);
         
         return result;
     }

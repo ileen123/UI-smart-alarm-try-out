@@ -2080,6 +2080,36 @@
                                     if (window.sharedDataManager) {
                                         window.sharedDataManager.saveGlobalParameterVariables();
                                         console.log('💾 Saved global variables to localStorage');
+                                        
+                                        // CRITICAL: Save to patient-specific storage for WebSocket messaging
+                                        
+                                        // DEBUG: Check data BEFORE saving
+                                        console.log('🔍 BEFORE SAVE - Current target ranges:', window.sharedDataManager.getCurrentTargetRanges(currentPatientId));
+                                        console.log('🔍 BEFORE SAVE - New HR:', window.HR_MIN, '-', window.HR_MAX);
+                                        console.log('🔍 BEFORE SAVE - New BP:', window.BP_MIN, '-', window.BP_MAX);
+                                        console.log('🔍 BEFORE SAVE - PatientId:', currentPatientId);
+                                        
+                                        // Get current ranges and update both parameters at once to avoid race conditions
+                                        const currentRanges = window.sharedDataManager.getCurrentTargetRanges(currentPatientId);
+                                        currentRanges.HR = {
+                                            min: window.HR_MIN,
+                                            max: window.HR_MAX,
+                                            unit: 'bpm'
+                                        };
+                                        currentRanges.BP_Mean = {
+                                            min: window.BP_MIN,
+                                            max: window.BP_MAX,
+                                            unit: 'mmHg'
+                                        };
+                                        // Save all ranges at once
+                                        window.sharedDataManager.setCurrentTargetRanges(currentPatientId, currentRanges, 'slider-save');
+                                        
+                                        // DEBUG: Check data AFTER saving
+                                        console.log('🔍 AFTER SAVE - Updated target ranges:', window.sharedDataManager.getCurrentTargetRanges(currentPatientId));
+                                        
+                                        // SEND WEBSOCKET MESSAGE: Manual threshold adjustment completed
+                                        console.log('📤 Sending WebSocket message for manual HR/BP threshold adjustment');
+                                        window.sharedDataManager.sendFullThresholdsRiskLevels(currentPatientId);
                                     }
                                     
                                     // Update all displays on all pages immediately
@@ -2168,6 +2198,36 @@
                                     if (window.sharedDataManager) {
                                         window.sharedDataManager.saveGlobalParameterVariables();
                                         console.log('💾 Saved global variables to localStorage');
+                                        
+                                        // CRITICAL: Save to patient-specific storage for WebSocket messaging
+                                        
+                                        // DEBUG: Check data BEFORE saving
+                                        console.log('🔍 BEFORE SAVE - Current target ranges:', window.sharedDataManager.getCurrentTargetRanges(currentPatientId));
+                                        console.log('🔍 BEFORE SAVE - New BP:', window.BP_MIN, '-', window.BP_MAX);
+                                        console.log('🔍 BEFORE SAVE - New HR:', window.HR_MIN, '-', window.HR_MAX);
+                                        console.log('🔍 BEFORE SAVE - PatientId:', currentPatientId);
+                                        
+                                        // Get current ranges and update both parameters at once to avoid race conditions
+                                        const currentRanges = window.sharedDataManager.getCurrentTargetRanges(currentPatientId);
+                                        currentRanges.BP_Mean = {
+                                            min: window.BP_MIN,
+                                            max: window.BP_MAX,
+                                            unit: 'mmHg'
+                                        };
+                                        currentRanges.HR = {
+                                            min: window.HR_MIN,
+                                            max: window.HR_MAX,
+                                            unit: 'bpm'
+                                        };
+                                        // Save all ranges at once
+                                        window.sharedDataManager.setCurrentTargetRanges(currentPatientId, currentRanges, 'slider-save');
+                                        
+                                        // DEBUG: Check data AFTER saving
+                                        console.log('🔍 AFTER SAVE - Updated target ranges:', window.sharedDataManager.getCurrentTargetRanges(currentPatientId));
+                                        
+                                        // SEND WEBSOCKET MESSAGE: Manual threshold adjustment completed
+                                        console.log('📤 Sending WebSocket message for manual HR/BP threshold adjustment');
+                                        window.sharedDataManager.sendFullThresholdsRiskLevels(currentPatientId);
                                     }
                                     
                                     // Update all displays on all pages immediately
