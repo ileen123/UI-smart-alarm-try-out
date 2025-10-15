@@ -1386,6 +1386,45 @@
             console.log(`✅ Monitoring level changed to: ${level} (heart: ${heartLevel})`);
         }
 
+        // Function to update risk level buttons based on current heart monitoring level
+        function updateRiskLevelButtons() {
+            if (!currentPatientId || !window.sharedDataManager) return;
+            
+            // Get current heart monitoring level from data manager
+            const currentHeartLevel = window.sharedDataManager.getHeartMonitoringLevel(currentPatientId);
+            console.log(`🔄 Updating risk level buttons for heart level: ${currentHeartLevel}`);
+            
+            // Map heart levels to button levels
+            const levelMapping = {
+                'low': 'loose',
+                'mid': 'mid', 
+                'high': 'tight'
+            };
+            
+            const buttonLevel = levelMapping[currentHeartLevel] || 'mid';
+            
+            // Update button selection
+            const allButtons = document.querySelectorAll('.btn.risk-low, .btn.risk-med, .btn.risk-high');
+            allButtons.forEach(btn => btn.classList.remove('selected'));
+            
+            // Add selected class to the correct button
+            const targetButton = document.querySelector(`[data-level="${buttonLevel}"]`);
+            if (targetButton) {
+                targetButton.classList.add('selected');
+                console.log(`✅ Updated risk level button selection to: ${buttonLevel} (heart level: ${currentHeartLevel})`);
+            } else {
+                console.warn(`⚠️ Could not find button for level: ${buttonLevel}`);
+            }
+            
+            // Also update the heart circle to reflect the new monitoring level
+            if (window.circulatoirHeartCircle && typeof window.circulatoirHeartCircle.setRiskLevel === 'function') {
+                window.circulatoirHeartCircle.setRiskLevel(currentHeartLevel);
+                console.log(`🫀 Updated heart circle to reflect new monitoring level: ${currentHeartLevel}`);
+            } else {
+                console.warn('⚠️ circulatoirHeartCircle not available for update');
+            }
+        }
+
         function initializePage() {
             console.log('🔄 Initializing circulatoir settings page...');
             
@@ -1797,27 +1836,27 @@
                             // Double-check that the visual values are updated
                             const maxValueElement = hrSlider.container.querySelector('.sliding-value-outside.max-value');
                             const minValueElement = hrSlider.container.querySelector('.sliding-value-outside.min-value');
-                            if (maxValueElement && maxValueElement.textContent != Math.round(window.HR_high)) {
-                                maxValueElement.textContent = Math.round(window.HR_high);
+                            if (maxValueElement && maxValueElement.textContent != Math.round(window.HR_MAX)) {
+                                maxValueElement.textContent = Math.round(window.HR_MAX);
                             }
-                            if (minValueElement && minValueElement.textContent != Math.round(window.HR_low)) {
-                                minValueElement.textContent = Math.round(window.HR_low);
+                            if (minValueElement && minValueElement.textContent != Math.round(window.HR_MIN)) {
+                                minValueElement.textContent = Math.round(window.HR_MIN);
                             }
-                            console.log('🔄 Verified HR slider visual update:', window.HR_low, '-', window.HR_high);
+                            console.log('🔄 Verified HR slider visual update:', window.HR_MIN, '-', window.HR_MAX);
                         }, 100);
                         
                     } else {
                         console.warn('⚠️ HR slider not available for global update');
                     }
                 } else {
-                    console.warn('⚠️ Global HR_low or HR_high not available');
+                    console.warn('⚠️ Global HR_MIN or HR_MAX not available');
                 }
             }
             
             // Test function to force sepsis range (90-130) - for debugging
             function testSepsisRange() {
-                window.HR_low = 90;
-                window.HR_high = 130;
+                window.HR_MIN = 90;
+                window.HR_MAX = 130;
                 console.log('🧪 TEST: Set globals to sepsis range 90-130');
                 updateHRSliderFromGlobalValues();
             }
@@ -1834,7 +1873,23 @@
                             window.HR_MIN = targetRanges.HR.min;
                             window.HR_MAX = targetRanges.HR.max;
                             console.log('🎯 Updated HR global variables from target ranges:', window.HR_MIN, '-', window.HR_MAX);
-                            updateHRSliderFromGlobalValues();
+                            
+                            // Update HR slider using the same method as BP slider for consistency
+                            if (hrSlider && typeof hrSlider.updateConfig === 'function') {
+                                hrSlider.updateConfig({
+                                    targetRange: {
+                                        min: window.HR_MIN,
+                                        max: window.HR_MAX
+                                    }
+                                });
+                                // Force visual position refresh if method exists
+                                if (hrSlider.updateSliderPosition) {
+                                    hrSlider.updateSliderPosition();
+                                }
+                                console.log('✅ HR slider updated via updateConfig method');
+                            } else {
+                                updateHRSliderFromGlobalValues();
+                            }
                         }
                         
                         // Update BP slider if available (similar logic)
@@ -1873,6 +1928,10 @@
                 if (patientId === currentPatientId) {
                     console.log('🔄 Updating HR slider with new ranges:', HR_low, '-', HR_high, 'source:', source);
                     
+                    // Update global variables for consistency with main refresh function
+                    window.HR_MIN = HR_low;
+                    window.HR_MAX = HR_high;
+                    
                     // Update currentSettings
                     currentSettings.hr = {
                         min: HR_low,
@@ -1882,6 +1941,11 @@
                     // Update BP settings if BP ranges are provided
                     if (typeof BP_low !== 'undefined' && typeof BP_high !== 'undefined') {
                         console.log('🩸 Updating BP slider with new ranges:', BP_low, '-', BP_high, 'source:', source);
+                        
+                        // Update global variables for consistency
+                        window.BP_MIN = BP_low;
+                        window.BP_MAX = BP_high;
+                        
                         currentSettings.bp = {
                             min: BP_low,
                             max: BP_high
@@ -1931,6 +1995,13 @@
                         }
                         
                         console.log(`🏷️ UNIFIED TAG (CIRC): ${tagCondition} ${newState ? 'selected' : 'deselected'} via unified system`);
+                        
+                        // Backup timeout to ensure UI updates
+                        setTimeout(() => {
+                            console.log('🔄 BACKUP (CIRC): Forcing slider refresh...');
+                            refreshSlidersFromTargetRanges();
+                            updateRiskLevelButtons(); // Also update buttons and heart circle
+                        }, 50);
                     }
                 });
             });
@@ -1988,6 +2059,17 @@
                         refreshSlidersFromTargetRanges();
                     }
                     
+                    // Update risk level buttons to reflect new monitoring levels
+                    updateRiskLevelButtons();
+                    
+                    // Additional timeout-based refresh to ensure everything is updated
+                    setTimeout(() => {
+                        console.log('🔄 UNIFIED TAG (CIRC): Secondary refresh after timeout...');
+                        refreshSlidersFromTargetRanges();
+                        updateRiskLevelButtons(); // Update buttons again after timeout
+                        console.log('✅ UNIFIED TAG (CIRC): Secondary refresh completed');
+                    }, 100);
+                    
                     console.log('✅ UNIFIED TAG (CIRC): Immediate slider updates completed');
                 } else {
                     console.log('⏭️ UNIFIED TAG (CIRC): Skipping slider update - different patient');
@@ -2030,10 +2112,13 @@
                         }
                     }
                     
-                    // ENHANCEMENT: Also refresh sliders when tag states sync from other pages
-                    console.log('🔄 UNIFIED TAG (CIRC): Refreshing sliders after tag state sync...');
-                    refreshSlidersFromTargetRanges();
-                    console.log('✅ UNIFIED TAG (CIRC): Slider refresh completed after sync');
+                    // ENHANCEMENT: Refresh sliders when tag states sync from other pages with timeout
+                    setTimeout(() => {
+                        console.log('🔄 UNIFIED TAG (CIRC): Refreshing sliders after tag state sync...');
+                        refreshSlidersFromTargetRanges();
+                        updateRiskLevelButtons(); // Update risk level buttons too
+                        console.log('✅ UNIFIED TAG (CIRC): Slider refresh completed after sync');
+                    }, 100);
                 }
             });
 
@@ -2118,17 +2203,42 @@
                     hrContainer.innerHTML = '<p style="color: blue;">Loading HR slider...</p>';
                     
                     try {
+                        // GET ACTUAL STORED TARGET RANGES FIRST
+                        let hrTargetRange = { min: 60, max: 100 }; // Safe defaults
+                        
+                        if (currentPatientId && window.sharedDataManager) {
+                            const currentTargetRanges = window.sharedDataManager.getCurrentTargetRanges(currentPatientId);
+                            if (currentTargetRanges && currentTargetRanges.HR) {
+                                hrTargetRange = {
+                                    min: currentTargetRanges.HR.min,
+                                    max: currentTargetRanges.HR.max
+                                };
+                                console.log('📊 Using stored HR target range for slider initialization:', hrTargetRange);
+                                
+                                // Update global variables to match stored data
+                                window.HR_MIN = hrTargetRange.min;
+                                window.HR_MAX = hrTargetRange.max;
+                                console.log('🔄 Updated global HR variables to match stored data:', window.HR_MIN, '-', window.HR_MAX);
+                            } else {
+                                console.log('⚠️ No stored HR target range found, using defaults:', hrTargetRange);
+                                
+                                // Set global variables to defaults
+                                window.HR_MIN = hrTargetRange.min;
+                                window.HR_MAX = hrTargetRange.max;
+                            }
+                        }
+                        
                         // Get Matrix-based yAxis ranges for optimal slider bounds
                         const hrYAxisRange = window.sharedDataManager ? 
                             window.sharedDataManager.getOptimalYAxisRange('HR') : 
                             { min: 40, max: 140, step: 20 }; // Fallback
                         
-                        // Try direct instantiation first
+                        // Initialize slider with ACTUAL stored target range data
                         window.hrSlider = new window.VitalParameterSlider(hrContainer, {
                             parameter: 'HR',
                             name: 'HR',
                             unit: 'bpm',
-                            targetRange: { min: window.HR_MIN, max: window.HR_MAX },
+                            targetRange: hrTargetRange, // Use actual stored data, not global variables
                             yAxis: hrYAxisRange,
                             monitoringLevel: 'mid',
                             patientId: currentPatientId,
@@ -2202,23 +2312,7 @@
                         });
                         
                         if (window.hrSlider) {
-                            console.log('✅ HR Slider initialized successfully');
-                            // Always sync sliders with current target ranges after initialization
-                            setTimeout(() => {
-                                if (currentPatientId && window.sharedDataManager) {
-                                    const targetRanges = window.sharedDataManager.getCurrentTargetRanges(currentPatientId);
-                                    if (targetRanges && targetRanges.HR) {
-                                        console.log('🔄 Initializing slider with current target ranges:', targetRanges.HR.min, '-', targetRanges.HR.max);
-                                        // Set global values - slider will automatically use these
-                                        window.HR_MIN = targetRanges.HR.min;
-                                        window.HR_MAX = targetRanges.HR.max;
-                                        console.log('✅ Global HR values set:', window.HR_MIN, '-', window.HR_MAX);
-                                    }
-                                } else {
-                                    // Fallback to existing global values
-                                    updateHRSliderFromGlobalValues();
-                                }
-                            }, 100);
+                            console.log('✅ HR Slider initialized successfully with stored target ranges');
                         } else {
                             console.error('❌ HR Slider initialization returned null');
                             hrContainer.innerHTML = '<p style="color: red;">HR Slider initialization returned null</p>';
@@ -2236,17 +2330,42 @@
                     bpContainer.innerHTML = '<p style="color: blue;">Loading BP slider...</p>';
                     
                     try {
+                        // GET ACTUAL STORED TARGET RANGES FIRST
+                        let bpTargetRange = { min: 60, max: 90 }; // Safe defaults
+                        
+                        if (currentPatientId && window.sharedDataManager) {
+                            const currentTargetRanges = window.sharedDataManager.getCurrentTargetRanges(currentPatientId);
+                            if (currentTargetRanges && currentTargetRanges.BP_Mean) {
+                                bpTargetRange = {
+                                    min: currentTargetRanges.BP_Mean.min,
+                                    max: currentTargetRanges.BP_Mean.max
+                                };
+                                console.log('📊 Using stored BP target range for slider initialization:', bpTargetRange);
+                                
+                                // Update global variables to match stored data
+                                window.BP_MIN = bpTargetRange.min;
+                                window.BP_MAX = bpTargetRange.max;
+                                console.log('🔄 Updated global BP variables to match stored data:', window.BP_MIN, '-', window.BP_MAX);
+                            } else {
+                                console.log('⚠️ No stored BP target range found, using defaults:', bpTargetRange);
+                                
+                                // Set global variables to defaults
+                                window.BP_MIN = bpTargetRange.min;
+                                window.BP_MAX = bpTargetRange.max;
+                            }
+                        }
+                        
                         // Get Matrix-based yAxis ranges for optimal slider bounds
                         const bpYAxisRange = window.sharedDataManager ? 
                             window.sharedDataManager.getOptimalYAxisRange('BP_Mean') : 
                             { min: 30, max: 100, step: 10 }; // Fallback
                         
-                        // Try direct instantiation
+                        // Initialize slider with ACTUAL stored target range data
                         window.bpSlider = new window.VitalParameterSlider(bpContainer, {
                             parameter: 'BP_Mean',
                             name: 'BP Mean',
                             unit: 'mmHg',
-                            targetRange: { min: window.BP_MIN, max: window.BP_MAX },
+                            targetRange: bpTargetRange, // Use actual stored data, not global variables
                             yAxis: bpYAxisRange,
                             monitoringLevel: 'mid',
                             patientId: currentPatientId,

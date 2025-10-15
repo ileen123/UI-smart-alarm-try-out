@@ -1221,6 +1221,45 @@
             console.log(`✅ Monitoring level changed to: ${level} (temp: ${tempLevel})`);
         }
 
+        // Function to update risk level buttons based on current temp monitoring level
+        function updateRiskLevelButtons() {
+            if (!currentPatientId || !window.sharedDataManager) return;
+            
+            // Get current temp monitoring level from data manager
+            const currentTempLevel = window.sharedDataManager.getTempMonitoringLevel(currentPatientId);
+            console.log(`🔄 Updating risk level buttons for temp level: ${currentTempLevel}`);
+            
+            // Map temp levels to button levels
+            const levelMapping = {
+                'low': 'loose',
+                'mid': 'mid', 
+                'high': 'tight'
+            };
+            
+            const buttonLevel = levelMapping[currentTempLevel] || 'mid';
+            
+            // Update button selection
+            const allButtons = document.querySelectorAll('.btn.risk-low, .btn.risk-med, .btn.risk-high');
+            allButtons.forEach(btn => btn.classList.remove('selected'));
+            
+            // Add selected class to the correct button
+            const targetButton = document.querySelector(`[data-level="${buttonLevel}"]`);
+            if (targetButton) {
+                targetButton.classList.add('selected');
+                console.log(`✅ Updated risk level button selection to: ${buttonLevel} (temp level: ${currentTempLevel})`);
+            } else {
+                console.warn(`⚠️ Could not find button for level: ${buttonLevel}`);
+            }
+            
+            // Also update the temp circle to reflect the new monitoring level
+            if (window.tempCircle && typeof window.tempCircle.setRiskLevel === 'function') {
+                window.tempCircle.setRiskLevel(currentTempLevel);
+                console.log(`🌡️ Updated temp circle to reflect new monitoring level: ${currentTempLevel}`);
+            } else {
+                console.warn('⚠️ tempCircle not available for update');
+            }
+        }
+
         function initializePage() {
             console.log('🔄 Initializing respiratory settings page...');
             
@@ -1492,8 +1531,62 @@
                         }
                         
                         console.log(`🏷️ UNIFIED TAG (OTHER): ${tagCondition} ${newState ? 'selected' : 'deselected'} via unified system`);
+                        
+                        // Backup timeout to ensure UI updates
+                        setTimeout(() => {
+                            console.log('🔄 BACKUP (OTHER): Forcing AF slider refresh...');
+                            if (window.afSlider && typeof window.afSlider.updateConfig === 'function') {
+                                window.afSlider.updateConfig({
+                                    targetRange: {
+                                        min: window.AF_MIN,
+                                        max: window.AF_MAX
+                                    }
+                                });
+                                if (window.afSlider.updateSliderPosition) {
+                                    window.afSlider.updateSliderPosition();
+                                }
+                            }
+                        }, 50);
                     }
                 });
+            });
+            
+            // UNIFIED TAG SYSTEM: Listen for immediate UI updates after tag changes
+            window.addEventListener('unifiedTagUIUpdateRequired', function(event) {
+                console.log('🔄 UNIFIED TAG (OTHER): Immediate UI update required:', event.detail);
+                
+                const { patientId, activeTags, targetRanges, organStates } = event.detail;
+                
+                // Only update if it's for the current patient
+                if (patientId === currentPatientId) {
+                    console.log('🏷️ UNIFIED TAG (OTHER): Applying immediate UI updates...');
+                    console.log('   - Active tags:', activeTags);
+                    console.log('   - Target ranges:', targetRanges);
+                    console.log('   - Organ states:', organStates);
+                    
+                    // Refresh AF slider if it exists
+                    if (window.afSlider && targetRanges) {
+                        console.log('🔄 UNIFIED TAG (OTHER): Refreshing AF slider...');
+                        if (typeof window.afSlider.updateConfig === 'function') {
+                            window.afSlider.updateConfig({
+                                targetRange: {
+                                    min: window.AF_MIN,
+                                    max: window.AF_MAX
+                                }
+                            });
+                            if (window.afSlider.updateSliderPosition) {
+                                window.afSlider.updateSliderPosition();
+                            }
+                        }
+                    }
+                    
+                    // Update risk level buttons to reflect new monitoring levels
+                    updateRiskLevelButtons();
+                    
+                    console.log('✅ UNIFIED TAG (OTHER): Immediate UI updates completed');
+                } else {
+                    console.log('⏭️ UNIFIED TAG (OTHER): Skipping UI update - different patient');
+                }
             });
             
             // UNIFIED TAG SYSTEM: Listen for unified tag state synchronization
@@ -1518,6 +1611,24 @@
                             console.log(`🏷️ UNIFIED TAG (OTHER): Synced pneumonie to ${tagStates.pneumonie ? 'SELECTED' : 'DESELECTED'}`);
                         }
                     }
+                    
+                    // Refresh UI with timeout to ensure data is processed
+                    setTimeout(() => {
+                        console.log('🔄 UNIFIED TAG (OTHER): Refreshing AF slider after sync event...');
+                        if (window.afSlider && typeof window.afSlider.updateConfig === 'function') {
+                            window.afSlider.updateConfig({
+                                targetRange: {
+                                    min: window.AF_MIN,
+                                    max: window.AF_MAX
+                                }
+                            });
+                            if (window.afSlider.updateSliderPosition) {
+                                window.afSlider.updateSliderPosition();
+                            }
+                        }
+                        updateRiskLevelButtons(); // Update risk level buttons too
+                        console.log('✅ UNIFIED TAG (OTHER): AF slider refresh completed after sync');
+                    }, 100);
                 }
             });
             
@@ -1618,6 +1729,27 @@
                                 source: 'other-settings'
                             });
                             console.log(`🏷️ ${condition} deselected in other settings`);
+                            
+                            // Backup timeout to ensure UI updates for legacy tags
+                            setTimeout(() => {
+                                console.log(`🔄 LEGACY BACKUP (OTHER): Forcing UI refresh after ${condition} deselection...`);
+                                if (window.afSlider && typeof window.afSlider.updateConfig === 'function') {
+                                    window.afSlider.updateConfig({
+                                        targetRange: {
+                                            min: window.AF_MIN,
+                                            max: window.AF_MAX
+                                        }
+                                    });
+                                    if (window.afSlider.updateSliderPosition) {
+                                        window.afSlider.updateSliderPosition();
+                                    }
+                                }
+                                
+                                // Update risk level buttons and temp circles
+                                if (typeof updateRiskLevelButtons === 'function') {
+                                    updateRiskLevelButtons();
+                                }
+                            }, 100);
                         }
                     } else {
                         // Select tag
@@ -1632,6 +1764,27 @@
                                 source: 'other-settings'
                             });
                             console.log(`🏷️ ${condition} selected in other settings`);
+                            
+                            // Backup timeout to ensure UI updates for legacy tags
+                            setTimeout(() => {
+                                console.log(`🔄 LEGACY BACKUP (OTHER): Forcing UI refresh after ${condition} selection...`);
+                                if (window.afSlider && typeof window.afSlider.updateConfig === 'function') {
+                                    window.afSlider.updateConfig({
+                                        targetRange: {
+                                            min: window.AF_MIN,
+                                            max: window.AF_MAX
+                                        }
+                                    });
+                                    if (window.afSlider.updateSliderPosition) {
+                                        window.afSlider.updateSliderPosition();
+                                    }
+                                }
+                                
+                                // Update risk level buttons and temp circles
+                                if (typeof updateRiskLevelButtons === 'function') {
+                                    updateRiskLevelButtons();
+                                }
+                            }, 100);
                         }
                     }
                 });
@@ -1682,11 +1835,36 @@
                     tempContainer.innerHTML = '<p style="color: blue;">Loading Temperature slider...</p>';
                     
                     try {
+                        // GET ACTUAL STORED TARGET RANGES FIRST
+                        let tempTargetRange = { min: 36.5, max: 37.5 }; // Safe defaults
+                        
+                        if (currentPatientId && window.sharedDataManager) {
+                            const currentTargetRanges = window.sharedDataManager.getCurrentTargetRanges(currentPatientId);
+                            if (currentTargetRanges && currentTargetRanges.Temperature) {
+                                tempTargetRange = {
+                                    min: currentTargetRanges.Temperature.min,
+                                    max: currentTargetRanges.Temperature.max
+                                };
+                                console.log('📊 Using stored Temperature target range for slider initialization:', tempTargetRange);
+                                
+                                // Update global variables to match stored data
+                                window.TEMP_MIN = tempTargetRange.min;
+                                window.TEMP_MAX = tempTargetRange.max;
+                                console.log('🔄 Updated global Temperature variables to match stored data:', window.TEMP_MIN, '-', window.TEMP_MAX);
+                            } else {
+                                console.log('⚠️ No stored Temperature target range found, using defaults:', tempTargetRange);
+                                
+                                // Set global variables to defaults
+                                window.TEMP_MIN = tempTargetRange.min;
+                                window.TEMP_MAX = tempTargetRange.max;
+                            }
+                        }
+                        
                         tempSlider = new window.VitalParameterSlider(tempContainer, {
                             parameter: 'Temperature',
                             name: 'Temperatuur',
                             unit: '°C',
-                            targetRange: { min: window.TEMP_MIN, max: window.TEMP_MAX },
+                            targetRange: tempTargetRange, // Use actual stored data, not global variables
                             yAxis: { min: 35, max: 42, step: 0.5 },
                             monitoringLevel: 'mid',
                             patientId: currentPatientId,

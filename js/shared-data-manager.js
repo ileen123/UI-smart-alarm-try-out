@@ -4328,7 +4328,7 @@ class SharedDataManager {
         let finalMonitoringLevels = { ...baseMonitoringLevels };
         
         if (activeTags.length > 0) {
-            // Apply tag-based parameter adjustments
+            // Apply tag-based parameter adjustments (includes both parameter ranges AND monitoring levels)
             const parameterAdjustments = this.calculateTagBasedParameterAdjustments(
                 activeTags,
                 matrixBaseRanges,
@@ -4336,19 +4336,15 @@ class SharedDataManager {
                 selectedRiskLevel
             );
             
-            // Apply tag-based monitoring level adjustments  
-            const monitoringAdjustments = this.calculateTagBasedMonitoringAdjustments(
-                activeTags,
-                baseMonitoringLevels,
-                selectedRiskLevel
-            );
+            // NOTE: Monitoring level adjustments are already included in parameterAdjustments
+            // No need for separate calculateTagBasedMonitoringAdjustments call to avoid duplication
             
             finalRanges = parameterAdjustments.adjustedRanges;
-            finalMonitoringLevels = monitoringAdjustments.adjustedLevels;
+            finalMonitoringLevels = parameterAdjustments.adjustedOrganStates; // Use organ states from parameter adjustments
             
             console.log(`🏷️ SINGLE SOURCE: Tag adjustments applied:`, {
                 parameterChanges: parameterAdjustments.appliedAdjustments?.length || 0,
-                monitoringChanges: Object.keys(monitoringAdjustments.adjustedLevels).length,
+                organStateChanges: parameterAdjustments.adjustedOrganStates,
                 finalRanges: finalRanges,
                 finalMonitoringLevels: finalMonitoringLevels
             });
@@ -4406,6 +4402,10 @@ class SharedDataManager {
 
     /**
      * Calculate Tag-Based Monitoring Adjustments
+     * 
+     * ⚠️ DEPRECATED: This function is no longer used to avoid duplication.
+     * Monitoring level adjustments are now handled directly in calculateTagBasedParameterAdjustments()
+     * 
      * Separate method for monitoring level adjustments (similar to parameter adjustments)
      * @param {Array} activeTags - Array of active condition tags
      * @param {Object} baseMonitoringLevels - Base monitoring levels

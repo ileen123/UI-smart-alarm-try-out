@@ -1090,44 +1090,29 @@
                 displayText += ` ${unit}`;
             }
             
-            // Find the target element based on parameter type
-            switch (parameter) {
-                case 'HR':
-                    targetElement = document.querySelector('.value-card .value-number');
-                    displayText += unit ? '' : ' bpm';
-                    break;
-                case 'BP_Mean':
-                    const cards = document.querySelectorAll('.value-card');
-                    const bpCard = Array.from(cards).find(card => 
-                        card.querySelector('.value-unit')?.textContent?.toLowerCase().includes('mmhg')
-                    );
-                    targetElement = bpCard?.querySelector('.value-number');
-                    displayText += unit ? '' : ' mmHg';
-                    break;
-                case 'AF':
-                    const respiratoryCards = document.querySelectorAll('.value-card');
-                    const afCard = Array.from(respiratoryCards).find(card => 
-                        card.querySelector('h3')?.textContent?.toLowerCase().includes('ademfrequentie')
-                    );
-                    targetElement = afCard?.querySelector('.value-number');
-                    displayText += unit ? '' : ' /min';
-                    break;
-                case 'Saturatie':
-                    const satCards = document.querySelectorAll('.value-card');
-                    const satCard = Array.from(satCards).find(card => 
-                        card.querySelector('h3')?.textContent?.toLowerCase().includes('saturatie')
-                    );
-                    targetElement = satCard?.querySelector('.value-number');
-                    displayText += unit ? '' : ' %';
-                    break;
-                case 'Temperature':
-                    const tempCards = document.querySelectorAll('.value-card');
-                    const tempCard = Array.from(tempCards).find(card => 
-                        card.querySelector('h3')?.textContent?.toLowerCase().includes('temperatuur')
-                    );
-                    targetElement = tempCard?.querySelector('.value-number');
-                    displayText += unit ? '' : ' °C';
-                    break;
+            // Find the target element using data-parameter attribute (more reliable)
+            const parameterRow = document.querySelector(`[data-parameter="${parameter}"]`);
+            if (parameterRow) {
+                targetElement = parameterRow.querySelector('.value-number');
+                
+                // Add default units if not provided
+                switch (parameter) {
+                    case 'HR':
+                        displayText += unit ? '' : ' bpm';
+                        break;
+                    case 'BP_Mean':
+                        displayText += unit ? '' : ' mmHg';
+                        break;
+                    case 'AF':
+                        displayText += unit ? '' : ' /min';
+                        break;
+                    case 'Saturatie':
+                        displayText += unit ? '' : ' %';
+                        break;
+                    case 'Temperature':
+                        displayText += unit ? '' : ' °C';
+                        break;
+                }
             }
             
             // Update the element if found
@@ -1136,7 +1121,7 @@
                 targetElement.classList.remove('inactive-text'); // Make sure it's visible
                 console.log(`📊 SINGLE SOURCE: Updated ${parameter} display to: ${displayText}`);
             } else {
-                console.warn(`⚠️ SINGLE SOURCE: Could not find display element for ${parameter}`);
+                console.warn(`⚠️ SINGLE SOURCE: Could not find display element for ${parameter} (parameterRow: ${!!parameterRow})`);
             }
         }
 
@@ -1210,49 +1195,57 @@
         function updateMonitoringStatus() {
             if (!currentPatientId || !window.sharedDataManager) return;
             
-            console.log('🔄 Updating monitoring status displays from STORED values...');
+            console.log('🔄 SINGLE SOURCE: Updating monitoring status displays...');
             
-            // Get monitoring levels from storage (Display Truth)
-            const heartLevel = window.sharedDataManager.getHeartMonitoringLevel(currentPatientId);
-            const lungLevel = window.sharedDataManager.getLungMonitoringLevel(currentPatientId);
-            const tempLevel = window.sharedDataManager.getTempMonitoringLevel(currentPatientId);
+            // Get ALL effective values from single source (prevents multiple calls)
+            const effectiveValues = window.sharedDataManager.getCurrentEffectiveValues(
+                currentPatientId, 
+                { useCache: true } // Use cache to prevent redundancy
+            );
+            
+            if (!effectiveValues || !effectiveValues.monitoringLevels) {
+                console.warn('⚠️ Could not get effective monitoring levels');
+                return;
+            }
+            
+            const { heart: heartLevel, lung: lungLevel, temp: tempLevel } = effectiveValues.monitoringLevels;
             
             // Update heart status from storage
             const heartStatusElement = document.getElementById('heart-status');
             if (heartStatusElement) {
                 heartStatusElement.textContent = getStatusText(heartLevel);
-                console.log(`💓 Heart status updated to: ${getStatusText(heartLevel)} (level: ${heartLevel}) [FROM STORAGE]`);
+                console.log(`💓 Heart status updated to: ${getStatusText(heartLevel)} (level: ${heartLevel}) [FROM SINGLE SOURCE]`);
             }
             
             // Update lung status from storage
             const lungStatusElement = document.getElementById('lung-status');
             if (lungStatusElement) {
                 lungStatusElement.textContent = getStatusText(lungLevel);
-                console.log(`🫁 Lung status updated to: ${getStatusText(lungLevel)} (level: ${lungLevel}) [FROM STORAGE]`);
+                console.log(`🫁 Lung status updated to: ${getStatusText(lungLevel)} (level: ${lungLevel}) [FROM SINGLE SOURCE]`);
             }
             
             // Update temp status from storage
             const tempStatusElement = document.getElementById('temp-status');
             if (tempStatusElement) {
                 tempStatusElement.textContent = getStatusText(tempLevel);
-                console.log(`🌡️ Temp status updated to: ${getStatusText(tempLevel)} (level: ${tempLevel}) [FROM STORAGE]`);
+                console.log(`🌡️ Temp status updated to: ${getStatusText(tempLevel)} (level: ${tempLevel}) [FROM SINGLE SOURCE]`);
             }
             
             // Sync visual components to match stored values
             if (window.organComponents?.heart) {
                 window.organComponents.heart.setRiskLevel(heartLevel);
-                console.log(`🔄 Synced heart component to stored level: ${heartLevel}`);
+                console.log(`🔄 Synced heart component to effective level: ${heartLevel}`);
             }
             if (window.organComponents?.lung) {
                 window.organComponents.lung.setRiskLevel(lungLevel);
-                console.log(`🔄 Synced lung component to stored level: ${lungLevel}`);
+                console.log(`🔄 Synced lung component to effective level: ${lungLevel}`);
             }
             if (window.organComponents?.temp) {
                 window.organComponents.temp.setRiskLevel(tempLevel);
                 console.log(`� Synced temp component to stored level: ${tempLevel}`);
             }
             
-            console.log(`📊 DISPLAY TRUTH - All levels from storage: Heart: ${heartLevel}, Lung: ${lungLevel}, Temp: ${tempLevel}`);
+            console.log(`📊 SINGLE SOURCE - All monitoring levels: Heart: ${heartLevel}, Lung: ${lungLevel}, Temp: ${tempLevel}`);
         }
         
         // Function to convert risk level to Dutch status text
@@ -1949,6 +1942,7 @@
                 riskButton.classList.add('selected');
             }
         }
+
 
         function initializeSepsisTagState() {
             console.log('🏥 Initializing condition states on alarm overview...');

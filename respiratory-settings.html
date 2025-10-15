@@ -1302,6 +1302,45 @@
             console.log(`✅ Monitoring level changed to: ${level} (lung: ${lungLevel})`);
         }
 
+        // Function to update risk level buttons based on current lung monitoring level
+        function updateRiskLevelButtons() {
+            if (!currentPatientId || !window.sharedDataManager) return;
+            
+            // Get current lung monitoring level from data manager
+            const currentLungLevel = window.sharedDataManager.getLungMonitoringLevel(currentPatientId);
+            console.log(`🔄 Updating risk level buttons for lung level: ${currentLungLevel}`);
+            
+            // Map lung levels to button levels
+            const levelMapping = {
+                'low': 'loose',
+                'mid': 'mid', 
+                'high': 'tight'
+            };
+            
+            const buttonLevel = levelMapping[currentLungLevel] || 'mid';
+            
+            // Update button selection
+            const allButtons = document.querySelectorAll('.btn.risk-low, .btn.risk-med, .btn.risk-high');
+            allButtons.forEach(btn => btn.classList.remove('selected'));
+            
+            // Add selected class to the correct button
+            const targetButton = document.querySelector(`[data-level="${buttonLevel}"]`);
+            if (targetButton) {
+                targetButton.classList.add('selected');
+                console.log(`✅ Updated risk level button selection to: ${buttonLevel} (lung level: ${currentLungLevel})`);
+            } else {
+                console.warn(`⚠️ Could not find button for level: ${buttonLevel}`);
+            }
+            
+            // Also update the lung circle to reflect the new monitoring level
+            if (window.respiratoryLungCircle && typeof window.respiratoryLungCircle.setRiskLevel === 'function') {
+                window.respiratoryLungCircle.setRiskLevel(currentLungLevel);
+                console.log(`🫁 Updated lung circle to reflect new monitoring level: ${currentLungLevel}`);
+            } else {
+                console.warn('⚠️ respiratoryLungCircle not available for update');
+            }
+        }
+
         function initializePage() {
             console.log('🔄 Initializing respiratory settings page...');
             
@@ -1815,8 +1854,43 @@
                         }
                         
                         console.log(`🏷️ UNIFIED TAG (RESP): ${tagCondition} ${newState ? 'selected' : 'deselected'} via unified system`);
+                        
+                        // Backup timeout to ensure UI updates
+                        setTimeout(() => {
+                            console.log('🔄 BACKUP (RESP): Forcing slider refresh...');
+                            refreshSlidersFromTargetRanges();
+                            updateRiskLevelButtons(); // Also update buttons and lung circle
+                        }, 50);
                     }
                 });
+            });
+            
+            // UNIFIED TAG SYSTEM: Listen for immediate UI updates after tag changes
+            window.addEventListener('unifiedTagUIUpdateRequired', function(event) {
+                console.log('🔄 UNIFIED TAG (RESP): Immediate UI update required:', event.detail);
+                
+                const { patientId, activeTags, targetRanges, organStates } = event.detail;
+                
+                // Only update if it's for the current patient
+                if (patientId === currentPatientId) {
+                    console.log('🏷️ UNIFIED TAG (RESP): Applying immediate slider updates...');
+                    console.log('   - Active tags:', activeTags);
+                    console.log('   - Target ranges:', targetRanges);
+                    console.log('   - Organ states:', organStates);
+                    
+                    // Immediately refresh sliders with new target ranges
+                    if (targetRanges) {
+                        console.log('🔄 UNIFIED TAG (RESP): Calling refreshSlidersFromTargetRanges()...');
+                        refreshSlidersFromTargetRanges();
+                    }
+                    
+                    // Update risk level buttons to reflect new monitoring levels
+                    updateRiskLevelButtons();
+                    
+                    console.log('✅ UNIFIED TAG (RESP): Immediate slider updates completed');
+                } else {
+                    console.log('⏭️ UNIFIED TAG (RESP): Skipping slider update - different patient');
+                }
             });
             
             // UNIFIED TAG SYSTEM: Listen for unified tag state synchronization
@@ -1841,6 +1915,14 @@
                             console.log(`🏷️ UNIFIED TAG (RESP): Synced pneumonie to ${tagStates.pneumonie ? 'SELECTED' : 'DESELECTED'}`);
                         }
                     }
+                    
+                    // Refresh sliders with timeout to ensure data is processed
+                    setTimeout(() => {
+                        console.log('🔄 UNIFIED TAG (RESP): Refreshing sliders after sync event...');
+                        refreshSlidersFromTargetRanges();
+                        updateRiskLevelButtons(); // Update risk level buttons too
+                        console.log('✅ UNIFIED TAG (RESP): Slider refresh completed after sync');
+                    }, 100);
                 }
             });
             
@@ -1956,15 +2038,40 @@
                 // Initialize Saturatie Slider
                 const saturatieContainer = document.getElementById('saturatie-slider-container');
                 if (saturatieContainer) {
-                    console.log('� Creating Saturatie slider...');
+                    console.log('🫁 Creating Saturatie slider...');
                     saturatieContainer.innerHTML = '<p style="color: blue;">Loading Saturatie slider...</p>';
                     
                     try {
+                        // GET ACTUAL STORED TARGET RANGES FIRST
+                        let satTargetRange = { min: 94, max: 98 }; // Safe defaults
+                        
+                        if (currentPatientId && window.sharedDataManager) {
+                            const currentTargetRanges = window.sharedDataManager.getCurrentTargetRanges(currentPatientId);
+                            if (currentTargetRanges && currentTargetRanges.Saturatie) {
+                                satTargetRange = {
+                                    min: currentTargetRanges.Saturatie.min,
+                                    max: currentTargetRanges.Saturatie.max
+                                };
+                                console.log('📊 Using stored Saturatie target range for slider initialization:', satTargetRange);
+                                
+                                // Update global variables to match stored data
+                                window.SAT_MIN = satTargetRange.min;
+                                window.SAT_MAX = satTargetRange.max;
+                                console.log('🔄 Updated global Saturatie variables to match stored data:', window.SAT_MIN, '-', window.SAT_MAX);
+                            } else {
+                                console.log('⚠️ No stored Saturatie target range found, using defaults:', satTargetRange);
+                                
+                                // Set global variables to defaults
+                                window.SAT_MIN = satTargetRange.min;
+                                window.SAT_MAX = satTargetRange.max;
+                            }
+                        }
+                        
                         window.saturatieSlider = new window.VitalParameterSlider(saturatieContainer, {
                             parameter: 'Saturatie',
                             name: 'Saturatie',
                             unit: '%',
-                            targetRange: { min: window.SAT_MIN, max: window.SAT_MAX },
+                            targetRange: satTargetRange, // Use actual stored data, not global variables
                             yAxis: { min: 80, max: 100, step: 5 },
                             monitoringLevel: 'mid',
                             patientId: currentPatientId,
@@ -2092,11 +2199,36 @@
                     afContainer.innerHTML = '<p style="color: blue;">Loading AF slider...</p>';
                     
                     try {
+                        // GET ACTUAL STORED TARGET RANGES FIRST
+                        let afTargetRange = { min: 12, max: 20 }; // Safe defaults
+                        
+                        if (currentPatientId && window.sharedDataManager) {
+                            const currentTargetRanges = window.sharedDataManager.getCurrentTargetRanges(currentPatientId);
+                            if (currentTargetRanges && currentTargetRanges.AF) {
+                                afTargetRange = {
+                                    min: currentTargetRanges.AF.min,
+                                    max: currentTargetRanges.AF.max
+                                };
+                                console.log('📊 Using stored AF target range for slider initialization:', afTargetRange);
+                                
+                                // Update global variables to match stored data
+                                window.AF_MIN = afTargetRange.min;
+                                window.AF_MAX = afTargetRange.max;
+                                console.log('🔄 Updated global AF variables to match stored data:', window.AF_MIN, '-', window.AF_MAX);
+                            } else {
+                                console.log('⚠️ No stored AF target range found, using defaults:', afTargetRange);
+                                
+                                // Set global variables to defaults
+                                window.AF_MIN = afTargetRange.min;
+                                window.AF_MAX = afTargetRange.max;
+                            }
+                        }
+                        
                         window.afSlider = new window.VitalParameterSlider(afContainer, {
                             parameter: 'AF',
                             name: 'Ademfrequentie',
                             unit: '/min',
-                            targetRange: { min: window.AF_MIN, max: window.AF_MAX },
+                            targetRange: afTargetRange, // Use actual stored data, not global variables
                             yAxis: { min: 5, max: 35, step: 5 },
                             monitoringLevel: 'mid',
                             patientId: currentPatientId,
