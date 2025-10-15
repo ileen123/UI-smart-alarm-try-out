@@ -465,20 +465,6 @@ class WebSocketOutboundClient {
     }
     
     /**
-     * Send vital signs data
-     */
-    sendVitalSigns(patientId, vitalSigns) {
-        return this.sendMessage('vital_signs_update', {
-            patientId: patientId,
-            vitalSigns: vitalSigns,
-            metadata: {
-                source: 'monitoring_system',
-                action: 'vital_signs_reading'
-            }
-        });
-    }
-    
-    /**
      * Queue message for later sending
      */
     queueMessage(message) {

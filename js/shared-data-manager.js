@@ -167,6 +167,151 @@ class SharedDataManager {
     }
 
     /**
+     * Unified Patient Assignment Method
+     * Handles both data storage AND WebSocket messaging in one centralized call
+     * This replaces scattered assignment logic across pages
+     */
+    assignPatientToBed(patientId, bedNumber, patientInfo = {}) {
+        try {
+            console.log(`🏥 Unified patient assignment: Patient ${patientId} → Bed ${bedNumber}`);
+            
+            // 1. Get current bed states
+            const currentBedStates = this.getBedStates() || {};
+            
+            // 2. Create updated bed state
+            const updatedBedStates = { ...currentBedStates };
+            updatedBedStates[bedNumber] = {
+                occupied: true,
+                patientId: patientId,
+                patientData: patientInfo,
+                timestamp: new Date().toISOString(),
+                riskLevel: patientInfo.riskLevel || 'mid', // Default risk level
+                vpkCode: patientInfo.vpkCode || this.generateVPKCode()
+            };
+            
+            // 3. Save bed states (this will automatically trigger WebSocket messaging through detectAndSendBedChanges)
+            const success = this.saveBedStates(updatedBedStates);
+            
+            // 4. Save patient medical info if provided
+            if (patientInfo.medicalInfo) {
+                this.savePatientMedicalInfo(patientId, patientInfo.medicalInfo);
+            }
+            
+            // 5. Update session data for current patient/bed
+            this.saveSessionData({
+                currentPatient: patientId,
+                currentBed: bedNumber,
+                selectedRiskLevel: patientInfo.riskLevel || 'mid',
+                timestamp: new Date().toISOString()
+            });
+            
+            if (success) {
+                console.log(`✅ Patient ${patientId} successfully assigned to bed ${bedNumber}`);
+                console.log(`📊 Assignment details:`, updatedBedStates[bedNumber]);
+                return {
+                    success: true,
+                    bedNumber: bedNumber,
+                    patientId: patientId,
+                    vpkCode: updatedBedStates[bedNumber].vpkCode,
+                    riskLevel: updatedBedStates[bedNumber].riskLevel,
+                    timestamp: updatedBedStates[bedNumber].timestamp
+                };
+            } else {
+                console.error(`❌ Failed to assign patient ${patientId} to bed ${bedNumber}`);
+                return {
+                    success: false,
+                    error: `Failed to save bed states for bed ${bedNumber}`
+                };
+            }
+            
+        } catch (error) {
+            console.error('❌ Error in unified patient assignment:', error);
+            return {
+                success: false,
+                error: error.message || 'Unknown error during patient assignment'
+            };
+        }
+    }
+    
+    /**
+     * Generate VPK code for patient assignment
+     */
+    generateVPKCode() {
+        const vpkCodes = ['FG', 'AM', 'IB', 'GT'];
+        return vpkCodes[Math.floor(Math.random() * vpkCodes.length)];
+    }
+    
+    /**
+     * Unified Patient Discharge Method
+     * Handles patient discharge from bed with proper WebSocket messaging
+     */
+    dischargePatientFromBed(bedNumber, reason = 'manual_discharge') {
+        try {
+            console.log(`🚪 Unified patient discharge from Bed ${bedNumber} (${reason})`);
+            
+            // 1. Get current bed states
+            const currentBedStates = this.getBedStates() || {};
+            
+            // Get patient ID from current bed state
+            const currentBed = currentBedStates[bedNumber];
+            if (!currentBed || !currentBed.occupied) {
+                console.warn(`⚠️ Bed ${bedNumber} is not occupied or does not exist`);
+                return {
+                    success: false,
+                    error: `Bed ${bedNumber} is not occupied`
+                };
+            }
+            
+            const patientId = currentBed.patientId;
+            console.log(`🚪 Discharging patient ${patientId} from bed ${bedNumber}`);
+            
+            // 2. Create updated bed state
+            const updatedBedStates = { ...currentBedStates };
+            updatedBedStates[bedNumber] = {
+                occupied: false,
+                patientId: null,
+                patientData: null,
+                timestamp: new Date().toISOString(),
+                riskLevel: null,
+                vpkCode: null
+            };
+            
+            // 3. Save bed states (this will automatically trigger WebSocket messaging)
+            const success = this.saveBedStates(updatedBedStates);
+            
+            // 4. Clear session data if this was the current patient
+            const sessionData = this.getSessionData();
+            if (sessionData.currentPatient === patientId) {
+                this.clearSessionData();
+            }
+            
+            if (success) {
+                console.log(`✅ Patient ${patientId} successfully discharged from bed ${bedNumber}`);
+                return {
+                    success: true,
+                    bedNumber: bedNumber,
+                    patientId: patientId,
+                    reason: reason,
+                    timestamp: new Date().toISOString()
+                };
+            } else {
+                console.error(`❌ Failed to discharge patient ${patientId} from bed ${bedNumber}`);
+                return {
+                    success: false,
+                    error: `Failed to save bed states for bed ${bedNumber}`
+                };
+            }
+            
+        } catch (error) {
+            console.error('❌ Error in unified patient discharge:', error);
+            return {
+                success: false,
+                error: error.message || 'Unknown error during patient discharge'
+            };
+        }
+    }
+
+    /**
      * Initialize global parameter variables - single source of truth for all target ranges
      * These variables are used consistently across all pages for displays and sliders
      * Now uses Matrix system exclusively - NO hardcoded defaults
@@ -637,14 +782,27 @@ class SharedDataManager {
                 if (!oldBed.occupied && newBed.occupied && newBed.patientId) {
                     console.log(`👤 Patient ${newBed.patientId} assigned to bed ${bedNumber}`);
                     
-                    // Get patient details for the message
-                    const patientData = this.getPatientMedicalInfo(newBed.patientId) || {};
+                    // Combine basic patient data and medical information
+                    const basicPatientData = newBed.patientData || {};
+                    const medicalInfo = this.getPatientMedicalInfo(newBed.patientId) || {};
+                    
+                    // Create comprehensive patient data for WebSocket message
+                    const fullPatientData = {
+                        id: newBed.patientId,
+                        name: basicPatientData.name || `Patient ${newBed.patientId}`,
+                        age: basicPatientData.age,
+                        gender: basicPatientData.gender,
+                        weight: basicPatientData.weight,
+                        vpkCode: newBed.vpkCode,
+                        riskLevel: newBed.riskLevel || 'mid',
+                        // Include medical information if available
+                        medicalInfo: medicalInfo,
+                        // Include any additional patient characteristics
+                        ...basicPatientData
+                    };
                     
                     this.sendWebSocketMessage('patient_selected', {
-                        patient: {
-                            id: newBed.patientId,
-                            ...patientData
-                        },
+                        patient: fullPatientData,
                         bedNumber: parseInt(bedNumber),
                         timestamp: new Date().toISOString(),
                         metadata: {
@@ -688,12 +846,26 @@ class SharedDataManager {
                     });
                     
                     // Send assignment for new patient
-                    const patientData = this.getPatientMedicalInfo(newBed.patientId) || {};
+                    const basicPatientData = newBed.patientData || {};
+                    const medicalInfo = this.getPatientMedicalInfo(newBed.patientId) || {};
+                    
+                    // Create comprehensive patient data for WebSocket message
+                    const fullPatientData = {
+                        id: newBed.patientId,
+                        name: basicPatientData.name || `Patient ${newBed.patientId}`,
+                        age: basicPatientData.age,
+                        gender: basicPatientData.gender,
+                        weight: basicPatientData.weight,
+                        vpkCode: newBed.vpkCode,
+                        riskLevel: newBed.riskLevel || 'mid',
+                        // Include medical information if available
+                        medicalInfo: medicalInfo,
+                        // Include any additional patient characteristics
+                        ...basicPatientData
+                    };
+                    
                     this.sendWebSocketMessage('patient_selected', {
-                        patient: {
-                            id: newBed.patientId,
-                            ...patientData
-                        },
+                        patient: fullPatientData,
                         bedNumber: parseInt(bedNumber),
                         timestamp: new Date().toISOString(),
                         metadata: {

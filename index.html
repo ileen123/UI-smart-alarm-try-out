@@ -584,29 +584,6 @@
             }
         }
 
-        // Send patient data via WebSocket
-        function sendPatientDataViaWebSocket(patientData) {
-            if (!websocket || websocket.readyState !== WebSocket.OPEN) {
-                console.warn('⚠️ WebSocket not connected. Cannot send patient data:', patientData);
-                return false;
-            }
-            
-            try {
-                const message = {
-                    type: 'patient_selected',
-                    timestamp: new Date().toISOString(),
-                    data: patientData
-                };
-                
-                console.log('📤 Sending patient data via WebSocket:', message);
-                websocket.send(JSON.stringify(message));
-                return true;
-            } catch (error) {
-                console.error('❌ Error sending WebSocket message:', error);
-                return false;
-            }
-        }
-
         // Function to save bed states using shared data manager
         function saveBedStatesToStorage() {
             try {
@@ -962,42 +939,35 @@
                 return;
             }
             
-            // Prepare patient data for WebSocket transmission
-            const patientData = {
-                id: patientExists.id,
-                name: patientExists.name,
-                age: patientExists.age,
-                gender: patientExists.gender, // Using 'gender' instead of 'sexe' for clarity
-                weight: patientExists.weight,
-                bedNumber: selectedBed,
-                timestamp: new Date().toISOString()
-            };
-            
-            // Send patient data via WebSocket
-            const webSocketSent = sendPatientDataViaWebSocket(patientData);
-            if (webSocketSent) {
-                console.log('✅ Patient data sent to server via WebSocket');
-            } else {
-                console.warn('⚠️ Failed to send patient data via WebSocket');
+            // Use unified SharedDataManager for patient assignment
+            try {
+                const result = window.sharedDataManager.assignPatientToBed(
+                    patientExists.id,     // patientId
+                    selectedBed,          // bedNumber
+                    patientExists         // patientInfo (full patient object)
+                );
+                
+                if (result.success) {
+                    console.log('✅ Patient assigned successfully via SharedDataManager:', result);
+                    
+                    // Update local bedData to match SharedDataManager state
+                    bedData[selectedBed] = {
+                        occupied: true,
+                        patientId: selectedPatient,
+                        vpkCode: result.vpkCode,
+                        riskLevel: 'mid' // default risk level
+                    };
+                    
+                    // Remove patient from available list
+                    availablePatients = availablePatients.filter(p => p.id !== selectedPatient);
+                } else {
+                    console.error('❌ Failed to assign patient via SharedDataManager:', result.error);
+                    return; // Exit early on failure
+                }
+            } catch (error) {
+                console.error('❌ Error during patient assignment:', error);
+                return; // Exit early on error
             }
-            
-            // Generate VPK code
-            const vpkCodes = ['FG', 'AM', 'IB', 'GT'];
-            const vpkCode = vpkCodes[Math.floor(Math.random() * vpkCodes.length)];
-            
-            // Update bed data with default medium risk (will be updated when returning from setup)
-            bedData[selectedBed].occupied = true;
-            bedData[selectedBed].patientId = selectedPatient;
-            bedData[selectedBed].vpkCode = vpkCode;
-            bedData[selectedBed].riskLevel = 'mid'; // default risk level
-            
-            console.log('✅ Updated bed data:', bedData[selectedBed]);
-            
-            // Save bed states immediately
-            saveBedStatesToStorage();
-            
-            // Remove patient from available list
-            availablePatients = availablePatients.filter(p => p.id !== selectedPatient);
             
             console.log('Remaining available patients:', availablePatients);
             
@@ -1090,31 +1060,40 @@
             if (confirm('Weet je zeker dat je ' + patientName + ' wilt ontslaan uit bed ' + bedNumber + '?')) {
                 console.log('Discharging patient ' + bed.patientId + ' from bed ' + bedNumber);
                 
-                // Clear patient medical info using shared data manager
-                window.sharedDataManager.removePatient(bed.patientId);
-                console.log('Cleared medical info for patient ' + bed.patientId + ' via shared data manager');
-                
-                // Add patient back to available patients list if not already there
-                const patientExists = availablePatients.find(p => p.id === bed.patientId);
-                if (!patientExists && patient) {
-                    availablePatients.push(patient);
-                    console.log('Added patient ' + patient.name + ' back to available patients');
+                // Use unified SharedDataManager for patient discharge
+                try {
+                    const result = window.sharedDataManager.dischargePatientFromBed(bedNumber);
+                    
+                    if (result.success) {
+                        console.log('✅ Patient discharged successfully via SharedDataManager:', result);
+                        
+                        // Add patient back to available patients list if not already there
+                        const patientExists = availablePatients.find(p => p.id === bed.patientId);
+                        if (!patientExists && patient) {
+                            availablePatients.push(patient);
+                            console.log('Added patient ' + patient.name + ' back to available patients');
+                        }
+                        
+                        // Update local bedData to match SharedDataManager state
+                        bedData[bedNumber] = {
+                            bedNumber: bedNumber,
+                            occupied: false,
+                            patientId: null,
+                            vpkCode: null,
+                            riskLevel: null
+                        };
+                        
+                        // Save updated state and refresh display
+                        saveBedStatesToStorage();
+                        updateDisplay();
+                        
+                        console.log('Patient discharged from bed ' + bedNumber + '. Bed is now available.');
+                    } else {
+                        console.error('❌ Failed to discharge patient via SharedDataManager:', result.error);
+                    }
+                } catch (error) {
+                    console.error('❌ Error during patient discharge:', error);
                 }
-                
-                // Clear bed data
-                bedData[bedNumber] = {
-                    bedNumber: bedNumber,
-                    occupied: false,
-                    patientId: null,
-                    vpkCode: null,
-                    riskLevel: null
-                };
-                
-                // Save updated state and refresh display
-                saveBedStatesToStorage();
-                updateDisplay();
-                
-                console.log('Patient discharged from bed ' + bedNumber + '. Bed is now available.');
             }
         }
 
