@@ -1861,7 +1861,7 @@
                 updateHRSliderFromGlobalValues();
             }
             
-            // Function to refresh sliders from current target ranges
+            // Function to refresh sliders from current target ranges with retry mechanism
             function refreshSlidersFromTargetRanges() {
                 if (currentPatientId && window.sharedDataManager) {
                     const targetRanges = window.sharedDataManager.getCurrentTargetRanges(currentPatientId);
@@ -1870,9 +1870,18 @@
                     if (targetRanges) {
                         // Update global values for HR
                         if (targetRanges.HR) {
+                            const oldHR_MIN = window.HR_MIN;
+                            const oldHR_MAX = window.HR_MAX;
+                            
                             window.HR_MIN = targetRanges.HR.min;
                             window.HR_MAX = targetRanges.HR.max;
+                            
                             console.log('🎯 Updated HR global variables from target ranges:', window.HR_MIN, '-', window.HR_MAX);
+                            if (oldHR_MIN !== window.HR_MIN || oldHR_MAX !== window.HR_MAX) {
+                                console.log('✅ HR range actually changed - updating slider');
+                            } else {
+                                console.log('⚠️ HR range unchanged - data might not be updated yet');
+                            }
                             
                             // Update HR slider using the same method as BP slider for consistency
                             if (hrSlider && typeof hrSlider.updateConfig === 'function') {
@@ -1996,12 +2005,36 @@
                         
                         console.log(`🏷️ UNIFIED TAG (CIRC): ${tagCondition} ${newState ? 'selected' : 'deselected'} via unified system`);
                         
-                        // Backup timeout to ensure UI updates
+                        // Backup timeout to ensure UI updates - increased timeout for data manager processing
                         setTimeout(() => {
-                            console.log('🔄 BACKUP (CIRC): Forcing slider refresh...');
+                            console.log('🔄 BACKUP (CIRC): Forcing slider refresh after data manager processing...');
+                            
+                            // Store current values before refresh to detect changes
+                            const beforeHR_MIN = window.HR_MIN;
+                            const beforeHR_MAX = window.HR_MAX;
+                            const beforeBP_MIN = window.BP_MIN;
+                            const beforeBP_MAX = window.BP_MAX;
+                            
                             refreshSlidersFromTargetRanges();
                             updateRiskLevelButtons(); // Also update buttons and heart circle
-                        }, 50);
+                            
+                            // Check if values actually changed
+                            const hrChanged = (beforeHR_MIN !== window.HR_MIN || beforeHR_MAX !== window.HR_MAX);
+                            const bpChanged = (beforeBP_MIN !== window.BP_MIN || beforeBP_MAX !== window.BP_MAX);
+                            
+                            if (hrChanged || bpChanged) {
+                                console.log('✅ BACKUP (CIRC): Data successfully updated');
+                            } else {
+                                console.log('⚠️ BACKUP (CIRC): Data unchanged - scheduling retry');
+                            }
+                            
+                            // Additional backup after more time to ensure all async operations complete
+                            setTimeout(() => {
+                                console.log('🔄 SECONDARY BACKUP (CIRC): Final UI refresh...');
+                                refreshSlidersFromTargetRanges();
+                                updateRiskLevelButtons();
+                            }, 100);
+                        }, 150); // Increased from 50ms to 150ms
                     }
                 });
             });

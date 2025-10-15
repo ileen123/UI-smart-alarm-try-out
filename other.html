@@ -1532,9 +1532,9 @@
                         
                         console.log(`🏷️ UNIFIED TAG (OTHER): ${tagCondition} ${newState ? 'selected' : 'deselected'} via unified system`);
                         
-                        // Backup timeout to ensure UI updates
+                        // Backup timeout to ensure UI updates - increased timeout for data manager processing
                         setTimeout(() => {
-                            console.log('🔄 BACKUP (OTHER): Forcing AF slider refresh...');
+                            console.log('🔄 BACKUP (OTHER): Forcing AF slider refresh after data manager processing...');
                             if (window.afSlider && typeof window.afSlider.updateConfig === 'function') {
                                 window.afSlider.updateConfig({
                                     targetRange: {
@@ -1546,7 +1546,31 @@
                                     window.afSlider.updateSliderPosition();
                                 }
                             }
-                        }, 50);
+                            
+                            // Update risk level buttons and temp circles
+                            if (typeof updateRiskLevelButtons === 'function') {
+                                updateRiskLevelButtons();
+                            }
+                            
+                            // Additional backup after more time to ensure all async operations complete
+                            setTimeout(() => {
+                                console.log('🔄 SECONDARY BACKUP (OTHER): Final UI refresh...');
+                                if (window.afSlider && typeof window.afSlider.updateConfig === 'function') {
+                                    window.afSlider.updateConfig({
+                                        targetRange: {
+                                            min: window.AF_MIN,
+                                            max: window.AF_MAX
+                                        }
+                                    });
+                                    if (window.afSlider.updateSliderPosition) {
+                                        window.afSlider.updateSliderPosition();
+                                    }
+                                }
+                                if (typeof updateRiskLevelButtons === 'function') {
+                                    updateRiskLevelButtons();
+                                }
+                            }, 100);
+                        }, 150); // Increased from 50ms to 150ms
                     }
                 });
             });

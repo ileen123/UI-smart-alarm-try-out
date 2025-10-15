@@ -1855,12 +1855,19 @@
                         
                         console.log(`🏷️ UNIFIED TAG (RESP): ${tagCondition} ${newState ? 'selected' : 'deselected'} via unified system`);
                         
-                        // Backup timeout to ensure UI updates
+                        // Backup timeout to ensure UI updates - increased timeout for data manager processing
                         setTimeout(() => {
-                            console.log('🔄 BACKUP (RESP): Forcing slider refresh...');
+                            console.log('🔄 BACKUP (RESP): Forcing slider refresh after data manager processing...');
                             refreshSlidersFromTargetRanges();
                             updateRiskLevelButtons(); // Also update buttons and lung circle
-                        }, 50);
+                            
+                            // Additional backup after more time to ensure all async operations complete
+                            setTimeout(() => {
+                                console.log('🔄 SECONDARY BACKUP (RESP): Final UI refresh...');
+                                refreshSlidersFromTargetRanges();
+                                updateRiskLevelButtons();
+                            }, 100);
+                        }, 150); // Increased from 50ms to 150ms
                     }
                 });
             });
