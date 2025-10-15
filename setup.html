@@ -635,6 +635,11 @@
                                     console.log('🔵 selectedRiskLevel is now:', selectedRiskLevel);
                                     window.dataManager?.setSelectedRiskLevel(riskLevel);
                                     
+                                    // MANUAL OVERRIDE CLEARING: Clear any manual overrides (fragile system)
+                                    if (currentPatientId && window.sharedDataManager) {
+                                        window.sharedDataManager.clearManualOverrides(currentPatientId, `setup-risk-level-${riskLevel}`);
+                                    }
+                                    
                                     updateOrganCirclesWithRisk(riskLevel);
                                     
                                     // CRITICAL FIX: When risk level changes, we need to recalculate ALL monitoring levels 
@@ -1125,14 +1130,18 @@
                             console.log('Interface reset to fresh state');
                         }
 
-                        // Function to update organ circles based on selected problem
-                        function updateOrganCirclesBasedOnProblem(problemValue) {
-                            console.log('Problem selected:', problemValue);
-                            selectedProblem = problemValue;
-                            updateOrganCircles();
-                        }
-                        
-                        // Function to update organ circles based on risk level
+        // Function to update organ circles based on selected problem
+        function updateOrganCirclesBasedOnProblem(problemValue) {
+            console.log('Problem selected:', problemValue);
+            selectedProblem = problemValue;
+            
+            // MANUAL OVERRIDE CLEARING: Clear any manual overrides (fragile system)
+            if (currentPatientId && window.sharedDataManager) {
+                window.sharedDataManager.clearManualOverrides(currentPatientId, `setup-problem-${problemValue}`);
+            }
+            
+            updateOrganCircles();
+        }                        // Function to update organ circles based on risk level
                         function updateOrganCirclesWithRisk(riskLevel) {
                             console.log('🔄 updateOrganCirclesWithRisk called with:', riskLevel);
                             console.log('🔄 Current selectedProblem:', selectedProblem);

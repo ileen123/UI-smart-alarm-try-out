@@ -1164,6 +1164,11 @@
         function changeMonitoringLevel(level) {
             console.log(`🔄 Changing monitoring level to: ${level}`);
             
+            // MANUAL OVERRIDE CLEARING: Clear any manual overrides (fragile system)
+            if (currentPatientId && window.sharedDataManager) {
+                window.sharedDataManager.clearManualOverrides(currentPatientId, `temperature-risk-level-${level}`);
+            }
+            
             // Map button levels to temp circle levels
             const levelMapping = {
                 'loose': 'low',
@@ -1896,6 +1901,17 @@
                             onChange: (data) => {
                                 console.log('Temperature Slider changed:', data);
                                 if (window.sharedDataManager && data.type === 'save') {
+                                    // MANUAL OVERRIDE DETECTION: Store as manual override
+                                    if (currentPatientId) {
+                                        const manualRange = {
+                                            min: Math.round(data.min * 10) / 10,
+                                            max: Math.round(data.max * 10) / 10,
+                                            unit: '°C'
+                                        };
+                                        window.sharedDataManager.setManualOverride(currentPatientId, 'Temperature', manualRange, 'slider');
+                                        console.log('🔧 MANUAL OVERRIDE: Stored Temperature manual override:', manualRange);
+                                    }
+                                    
                                     const newSettings = { temperature: { min: data.min, max: data.max } };
                                     window.sharedDataManager.savePatientOtherSettings(currentPatientId, newSettings);
                                     currentSettings = newSettings;
@@ -1927,6 +1943,7 @@
                                         
                                         // SEND WEBSOCKET MESSAGE: Manual threshold adjustment completed
                                         console.log('📤 Sending WebSocket message for manual Temperature threshold adjustment');
+                                        console.log('🔧 MANUAL OVERRIDE WebSocket: Temperature manual override will be included in thresholds_risk_levels message');
                                         window.sharedDataManager.sendFullThresholdsRiskLevels(currentPatientId);
                                     }
                                     

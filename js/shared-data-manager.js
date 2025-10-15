@@ -12,12 +12,13 @@ class SharedDataManager {
             CURRENT_BED: 'currentBed',
             SELECTED_RISK_LEVEL: 'selectedRiskLevel',
             BED_OVERVIEW_STATE: 'bedOverviewState',
-            APP_DATA: 'smartAlarmAppData'
+            APP_DATA: 'smartAlarmAppData',
+            MANUAL_OVERRIDE_PREFIX: 'manual_override_'
         };
         
         // Track recent messages to prevent duplicates
         this.recentMessages = new Map();
-        this.messageDuplicateWindow = 100; // 100 milliseconds to prevent duplicates
+        this.messageDuplicateWindow = 50; // 50 milliseconds to prevent duplicates
         
         this.initializeAppData();
         this.initializeGlobalHRVariables();
@@ -104,8 +105,11 @@ class SharedDataManager {
             // For patient discharge, use patient ID and bed number
             fingerprint += `_${data.patientId}_bed${data.bedNumber}`;
         } else if (type === 'thresholds_risk_levels' && data) {
-            // For thresholds, use patient ID and risk level
-            fingerprint += `_${data.patientId}_${data.riskLevel}`;
+            // For thresholds, use patient ID, change type, and timestamp for uniqueness
+            const changeType = data.changeType || 'unknown';
+            const riskLevel = data.riskLevels?.circulatoir || 'unknown';
+            const timestampHash = data.timestamp ? data.timestamp.slice(-8) : Date.now().toString().slice(-8);
+            fingerprint += `_${data.patientId}_${changeType}_${riskLevel}_${timestampHash}`;
         }
         
         return fingerprint;
@@ -730,6 +734,32 @@ class SharedDataManager {
             const currentlyDisplayedRanges = this.getCurrentTargetRanges(patientId);
             console.log(`🔍 DISPLAY TRUTH - Threshold ranges currently shown in sliders for patient ${patientId}:`, currentlyDisplayedRanges);
             
+            // MANUAL OVERRIDE DETECTION: Check which parameters have manual overrides
+            const manualOverrides = this.getManualOverrides(patientId);
+            const hasManualOverrides = Object.keys(manualOverrides).length > 0;
+            let manualOverrideMetadata = null;
+            
+            if (hasManualOverrides) {
+                console.log(`🔧 MANUAL OVERRIDE DETECTED - Including override metadata in WebSocket message:`, manualOverrides);
+                manualOverrideMetadata = {
+                    hasManualOverrides: true,
+                    overriddenParameters: Object.keys(manualOverrides),
+                    overrideDetails: Object.keys(manualOverrides).reduce((details, param) => {
+                        const override = manualOverrides[param];
+                        details[param] = {
+                            source: override.source,
+                            timestamp: override.timestamp,
+                            range: override.range
+                        };
+                        return details;
+                    }, {})
+                };
+                console.log(`🔧 MANUAL OVERRIDE METADATA:`, manualOverrideMetadata);
+            } else {
+                console.log(`ℹ️ No manual overrides detected for patient ${patientId}`);
+                manualOverrideMetadata = { hasManualOverrides: false };
+            }
+            
             if (currentlyDisplayedRanges && Object.keys(currentlyDisplayedRanges).length > 0) {
                 console.log(`📊 Using DISPLAY TRUTH target ranges (what user sees in sliders):`, currentlyDisplayedRanges);
                 thresholds = {
@@ -740,6 +770,15 @@ class SharedDataManager {
                     Temperature: currentlyDisplayedRanges.Temperature || thresholds.Temperature
                 };
                 console.log(`🔍 FINAL DISPLAY TRUTH thresholds object:`, thresholds);
+                
+                // Log which thresholds come from manual overrides
+                if (hasManualOverrides) {
+                    Object.keys(manualOverrides).forEach(param => {
+                        if (thresholds[param]) {
+                            console.log(`🔧 MANUAL OVERRIDE: ${param} threshold (${thresholds[param].min}-${thresholds[param].max}) comes from manual override`);
+                        }
+                    });
+                }
             } else {
                 // Only fallback to calculated values if NO display values exist
                 console.log(`⚠️ No display values found - falling back to calculated values for patient ${patientId}`);
@@ -797,7 +836,8 @@ class SharedDataManager {
                 medicalProblem: medicalProblem,
                 riskLevels: riskLevels,
                 thresholds: thresholds,
-                displayTruthSource: currentlyDisplayedRanges ? 'slider_values' : 'calculated_fallback'
+                displayTruthSource: currentlyDisplayedRanges ? 'slider_values' : 'calculated_fallback',
+                manualOverrides: manualOverrideMetadata
             };
             
             console.log(`✅ DISPLAY TRUTH configuration being returned for patient ${patientId}:`);
@@ -806,6 +846,7 @@ class SharedDataManager {
             console.log(`   📊 Risk Levels: circulatoir=${riskLevels.circulatoir}, respiratoire=${riskLevels.respiratoire}, temperature=${riskLevels.temperature}`);
             console.log(`   ⚙️ Thresholds:`, thresholds);
             console.log(`   🎯 Data Source: ${config.displayTruthSource}`);
+            console.log(`   🔧 Manual Overrides:`, manualOverrideMetadata);
             
             return config;
         } catch (error) {
@@ -835,18 +876,48 @@ class SharedDataManager {
             return;
         }
         
+        // Format thresholds with units
+        const formattedThresholds = {};
+        if (currentConfig.thresholds) {
+            Object.keys(currentConfig.thresholds).forEach(param => {
+                formattedThresholds[param] = {
+                    min: currentConfig.thresholds[param].min,
+                    max: currentConfig.thresholds[param].max,
+                    unit: param === 'HR' ? 'bpm' : 
+                          param === 'BP_Mean' ? 'mmHg' : 
+                          param === 'AF' ? '/min' : 
+                          param === 'Saturatie' ? '%' : 
+                          param === 'Temperature' ? '°C' : ''
+                };
+            });
+        }
+        
         const messageData = {
             patientId: currentConfig.patientId,
             bedNumber: currentConfig.bedNumber,
-            changeType: 'display_truth', // Changed to indicate this is display truth
+            changeType: currentConfig.manualOverrides?.hasManualOverrides ? 'manual_override' : 'display_truth',
             medicalProblem: currentConfig.medicalProblem,
             riskLevels: currentConfig.riskLevels,
-            thresholds: currentConfig.thresholds,
+            thresholds: formattedThresholds,
             dataSource: currentConfig.displayTruthSource, // NEW: Indicates if from sliders or fallback
+            manualOverrides: currentConfig.manualOverrides, // NEW: Manual override metadata
             timestamp: new Date().toISOString()
         };
         
-        console.log(`📤 Sending DISPLAY TRUTH configuration (what user sees in UI):`, messageData);
+        // Enhanced logging for manual overrides
+        if (currentConfig.manualOverrides?.hasManualOverrides) {
+            console.log(`� MANUAL OVERRIDE WebSocket: Sending manual override values for patient ${patientId}`);
+            console.log(`🔧 Overridden parameters:`, currentConfig.manualOverrides.overriddenParameters);
+            Object.keys(currentConfig.manualOverrides.overrideDetails).forEach(param => {
+                const override = currentConfig.manualOverrides.overrideDetails[param];
+                const threshold = currentConfig.thresholds[param];
+                console.log(`🔧 ${param}: Manual override (${threshold?.min}-${threshold?.max}) from ${override.source} at ${override.timestamp}`);
+            });
+        } else {
+            console.log(`📊 AUTOMATIC VALUES: Sending calculated/automatic threshold values for patient ${patientId}`);
+        }
+        
+        console.log(`📤 Sending ${messageData.changeType} configuration (what user sees in UI):`, messageData);
         
         // Send the full configuration message
         this.sendWebSocketMessage('thresholds_risk_levels', messageData);
@@ -2883,6 +2954,9 @@ class SharedDataManager {
             return { skipped: true, reason: 'already_in_state', currentState: currentState };
         }
         
+        // MANUAL OVERRIDE CLEARING: Clear any manual overrides (fragile system)
+        this.clearManualOverrides(patientId, `tag-${tag}-${isActive ? 'activated' : 'deactivated'}`);
+        
         // Update the condition state - single source of truth
         this.setPatientConditionState(tag, {
             isActive: isActive,
@@ -3477,17 +3551,21 @@ class SharedDataManager {
         const key = `${this.storageKeys.PATIENT_PREFIX}${patientId}_current_target_ranges`;
         const stored = localStorage.getItem(key);
         
+        let baseRanges;
         if (stored) {
-            const ranges = JSON.parse(stored);
-            console.log('📊 Retrieved current target ranges for patient:', patientId, ranges);
-            return ranges;
+            baseRanges = JSON.parse(stored);
+            console.log('📊 Retrieved current target ranges for patient:', patientId, baseRanges);
+        } else {
+            // If no current ranges exist, initialize with defaults
+            baseRanges = this.getDefaultTargetRanges();
+            this.setCurrentTargetRanges(patientId, baseRanges);
+            console.log('📊 Initialized default target ranges for patient:', patientId, baseRanges);
         }
         
-        // If no current ranges exist, initialize with defaults
-        const defaultRanges = this.getDefaultTargetRanges();
-        this.setCurrentTargetRanges(patientId, defaultRanges);
-        console.log('📊 Initialized default target ranges for patient:', patientId, defaultRanges);
-        return defaultRanges;
+        // MANUAL OVERRIDE SYSTEM: Apply manual overrides with priority
+        const finalRanges = this.applyManualOverridesToRanges(patientId, baseRanges);
+        
+        return finalRanges;
     }
 
     /**
@@ -4472,6 +4550,161 @@ class SharedDataManager {
         };
         
         return monitoringDeltas[tag]?.[riskLevel] || null;
+    }
+
+    /**
+     * Manual Override System
+     * Implements fragile overrides that persist until user makes systematic changes
+     */
+    
+    /**
+     * Set manual override for a specific parameter
+     * @param {string} patientId - Patient identifier
+     * @param {string} parameter - Parameter name (HR, BP_Mean, AF, Saturatie, Temperature)
+     * @param {Object} range - Manual range {min, max, unit}
+     * @param {string} source - Source of manual change ('slider', 'input')
+     */
+    setManualOverride(patientId, parameter, range, source = 'manual') {
+        console.log(`🔧 MANUAL OVERRIDE: Setting ${parameter} override for patient ${patientId}:`, range);
+        
+        const overrideKey = `${this.storageKeys.MANUAL_OVERRIDE_PREFIX}${patientId}`;
+        let overrides = {};
+        
+        try {
+            const existing = localStorage.getItem(overrideKey);
+            if (existing) {
+                overrides = JSON.parse(existing);
+            }
+        } catch (error) {
+            console.warn('❌ Error parsing existing manual overrides:', error);
+            overrides = {};
+        }
+        
+        // Store the manual override with metadata
+        overrides[parameter] = {
+            range: range,
+            source: source,
+            timestamp: new Date().toISOString(),
+            isManual: true
+        };
+        
+        // Save to localStorage
+        localStorage.setItem(overrideKey, JSON.stringify(overrides));
+        
+        console.log(`✅ MANUAL OVERRIDE: Stored ${parameter} manual override for patient ${patientId}`);
+        
+        // Fire event for cross-page synchronization
+        this.fireManualOverrideChangedEvent(patientId, parameter, range, 'set');
+    }
+    
+    /**
+     * Get manual overrides for a patient
+     * @param {string} patientId - Patient identifier
+     * @returns {Object} - Manual overrides object
+     */
+    getManualOverrides(patientId) {
+        const overrideKey = `${this.storageKeys.MANUAL_OVERRIDE_PREFIX}${patientId}`;
+        
+        try {
+            const stored = localStorage.getItem(overrideKey);
+            if (stored) {
+                return JSON.parse(stored);
+            }
+        } catch (error) {
+            console.warn('❌ Error parsing manual overrides:', error);
+        }
+        
+        return {};
+    }
+    
+    /**
+     * Check if a patient has any manual overrides
+     * @param {string} patientId - Patient identifier
+     * @returns {boolean} - True if manual overrides exist
+     */
+    hasManualOverrides(patientId) {
+        const overrides = this.getManualOverrides(patientId);
+        return Object.keys(overrides).length > 0;
+    }
+    
+    /**
+     * Clear all manual overrides for a patient (fragile system)
+     * Called when user makes systematic changes (tags, risk levels, problem selection)
+     * @param {string} patientId - Patient identifier
+     * @param {string} trigger - What triggered the clearing ('tag', 'risk-level', 'problem')
+     */
+    clearManualOverrides(patientId, trigger = 'systematic-change') {
+        console.log(`🧹 MANUAL OVERRIDE: Clearing all manual overrides for patient ${patientId} (trigger: ${trigger})`);
+        
+        const overrideKey = `${this.storageKeys.MANUAL_OVERRIDE_PREFIX}${patientId}`;
+        const existingOverrides = this.getManualOverrides(patientId);
+        
+        if (Object.keys(existingOverrides).length === 0) {
+            console.log('ℹ️ MANUAL OVERRIDE: No manual overrides to clear');
+            return;
+        }
+        
+        // Remove from localStorage
+        localStorage.removeItem(overrideKey);
+        
+        console.log(`✅ MANUAL OVERRIDE: Cleared all manual overrides for patient ${patientId} due to: ${trigger}`);
+        
+        // Fire event for cross-page synchronization
+        this.fireManualOverrideChangedEvent(patientId, null, null, 'cleared', trigger);
+    }
+    
+    /**
+     * Apply manual overrides to target ranges (priority system)
+     * Manual overrides take precedence over automatic/matrix values
+     * @param {string} patientId - Patient identifier
+     * @param {Object} baseRanges - Base target ranges from matrix/calculations
+     * @returns {Object} - Target ranges with manual overrides applied
+     */
+    applyManualOverridesToRanges(patientId, baseRanges) {
+        const manualOverrides = this.getManualOverrides(patientId);
+        
+        if (Object.keys(manualOverrides).length === 0) {
+            return baseRanges; // No overrides, return base ranges
+        }
+        
+        console.log(`🔧 MANUAL OVERRIDE: Applying manual overrides to base ranges for patient ${patientId}`);
+        
+        const finalRanges = { ...baseRanges };
+        
+        // Apply each manual override
+        Object.keys(manualOverrides).forEach(parameter => {
+            const override = manualOverrides[parameter];
+            if (override.isManual && override.range) {
+                finalRanges[parameter] = { ...override.range };
+                console.log(`  → ${parameter}: Manual override applied (${override.range.min}-${override.range.max} ${override.range.unit})`);
+            }
+        });
+        
+        console.log(`✅ MANUAL OVERRIDE: Final ranges with overrides applied:`, finalRanges);
+        return finalRanges;
+    }
+    
+    /**
+     * Fire manual override changed event for cross-page sync
+     * @param {string} patientId - Patient identifier
+     * @param {string} parameter - Parameter name (null for clear all)
+     * @param {Object} range - Range data (null for clear)
+     * @param {string} action - Action type ('set', 'cleared')
+     * @param {string} trigger - What triggered the change
+     */
+    fireManualOverrideChangedEvent(patientId, parameter, range, action, trigger = null) {
+        const event = new CustomEvent('manualOverrideChanged', {
+            detail: {
+                patientId,
+                parameter,
+                range,
+                action,
+                trigger,
+                timestamp: Date.now()
+            }
+        });
+        window.dispatchEvent(event);
+        console.log(`🚀 MANUAL OVERRIDE: Fired ${action} event for ${parameter || 'all parameters'}`);
     }
 
     /**

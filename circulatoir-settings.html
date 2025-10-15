@@ -1277,6 +1277,11 @@
         function changeMonitoringLevel(level) {
             console.log(`🔄 Changing monitoring level to: ${level}`);
             
+            // MANUAL OVERRIDE CLEARING: Clear any manual overrides (fragile system)
+            if (currentPatientId && window.sharedDataManager) {
+                window.sharedDataManager.clearManualOverrides(currentPatientId, `risk-level-${level}`);
+            }
+            
             // Map button levels to heart circle levels
             const levelMapping = {
                 'loose': 'low',
@@ -2155,6 +2160,36 @@
                 }
             });
 
+            // MANUAL OVERRIDE SYSTEM: Listen for manual override changes across pages
+            window.addEventListener('manualOverrideChanged', function(event) {
+                console.log('🔧 MANUAL OVERRIDE (CIRC): Manual override changed event received:', event.detail);
+                
+                const { patientId, parameter, range, action, trigger } = event.detail;
+                
+                // Only update if it's for the current patient
+                if (patientId === currentPatientId) {
+                    if (action === 'cleared') {
+                        console.log(`🧹 MANUAL OVERRIDE (CIRC): Manual overrides cleared (trigger: ${trigger}) - refreshing sliders`);
+                        
+                        // Refresh sliders to show automatic values without manual overrides
+                        setTimeout(() => {
+                            refreshSlidersFromTargetRanges();
+                            updateRiskLevelButtons();
+                            console.log('✅ MANUAL OVERRIDE (CIRC): Sliders refreshed after override clearing');
+                        }, 50);
+                        
+                    } else if (action === 'set' && parameter) {
+                        console.log(`🔧 MANUAL OVERRIDE (CIRC): Manual override set for ${parameter} - updating other pages`);
+                        
+                        // Note: Don't update this page's sliders as they were the source of the change
+                        // Other pages will need to sync if they show the same parameters
+                        console.log(`ℹ️ MANUAL OVERRIDE (CIRC): ${parameter} override from this page, no local refresh needed`);
+                    }
+                } else {
+                    console.log('⏭️ MANUAL OVERRIDE (CIRC): Skipping override update - different patient');
+                }
+            });
+
             // LEGACY: Listen for condition state changes from other pages (for backward compatibility)
             window.addEventListener('patientConditionStateChanged', function(event) {
                 console.log('🦠 LEGACY (CIRC): Condition state changed event received:', event.detail);
@@ -2281,6 +2316,17 @@
                                 if (data.type === 'save') {
                                     console.log('💾 HR Slider SAVE - UPDATE of global variables for BOTH sliders');
                                     
+                                    // MANUAL OVERRIDE DETECTION: Store as manual override
+                                    if (window.sharedDataManager && currentPatientId) {
+                                        const manualRange = {
+                                            min: Math.round(data.min),
+                                            max: Math.round(data.max),
+                                            unit: 'bpm'
+                                        };
+                                        window.sharedDataManager.setManualOverride(currentPatientId, 'HR', manualRange, 'slider');
+                                        console.log('🔧 MANUAL OVERRIDE: Stored HR manual override:', manualRange);
+                                    }
+                                    
                                     // Update HR global variables from this slider
                                     window.HR_MIN = Math.round(data.min);
                                     window.HR_MAX = Math.round(data.max);
@@ -2326,6 +2372,7 @@
                                         
                                         // SEND WEBSOCKET MESSAGE: Manual threshold adjustment completed
                                         console.log('📤 Sending WebSocket message for manual HR/BP threshold adjustment');
+                                        console.log('🔧 MANUAL OVERRIDE WebSocket: HR manual override will be included in thresholds_risk_levels message');
                                         window.sharedDataManager.sendFullThresholdsRiskLevels(currentPatientId);
                                     }
                                     
@@ -2408,6 +2455,17 @@
                                 if (data.type === 'save') {
                                     console.log('💾 BP Slider SAVE - UPDATE of global variables for BOTH sliders');
                                     
+                                    // MANUAL OVERRIDE DETECTION: Store as manual override
+                                    if (window.sharedDataManager && currentPatientId) {
+                                        const manualRange = {
+                                            min: Math.round(data.min),
+                                            max: Math.round(data.max),
+                                            unit: 'mmHg'
+                                        };
+                                        window.sharedDataManager.setManualOverride(currentPatientId, 'BP_Mean', manualRange, 'slider');
+                                        console.log('🔧 MANUAL OVERRIDE: Stored BP_Mean manual override:', manualRange);
+                                    }
+                                    
                                     // Update BP global variables from this slider
                                     window.BP_MIN = Math.round(data.min);
                                     window.BP_MAX = Math.round(data.max);
@@ -2453,6 +2511,7 @@
                                         
                                         // SEND WEBSOCKET MESSAGE: Manual threshold adjustment completed
                                         console.log('📤 Sending WebSocket message for manual HR/BP threshold adjustment');
+                                        console.log('🔧 MANUAL OVERRIDE WebSocket: BP_Mean manual override will be included in thresholds_risk_levels message');
                                         window.sharedDataManager.sendFullThresholdsRiskLevels(currentPatientId);
                                     }
                                     

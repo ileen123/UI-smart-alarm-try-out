@@ -1196,6 +1196,11 @@
         function changeMonitoringLevel(level) {
             console.log(`🔄 Changing monitoring level to: ${level}`);
             
+            // MANUAL OVERRIDE CLEARING: Clear any manual overrides (fragile system)
+            if (currentPatientId && window.sharedDataManager) {
+                window.sharedDataManager.clearManualOverrides(currentPatientId, `respiratory-risk-level-${level}`);
+            }
+            
             // Map button levels to lung circle levels
             const levelMapping = {
                 'loose': 'low',
@@ -1933,6 +1938,40 @@
                 }
             });
             
+            // MANUAL OVERRIDE SYSTEM: Listen for manual override changes across pages
+            window.addEventListener('manualOverrideChanged', function(event) {
+                console.log('🔧 MANUAL OVERRIDE (RESP): Manual override changed event received:', event.detail);
+                
+                const { patientId, parameter, range, action, trigger } = event.detail;
+                
+                // Only update if it's for the current patient
+                if (patientId === currentPatientId) {
+                    if (action === 'cleared') {
+                        console.log(`🧹 MANUAL OVERRIDE (RESP): Manual overrides cleared (trigger: ${trigger}) - refreshing sliders`);
+                        
+                        // Refresh sliders to show automatic values without manual overrides
+                        setTimeout(() => {
+                            refreshSlidersFromTargetRanges();
+                            updateRiskLevelButtons();
+                            console.log('✅ MANUAL OVERRIDE (RESP): Sliders refreshed after override clearing');
+                        }, 50);
+                        
+                    } else if (action === 'set' && parameter) {
+                        console.log(`🔧 MANUAL OVERRIDE (RESP): Manual override set for ${parameter} - checking if cross-page sync needed`);
+                        
+                        // If the override is for a parameter not on this page, we might need to sync
+                        // AF and Saturatie are on this page, so no action needed if they're the source
+                        if (parameter !== 'AF' && parameter !== 'Saturatie') {
+                            console.log(`ℹ️ MANUAL OVERRIDE (RESP): Override for ${parameter} not relevant to respiratory page`);
+                        } else {
+                            console.log(`ℹ️ MANUAL OVERRIDE (RESP): ${parameter} override from this page, no local refresh needed`);
+                        }
+                    }
+                } else {
+                    console.log('⏭️ MANUAL OVERRIDE (RESP): Skipping override update - different patient');
+                }
+            });
+
             // LEGACY: Listen for condition state changes from other pages (for backward compatibility)
             window.addEventListener('patientConditionStateChanged', function(event) {
                 console.log('🫁 LEGACY (RESP): Condition state changed event received:', event.detail);
@@ -2088,6 +2127,17 @@
                                 if (data.type === 'save') {
                                     console.log('💾 Saturatie Slider SAVE - UPDATE of global variables for BOTH sliders');
                                     
+                                    // MANUAL OVERRIDE DETECTION: Store as manual override
+                                    if (window.sharedDataManager && currentPatientId) {
+                                        const manualRange = {
+                                            min: Math.round(data.min),
+                                            max: Math.round(data.max),
+                                            unit: '%'
+                                        };
+                                        window.sharedDataManager.setManualOverride(currentPatientId, 'Saturatie', manualRange, 'slider');
+                                        console.log('🔧 MANUAL OVERRIDE: Stored Saturatie manual override:', manualRange);
+                                    }
+                                    
                                     // Update Saturatie global variables from this slider
                                     window.SAT_MIN = Math.round(data.min);
                                     window.SAT_MAX = Math.round(data.max);
@@ -2133,6 +2183,7 @@
                                         
                                         // SEND WEBSOCKET MESSAGE: Manual threshold adjustment completed
                                         console.log('📤 Sending WebSocket message for manual Saturatie/AF threshold adjustment');
+                                        console.log('🔧 MANUAL OVERRIDE WebSocket: Saturatie manual override will be included in thresholds_risk_levels message');
                                         window.sharedDataManager.sendFullThresholdsRiskLevels(currentPatientId);
                                     }
                                     
@@ -2245,6 +2296,17 @@
                                 if (data.type === 'save') {
                                     console.log('💾 AF Slider SAVE - UPDATE of global variables for BOTH sliders');
                                     
+                                    // MANUAL OVERRIDE DETECTION: Store as manual override
+                                    if (window.sharedDataManager && currentPatientId) {
+                                        const manualRange = {
+                                            min: Math.round(data.min),
+                                            max: Math.round(data.max),
+                                            unit: '/min'
+                                        };
+                                        window.sharedDataManager.setManualOverride(currentPatientId, 'AF', manualRange, 'slider');
+                                        console.log('🔧 MANUAL OVERRIDE: Stored AF manual override:', manualRange);
+                                    }
+                                    
                                     // Update AF global variables from this slider
                                     window.AF_MIN = Math.round(data.min);
                                     window.AF_MAX = Math.round(data.max);
@@ -2290,6 +2352,7 @@
                                         
                                         // SEND WEBSOCKET MESSAGE: Manual threshold adjustment completed
                                         console.log('📤 Sending WebSocket message for manual AF/Saturatie threshold adjustment');
+                                        console.log('🔧 MANUAL OVERRIDE WebSocket: AF manual override will be included in thresholds_risk_levels message');
                                         window.sharedDataManager.sendFullThresholdsRiskLevels(currentPatientId);
                                     }
                                     
