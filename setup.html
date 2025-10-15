@@ -600,43 +600,7 @@
                         }
                         
                         function setupEventListeners() {
-                            // Set up problem dropdown listener
-                            const problemDropdown = document.getElementById('problemDropdown');
-                            if (problemDropdown) {
-                                problemDropdown.addEventListener('change', function() {
-                                    console.log('🎯 USER manually changed main problem dropdown');
-                                    // Set flag that user is manually changing problem (should overwrite manual adjustments)
-                                    if (window.sharedDataManager) {
-                                        window.sharedDataManager.setUserChangingProblem(true);
-                                    }
-                                    
-                                    selectedProblem = this.value;
-                                    window.dataManager?.setSelectedProblem(selectedProblem);
-                                    
-                                    // IMMEDIATE SAVE: Save problem selection to SharedDataManager immediately
-                                    // so that tag clicks can access the current problem/risk context
-                                    if (currentPatientId && window.sharedDataManager) {
-                                        const existingMedicalInfo = window.sharedDataManager.getPatientMedicalInfo(currentPatientId) || {};
-                                        const updatedMedicalInfo = {
-                                            ...existingMedicalInfo,
-                                            selectedProblem: selectedProblem,
-                                            selectedRiskLevel: selectedRiskLevel,
-                                            selectedTags: selectedTags,
-                                            lastUpdated: new Date().toISOString()
-                                        };
-                                        window.sharedDataManager.savePatientMedicalInfo(currentPatientId, updatedMedicalInfo);
-                                        console.log('💾 Immediately saved problem selection to SharedDataManager:', selectedProblem);
-                                    }
-                                    
-                                    updateOrganCirclesBasedOnProblem(selectedProblem);
-                                    updateProgressBar(); // Update progress when problem is selected
-                                    
-                                    // Clear flag after processing
-                                    if (window.sharedDataManager) {
-                                        setTimeout(() => window.sharedDataManager.setUserChangingProblem(false), 100);
-                                    }
-                                });
-                            }
+                            // Note: Medical diagnosis dropdown uses custom selectOption() function, not event listeners
                             
                             // Set up risk level button listeners
                             const riskButtons = document.querySelectorAll('.btn.risk-low, .btn.risk-mid, .btn.risk-high');
@@ -671,26 +635,6 @@
                                     console.log('🔵 selectedRiskLevel is now:', selectedRiskLevel);
                                     window.dataManager?.setSelectedRiskLevel(riskLevel);
                                     
-                                    // IMMEDIATE SAVE: Save risk level selection to SharedDataManager immediately
-                                    // so that tag clicks can access the current problem/risk context
-                                    if (currentPatientId && window.sharedDataManager) {
-                                        const existingMedicalInfo = window.sharedDataManager.getPatientMedicalInfo(currentPatientId) || {};
-                                        const updatedMedicalInfo = {
-                                            ...existingMedicalInfo,
-                                            selectedProblem: selectedProblem,
-                                            selectedRiskLevel: selectedRiskLevel,
-                                            selectedTags: selectedTags,
-                                            lastUpdated: new Date().toISOString()
-                                        };
-                                        window.sharedDataManager.savePatientMedicalInfo(currentPatientId, updatedMedicalInfo);
-                                        console.log('💾 Immediately saved risk level selection to SharedDataManager:', selectedRiskLevel);
-                                        
-                                        // NEW: Apply intelligent highlighting for risk level changes
-                                        if (oldRiskLevel && oldRiskLevel !== riskLevel && selectedProblem) {
-                                            console.log('📊 Risk level changed - no highlighting needed');
-                                        }
-                                    }
-                                    
                                     updateOrganCirclesWithRisk(riskLevel);
                                     
                                     // CRITICAL FIX: When risk level changes, we need to recalculate ALL monitoring levels 
@@ -711,6 +655,22 @@
                                         
                                         console.log('✅ Recalculated monitoring levels with tags:', result.organStates);
                                         console.log('📋 Medical reasoning:', result.reasoning);
+                                        
+                                        // TIMING FIX: Save risk level change AFTER organ levels are recalculated
+                                        // This ensures WebSocket contains current organ states
+                                        const currentMedicalInfo = window.sharedDataManager.getPatientMedicalInfo(currentPatientId) || {};
+                                        currentMedicalInfo.selectedRiskLevel = riskLevel;
+                                        currentMedicalInfo.selectedProblem = selectedProblem;
+                                        currentMedicalInfo.selectedTags = selectedTags;
+                                        currentMedicalInfo.lastUpdated = new Date().toISOString();
+                                        window.sharedDataManager.savePatientMedicalInfo(currentPatientId, currentMedicalInfo);
+                                        console.log('✅ TIMING FIX: Risk level saved AFTER organ calculations - triggers WebSocket with current data:', riskLevel);
+                                        
+                                        // DEBUG: Check what applyProblemSpecificMonitoring actually stored
+                                        console.log('🔍 IMMEDIATE Debug - Organ levels right after applyProblemSpecificMonitoring:');
+                                        console.log('  Heart:', window.sharedDataManager.getHeartMonitoringLevel(currentPatientId));
+                                        console.log('  Lung:', window.sharedDataManager.getLungMonitoringLevel(currentPatientId));
+                                        console.log('  Temp:', window.sharedDataManager.getTempMonitoringLevel(currentPatientId));
                                         
                                         // Update monitoring status labels immediately
                                         setTimeout(() => updateMonitoringStatus(), 150);
@@ -790,6 +750,19 @@
                                     }
                                     
                                     window.dataManager?.setSelectedTags(selectedTags);
+                                    
+                                    // WEBSOCKET FIX: Trigger websocket for non-sepsis/pneumonie tag changes
+                                    // sepsis and pneumonie already trigger via toggleConditionTag, other tags need manual trigger
+                                    if (currentPatientId && window.sharedDataManager && tagCondition !== 'sepsis' && tagCondition !== 'pneumonie') {
+                                        // Small delay to ensure tag state changes are applied
+                                        setTimeout(() => {
+                                            const currentMedicalInfo = window.sharedDataManager.getPatientMedicalInfo(currentPatientId) || {};
+                                            currentMedicalInfo.selectedTags = selectedTags;
+                                            currentMedicalInfo.lastUpdated = new Date().toISOString();
+                                            window.sharedDataManager.savePatientMedicalInfo(currentPatientId, currentMedicalInfo);
+                                            console.log('📤 WEBSOCKET FIX: Non-matrix tag change triggered websocket for:', tagCondition, this.classList.contains('selected') ? 'SELECTED' : 'DESELECTED');
+                                        }, 100);
+                                    }
                                     
                                     // Apply parameter range updates for non-matrix tags
                                     if (tagCondition !== 'sepsis' && tagCondition !== 'pneumonie') {
@@ -1887,6 +1860,37 @@
             if (value) {
                 window.dataManager?.setSelectedProblem(selectedProblem);
                 updateOrganCirclesBasedOnProblem(selectedProblem);
+                
+                // WEBSOCKET FIX: Save medical problem AFTER organ levels are calculated
+                // Similar pattern to risk level handler - wait for applyProblemSpecificMonitoring to complete
+                setTimeout(() => {
+                    if (currentPatientId && window.sharedDataManager) {
+                        const existingMedicalInfo = window.sharedDataManager.getPatientMedicalInfo(currentPatientId) || {};
+                        const updatedMedicalInfo = {
+                            ...existingMedicalInfo,
+                            selectedProblem: selectedProblem,
+                            selectedRiskLevel: selectedRiskLevel,
+                            selectedTags: selectedTags,
+                            lastUpdated: new Date().toISOString()
+                        };
+                        window.sharedDataManager.savePatientMedicalInfo(currentPatientId, updatedMedicalInfo);
+                        console.log('✅ WEBSOCKET FIX: Medical problem saved AFTER organ calculations - triggers WebSocket:', selectedProblem);
+                        
+                        // Debug: Check what was actually stored
+                        console.log('🔍 Debug - Organ levels after medical problem selection:');
+                        console.log('  Heart:', window.sharedDataManager.getHeartMonitoringLevel(currentPatientId));
+                        console.log('  Lung:', window.sharedDataManager.getLungMonitoringLevel(currentPatientId));
+                        console.log('  Temp:', window.sharedDataManager.getTempMonitoringLevel(currentPatientId));
+                    }
+                }, 150); // Increased delay to match successful risk level pattern
+                
+                // Clear flag after processing
+                setTimeout(() => {
+                    if (window.sharedDataManager) {
+                        window.sharedDataManager.setUserChangingProblem(false);
+                    }
+                }, 200);
+                
                 // updateProgressBar is called by updateOrganCircles, no need to call it here
             }
         }

@@ -1277,6 +1277,18 @@
             // Update sliders if they exist
             updateSlidersMonitoringLevel(level);
             
+            // CONDITIONAL WEBSOCKET TRIGGER: Only send immediately if NOT part of tag parameter changes
+            // Tag parameter changes have their own delayed websocket trigger to ensure proper order
+            const isPartOfTagChange = sessionStorage.getItem('tagParameterChangeInProgress');
+            if (!isPartOfTagChange) {
+                console.log(`📤 Risk level changed - sending current display state via websocket`);
+                if (window.sharedDataManager) {
+                    window.sharedDataManager.sendFullThresholdsRiskLevels(currentPatientId);
+                }
+            } else {
+                console.log(`⏸️ Risk level changed - skipping immediate websocket (tag change in progress)`);
+            }
+            
             console.log(`✅ Monitoring level changed to: ${level} (lung: ${lungLevel})`);
         }
 

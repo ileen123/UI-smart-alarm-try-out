@@ -1002,49 +1002,53 @@
             }, 100);
         }
 
-        // Function to update monitoring status text based on circle states
+        // Function to update monitoring status text based on STORED VALUES (Display Truth)
         function updateMonitoringStatus() {
-            if (!window.organComponents) return;
+            if (!currentPatientId || !window.sharedDataManager) return;
             
-            console.log('🔄 Updating monitoring status displays...');
+            console.log('🔄 Updating monitoring status displays from STORED values...');
             
-            // Update heart status
-            if (window.organComponents.heart) {
-                const heartLevel = window.organComponents.heart.getRiskLevel();
-                const heartStatusElement = document.getElementById('heart-status');
-                if (heartStatusElement) {
-                    heartStatusElement.textContent = getStatusText(heartLevel);
-                    console.log(`💓 Heart status updated to: ${getStatusText(heartLevel)} (level: ${heartLevel})`);
-                }
+            // Get monitoring levels from storage (Display Truth)
+            const heartLevel = window.sharedDataManager.getHeartMonitoringLevel(currentPatientId);
+            const lungLevel = window.sharedDataManager.getLungMonitoringLevel(currentPatientId);
+            const tempLevel = window.sharedDataManager.getTempMonitoringLevel(currentPatientId);
+            
+            // Update heart status from storage
+            const heartStatusElement = document.getElementById('heart-status');
+            if (heartStatusElement) {
+                heartStatusElement.textContent = getStatusText(heartLevel);
+                console.log(`💓 Heart status updated to: ${getStatusText(heartLevel)} (level: ${heartLevel}) [FROM STORAGE]`);
             }
             
-            // Update lung status
-            if (window.organComponents.lung) {
-                const lungLevel = window.organComponents.lung.getRiskLevel();
-                const lungStatusElement = document.getElementById('lung-status');
-                if (lungStatusElement) {
-                    lungStatusElement.textContent = getStatusText(lungLevel);
-                    console.log(`🫁 Lung status updated to: ${getStatusText(lungLevel)} (level: ${lungLevel})`);
-                }
+            // Update lung status from storage
+            const lungStatusElement = document.getElementById('lung-status');
+            if (lungStatusElement) {
+                lungStatusElement.textContent = getStatusText(lungLevel);
+                console.log(`🫁 Lung status updated to: ${getStatusText(lungLevel)} (level: ${lungLevel}) [FROM STORAGE]`);
             }
             
-            // Update temp status
-            if (window.organComponents.temp) {
-                const tempLevel = window.organComponents.temp.getRiskLevel();
-                const tempStatusElement = document.getElementById('temp-status');
-                if (tempStatusElement) {
-                    tempStatusElement.textContent = getStatusText(tempLevel);
-                    console.log(`🌡️ Temp status updated to: ${getStatusText(tempLevel)} (level: ${tempLevel})`);
-                }
+            // Update temp status from storage
+            const tempStatusElement = document.getElementById('temp-status');
+            if (tempStatusElement) {
+                tempStatusElement.textContent = getStatusText(tempLevel);
+                console.log(`🌡️ Temp status updated to: ${getStatusText(tempLevel)} (level: ${tempLevel}) [FROM STORAGE]`);
             }
             
-            // Log current monitoring levels from SharedDataManager for verification
-            if (currentPatientId && window.sharedDataManager) {
-                const heartLevel = window.sharedDataManager.getHeartMonitoringLevel(currentPatientId);
-                const lungLevel = window.sharedDataManager.getLungMonitoringLevel(currentPatientId);
-                const tempLevel = window.sharedDataManager.getTempMonitoringLevel(currentPatientId);
-                console.log(`📊 Current stored monitoring levels - Heart: ${heartLevel}, Lung: ${lungLevel}, Temp: ${tempLevel}`);
+            // Sync visual components to match stored values
+            if (window.organComponents?.heart) {
+                window.organComponents.heart.setRiskLevel(heartLevel);
+                console.log(`🔄 Synced heart component to stored level: ${heartLevel}`);
             }
+            if (window.organComponents?.lung) {
+                window.organComponents.lung.setRiskLevel(lungLevel);
+                console.log(`🔄 Synced lung component to stored level: ${lungLevel}`);
+            }
+            if (window.organComponents?.temp) {
+                window.organComponents.temp.setRiskLevel(tempLevel);
+                console.log(`� Synced temp component to stored level: ${tempLevel}`);
+            }
+            
+            console.log(`📊 DISPLAY TRUTH - All levels from storage: Heart: ${heartLevel}, Lung: ${lungLevel}, Temp: ${tempLevel}`);
         }
         
         // Function to convert risk level to Dutch status text
@@ -1167,6 +1171,174 @@
             });
         }
 
+        // Function to apply tag adjustments to organ monitoring levels (matching individual pages logic)
+        function applyTagAdjustmentsToOrganLevels(patientId, justDeselectedTag = null) {
+            console.log('🏷️ Applying tag adjustments to organ monitoring levels for patient:', patientId);
+            
+            if (!patientId || !window.sharedDataManager) {
+                console.warn('❌ Cannot apply tag adjustments - missing patientId or sharedDataManager');
+                return;
+            }
+            
+            // Get current medical context
+            const medicalInfo = window.sharedDataManager.getPatientMedicalInfo(patientId);
+            const selectedProblem = medicalInfo?.selectedProblem || 'none';
+            const selectedRiskLevel = medicalInfo?.selectedRiskLevel || 'low';
+            
+            console.log('🏷️ Medical context:', { selectedProblem, selectedRiskLevel, justDeselectedTag });
+            
+            // If a tag was just deselected, we need to revert to matrix-based values first
+            if (justDeselectedTag) {
+                console.log(`🔄 Tag deselection detected: ${justDeselectedTag} - reverting to matrix-based organ levels`);
+                
+                // Get matrix-based organ states (without any tag adjustments)
+                const matrixResult = window.sharedDataManager.applyProblemSpecificMonitoring(
+                    selectedProblem,
+                    null, // No organ components - just calculate
+                    null, // Don't save yet
+                    selectedRiskLevel,
+                    false // Don't overwrite manual adjustments
+                );
+                
+                // Start with matrix-based organ levels
+                let baseHeartLevel = matrixResult.organStates?.heart || 'mid';
+                let baseLungLevel = matrixResult.organStates?.lung || 'mid';
+                let baseTempLevel = matrixResult.organStates?.temp || 'mid';
+                
+                console.log('🏷️ Matrix-based organ levels (before remaining tags):', {
+                    heart: baseHeartLevel,
+                    lung: baseLungLevel,
+                    temp: baseTempLevel
+                });
+                
+                // Get remaining active tags (excluding the just deselected one)
+                const remainingActiveTags = [];
+                const allTags = ['sepsis', 'pneumonie'];
+                
+                allTags.forEach(tag => {
+                    if (tag !== justDeselectedTag) {
+                        const conditionState = window.sharedDataManager.getPatientConditionState(tag, patientId);
+                        if (conditionState && conditionState.isActive) {
+                            remainingActiveTags.push(tag);
+                        }
+                    }
+                });
+                
+                console.log('🏷️ Remaining active tags after deselection:', remainingActiveTags);
+                
+                // Apply remaining tag adjustments if any
+                if (remainingActiveTags.length > 0) {
+                    const baseOrganStates = {
+                        heart: baseHeartLevel,
+                        lung: baseLungLevel,
+                        temp: baseTempLevel
+                    };
+                    
+                    const tagAdjustments = window.sharedDataManager.calculateTagBasedParameterAdjustments(
+                        remainingActiveTags,
+                        {}, // Empty target ranges - we only need organ state adjustments
+                        baseOrganStates,
+                        selectedRiskLevel
+                    );
+                    
+                    baseHeartLevel = tagAdjustments.adjustedOrganStates.heart;
+                    baseLungLevel = tagAdjustments.adjustedOrganStates.lung;
+                    baseTempLevel = tagAdjustments.adjustedOrganStates.temp;
+                    
+                    console.log('🏷️ After applying remaining tag adjustments:', {
+                        heart: baseHeartLevel,
+                        lung: baseLungLevel,
+                        temp: baseTempLevel
+                    });
+                }
+                
+                // Update organ levels with the final calculated values
+                window.sharedDataManager.setHeartMonitoringLevel(patientId, baseHeartLevel);
+                window.sharedDataManager.setLungMonitoringLevel(patientId, baseLungLevel);
+                window.sharedDataManager.setTempMonitoringLevel(patientId, baseTempLevel);
+                
+                console.log(`✅ Reverted organ levels after ${justDeselectedTag} deselection:`, {
+                    heart: baseHeartLevel,
+                    lung: baseLungLevel,
+                    temp: baseTempLevel
+                });
+                
+            } else {
+                // Tag selection case - apply incremental adjustments
+                // Get current stored organ levels
+                const currentHeartLevel = window.sharedDataManager.getHeartMonitoringLevel(patientId);
+                const currentLungLevel = window.sharedDataManager.getLungMonitoringLevel(patientId);
+                const currentTempLevel = window.sharedDataManager.getTempMonitoringLevel(patientId);
+                
+                console.log('🏷️ Current organ levels before tag adjustment:', {
+                    heart: currentHeartLevel,
+                    lung: currentLungLevel,
+                    temp: currentTempLevel
+                });
+                
+                // Get active tags
+                const activeTags = [];
+                const sepsisCondition = window.sharedDataManager.getPatientConditionState('sepsis', patientId);
+                if (sepsisCondition && sepsisCondition.isActive) {
+                    activeTags.push('sepsis');
+                }
+                const pneumonieCondition = window.sharedDataManager.getPatientConditionState('pneumonie', patientId);
+                if (pneumonieCondition && pneumonieCondition.isActive) {
+                    activeTags.push('pneumonie');
+                }
+                
+                console.log('🏷️ Active tags for organ level adjustment:', activeTags);
+                
+                if (activeTags.length > 0) {
+                    // Apply tag-based monitoring deltas to current levels
+                    const baseOrganStates = {
+                        heart: currentHeartLevel,
+                        lung: currentLungLevel,
+                        temp: currentTempLevel
+                    };
+                    
+                    const tagAdjustments = window.sharedDataManager.calculateTagBasedParameterAdjustments(
+                        activeTags,
+                        {}, // Empty target ranges - we only need organ state adjustments
+                        baseOrganStates,
+                        selectedRiskLevel
+                    );
+                    
+                    const adjustedHeartLevel = tagAdjustments.adjustedOrganStates.heart;
+                    const adjustedLungLevel = tagAdjustments.adjustedOrganStates.lung;
+                    const adjustedTempLevel = tagAdjustments.adjustedOrganStates.temp;
+                    
+                    console.log('🏷️ Tag-adjusted organ levels:', {
+                        heart: `${currentHeartLevel} → ${adjustedHeartLevel}`,
+                        lung: `${currentLungLevel} → ${adjustedLungLevel}`,
+                        temp: `${currentTempLevel} → ${adjustedTempLevel}`
+                    });
+                    
+                    // Update heart level if changed
+                    if (adjustedHeartLevel !== currentHeartLevel) {
+                        window.sharedDataManager.setHeartMonitoringLevel(patientId, adjustedHeartLevel);
+                        console.log(`✅ Updated heart level: ${currentHeartLevel} → ${adjustedHeartLevel}`);
+                    }
+                    
+                    // Update lung level if changed
+                    if (adjustedLungLevel !== currentLungLevel) {
+                        window.sharedDataManager.setLungMonitoringLevel(patientId, adjustedLungLevel);
+                        console.log(`✅ Updated lung level: ${currentLungLevel} → ${adjustedLungLevel}`);
+                    }
+                    
+                    // Update temp level if changed
+                    if (adjustedTempLevel !== currentTempLevel) {
+                        window.sharedDataManager.setTempMonitoringLevel(patientId, adjustedTempLevel);
+                        console.log(`✅ Updated temp level: ${currentTempLevel} → ${adjustedTempLevel}`);
+                    }
+                    
+                    console.log('✅ Tag adjustments applied to organ monitoring levels');
+                } else {
+                    console.log('ℹ️ No active tags - organ levels remain unchanged');
+                }
+            }
+        }
+
         function setupEventListeners() {
             // Set up problem dropdown listener
             const problemDropdown = document.getElementById('problem-dropdown');
@@ -1256,9 +1428,12 @@
                                 console.log(`🏷️ Deactivating ${condition} tag with parameter adjustments`);
                                 window.sharedDataManager.toggleConditionTag(currentPatientId, condition, false);
                                 
+                                // CRITICAL: Apply tag adjustments to organ monitoring levels with deselection logic
+                                applyTagAdjustmentsToOrganLevels(currentPatientId, condition);
+                                
                                 // Update monitoring status labels after tag deselection
                                 // Use longer delay to ensure all events and circle updates have completed
-                                setTimeout(() => updateMonitoringStatus(), 100);
+                                setTimeout(() => updateMonitoringStatus(), 200);
                             } else {
                                 // Use old system for other conditions
                                 window.sharedDataManager.setPatientConditionState(condition, {
@@ -1281,9 +1456,12 @@
                                 console.log(`🏷️ Activating ${condition} tag with parameter adjustments`);
                                 window.sharedDataManager.toggleConditionTag(currentPatientId, condition, true);
                                 
+                                // CRITICAL: Apply tag adjustments to organ monitoring levels (matching individual pages)
+                                applyTagAdjustmentsToOrganLevels(currentPatientId);
+                                
                                 // Update monitoring status labels after tag selection
                                 // Use longer delay to ensure all events and circle updates have completed
-                                setTimeout(() => updateMonitoringStatus(), 100);
+                                setTimeout(() => updateMonitoringStatus(), 200);
                             } else {
                                 // Use old system for other conditions
                                 window.sharedDataManager.setPatientConditionState(condition, {
@@ -1889,7 +2067,7 @@
                 lastUpdated: new Date().toISOString()
             });
             
-            alert('Alarm instellingen succesvol opgeslagen!');
+            // alert('Alarm instellingen succesvol opgeslagen!');
             goBackToBedOverview()
         }
 
@@ -2200,6 +2378,36 @@
                     window.dataManager.setSelectedProblem(selectedProblem);
                 }
                 updateOrganCirclesBasedOnProblem(selectedProblem);
+                
+                // WEBSOCKET FIX: Save medical problem AFTER organ levels are calculated
+                // Similar pattern to risk level handler - wait for applyProblemSpecificMonitoring to complete
+                setTimeout(() => {
+                    if (currentPatientId && window.sharedDataManager) {
+                        const existingMedicalInfo = window.sharedDataManager.getPatientMedicalInfo(currentPatientId) || {};
+                        const updatedMedicalInfo = {
+                            ...existingMedicalInfo,
+                            selectedProblem: selectedProblem,
+                            selectedRiskLevel: selectedRiskLevel,
+                            selectedTags: selectedTags,
+                            lastUpdated: new Date().toISOString()
+                        };
+                        window.sharedDataManager.savePatientMedicalInfo(currentPatientId, updatedMedicalInfo);
+                        console.log('✅ ALARM-OVERVIEW WEBSOCKET FIX: Medical problem saved AFTER organ calculations - triggers WebSocket:', selectedProblem);
+                        
+                        // Debug: Check what was actually stored
+                        console.log('🔍 ALARM-OVERVIEW Debug - Organ levels after medical problem selection:');
+                        console.log('  Heart:', window.sharedDataManager.getHeartMonitoringLevel(currentPatientId));
+                        console.log('  Lung:', window.sharedDataManager.getLungMonitoringLevel(currentPatientId));
+                        console.log('  Temp:', window.sharedDataManager.getTempMonitoringLevel(currentPatientId));
+                    }
+                }, 150); // Increased delay to match successful risk level pattern
+                
+                // Clear flag after processing
+                setTimeout(() => {
+                    if (window.sharedDataManager) {
+                        window.sharedDataManager.setUserChangingProblem(false);
+                    }
+                }, 250);
             }
         }
 

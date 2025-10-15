@@ -17,7 +17,7 @@ class SharedDataManager {
         
         // Track recent messages to prevent duplicates
         this.recentMessages = new Map();
-        this.messageDuplicateWindow = 2000; // 2 seconds to prevent duplicates
+        this.messageDuplicateWindow = 100; // 100 milliseconds to prevent duplicates
         
         this.initializeAppData();
         this.initializeGlobalHRVariables();
@@ -172,9 +172,7 @@ class SharedDataManager {
      * This replaces scattered assignment logic across pages
      */
     assignPatientToBed(patientId, bedNumber, patientInfo = {}) {
-        try {
-            console.log(`🏥 Unified patient assignment: Patient ${patientId} → Bed ${bedNumber}`);
-            
+        try {            
             // 1. Get current bed states
             const currentBedStates = this.getBedStates() || {};
             
@@ -206,8 +204,6 @@ class SharedDataManager {
             });
             
             if (success) {
-                console.log(`✅ Patient ${patientId} successfully assigned to bed ${bedNumber}`);
-                console.log(`📊 Assignment details:`, updatedBedStates[bedNumber]);
                 return {
                     success: true,
                     bedNumber: bedNumber,
@@ -247,8 +243,6 @@ class SharedDataManager {
      */
     dischargePatientFromBed(bedNumber, reason = 'manual_discharge') {
         try {
-            console.log(`🚪 Unified patient discharge from Bed ${bedNumber} (${reason})`);
-            
             // 1. Get current bed states
             const currentBedStates = this.getBedStates() || {};
             
@@ -263,7 +257,6 @@ class SharedDataManager {
             }
             
             const patientId = currentBed.patientId;
-            console.log(`🚪 Discharging patient ${patientId} from bed ${bedNumber}`);
             
             // 2. Create updated bed state
             const updatedBedStates = { ...currentBedStates };
@@ -286,7 +279,6 @@ class SharedDataManager {
             }
             
             if (success) {
-                console.log(`✅ Patient ${patientId} successfully discharged from bed ${bedNumber}`);
                 return {
                     success: true,
                     bedNumber: bedNumber,
@@ -323,10 +315,8 @@ class SharedDataManager {
         
         let matrixDefaults = {};
         if (currentProblem && currentProblem !== '' && currentProblem !== 'none') {
-            console.log('📊 Using Matrix-based defaults for global variables:', currentProblem, '+', currentRiskLevel);
             matrixDefaults = this.getMatrixBasedBaseRanges(currentProblem, currentRiskLevel);
         } else {
-            console.log('⚠️ No problem selected - using respiratory-insufficientie as safe Matrix default');
             // Use respiratory-insufficientie as the safest general default from Matrix
             matrixDefaults = this.getMatrixBasedBaseRanges('respiratoire-insufficientie', 'low');
         }
@@ -345,13 +335,6 @@ class SharedDataManager {
 
         // Load existing values from localStorage if available
         this.loadGlobalParameterVariables();
-
-        console.log('🌐 Global parameter variables initialized from Matrix:');
-        console.log(`  HR: ${window.HR_MIN}-${window.HR_MAX} bpm`);
-        console.log(`  BP: ${window.BP_MIN}-${window.BP_MAX} mmHg`);
-        console.log(`  AF: ${window.AF_MIN}-${window.AF_MAX} /min`);
-        console.log(`  Saturatie: ${window.SAT_MIN}-${window.SAT_MAX}%`);
-        console.log(`  Temperature: ${window.TEMP_MIN}-${window.TEMP_MAX}°C`);
     }
 
     /**
@@ -372,7 +355,6 @@ class SharedDataManager {
                 window.SAT_MAX = params.SAT_MAX || window.SAT_MAX;
                 window.TEMP_MIN = params.TEMP_MIN || window.TEMP_MIN;
                 window.TEMP_MAX = params.TEMP_MAX || window.TEMP_MAX;
-                console.log('📥 Loaded global parameter variables from localStorage');
             } catch (error) {
                 console.warn('⚠️ Error loading global parameters:', error);
             }
@@ -396,7 +378,6 @@ class SharedDataManager {
             TEMP_MAX: window.TEMP_MAX
         };
         localStorage.setItem('globalParameterVariables', JSON.stringify(params));
-        console.log('💾 Saved global parameter variables to localStorage');
     }
 
     /**
@@ -404,8 +385,6 @@ class SharedDataManager {
      */
     clearPatientManualAdjustments(patientId) {
         if (!patientId) return;
-        
-        console.log('🗑️ Clearing ALL manual adjustments for patient:', patientId);
         
         // Clear all slider custom thresholds
         const parameterTypes = ['HR', 'BP_Mean', 'AF', 'Saturatie', 'Temperature'];
@@ -418,8 +397,6 @@ class SharedDataManager {
         globalParams.forEach(param => {
             localStorage.removeItem(`patient-${patientId}-${param}-manual`);
         });
-        
-        console.log('✅ All manual adjustments cleared for patient:', patientId);
     }
 
     /**
@@ -427,7 +404,6 @@ class SharedDataManager {
      */
     setUserChangingProblem(isChanging = true) {
         window.isUserChangingProblem = isChanging;
-        console.log(`🎯 User changing problem flag set to: ${isChanging}`);
     }
 
     /**
@@ -456,8 +432,6 @@ class SharedDataManager {
         window.dispatchEvent(new CustomEvent('parameterAlarmToggled', {
             detail: { patientId, parameter, isEnabled }
         }));
-        
-        console.log(`🔔 Parameter alarm ${parameter} for patient ${patientId}:`, isEnabled ? 'ENABLED' : 'DISABLED');
     }
 
     /**
@@ -498,7 +472,6 @@ class SharedDataManager {
         parameters.forEach(param => {
             this.setParameterAlarmEnabled(patientId, param, true);
         });
-        console.log('🔄 Reset all parameter alarms to ENABLED for patient:', patientId);
     }
 
     /**
@@ -529,11 +502,8 @@ class SharedDataManager {
             // Check if auto-initialization has already been completed
             const initFlag = localStorage.getItem('autoInitComplete');
             if (initFlag === 'true') {
-                console.log('ℹ️ Auto-initialization already completed, skipping...');
                 return;
             }
-            
-            console.log('🔄 Auto-initializing from legacy localStorage data...');
             
             // Migrate patient data - but limit the scan to avoid performance issues
             const maxScans = Math.min(localStorage.length, 50); // Limit to 50 items max
@@ -546,7 +516,6 @@ class SharedDataManager {
                         try {
                             const medicalInfo = JSON.parse(data);
                             this.savePatientMedicalInfo(patientId, medicalInfo);
-                            console.log('✅ Migrated patient data:', patientId);
                         } catch (error) {
                             console.error('❌ Error migrating patient data for:', patientId, error);
                         }
@@ -560,7 +529,6 @@ class SharedDataManager {
                 try {
                     const beds = JSON.parse(bedStates);
                     this.saveBedStates(beds);
-                    console.log('✅ Migrated bed states');
                 } catch (error) {
                     console.error('❌ Error migrating bed states:', error);
                 }
@@ -579,12 +547,10 @@ class SharedDataManager {
                     migrated: true,
                     timestamp: new Date().toISOString()
                 });
-                console.log('✅ Migrated session data');
             }
             
             // Set flag to prevent repeated auto-initialization
             localStorage.setItem('autoInitComplete', 'true');
-            console.log('✅ Auto-initialization complete');
         } catch (error) {
             console.error('❌ Error during auto-initialization:', error);
         }
@@ -700,7 +666,7 @@ class SharedDataManager {
                 console.log('🔄 Dispatched patientMedicalInfoChanged event for bed overview update');
             }
 
-            console.log('✅ Patient medical info saved for:', patientId, medicalInfo);
+            console.log(`✅ Patient medical info saved for patient ${patientId}`);
             return true;
         } catch (error) {
             console.error('❌ Error saving patient medical info:', error);
@@ -710,11 +676,12 @@ class SharedDataManager {
 
     /**
      * Collect complete current medical configuration for a patient
-     * Returns the full current state - no delta detection, just current values
+     * PRINCIPLE: Returns exactly what is currently displayed in the UI (sliders + risk level buttons)
+     * This is the "display truth" that should be sent via websocket
      */
     collectCurrentMedicalConfiguration(patientId) {
         try {
-            console.log(`📋 Collecting current medical configuration for patient ${patientId}`);
+            console.log(`📋 Collecting DISPLAY TRUTH medical configuration for patient ${patientId}`);
             
             const medicalInfo = this.getPatientMedicalInfo(patientId) || {};
             const bedStates = this.getBedStates() || {};
@@ -732,153 +699,159 @@ class SharedDataManager {
             const medicalProblem = medicalInfo.selectedProblem || null;
             const selectedRiskLevel = medicalInfo.selectedRiskLevel || 'low';
             
-            // Get ACTUAL stored monitoring levels (not calculated ones)
+            // Get CURRENT DISPLAY TRUTH: What's actually shown in the UI risk level buttons
             const actualHeartLevel = this.getHeartMonitoringLevel(patientId) || 'low';
             const actualLungLevel = this.getLungMonitoringLevel(patientId) || 'low';
             const actualTempLevel = this.getTempMonitoringLevel(patientId) || 'low';
             
-            console.log(`📊 Reading actual stored monitoring levels for patient ${patientId}:`);
-            console.log(`  - Heart: ${actualHeartLevel}`);
-            console.log(`  - Lung: ${actualLungLevel}`);
-            console.log(`  - Temp: ${actualTempLevel}`);
+            console.log(`📊 DISPLAY TRUTH - Risk levels currently shown in UI for patient ${patientId}:`);
+            console.log(`  - Heart (Circulatoir): ${actualHeartLevel}`);
+            console.log(`  - Lung (Respiratoire): ${actualLungLevel}`);
+            console.log(`  - Temp (Temperature): ${actualTempLevel}`);
             
             // Map the stored monitoring levels to the WebSocket risk levels structure
-            // Note: 'circulatoir' corresponds to heart, 'respiratoire' corresponds to lung
             const riskLevels = {
                 circulatoir: actualHeartLevel,
                 respiratoire: actualLungLevel,
-                temperature: actualTempLevel  // Adding temperature to the structure
+                temperature: actualTempLevel
             };
             
-            // Get current thresholds - try to get actual stored ranges first
+            // Get CURRENT DISPLAY TRUTH: What's actually shown in the slider values
+            // Priority: Current Target Ranges (what sliders display) > Any fallback
             let thresholds = {
                 HR: { min: 70, max: 100 },
                 BP_Mean: { min: 60, max: 90 },
                 AF: { min: 12, max: 20 },
                 Saturatie: { min: 92, max: 100 },
                 Temperature: { min: 36.0, max: 38.5 }
-            }; // Safe defaults
+            }; // Safe defaults only if no display values exist
             
-            // First, try to get the actual stored target ranges for this patient
-            const storedRanges = this.getCurrentTargetRanges(patientId);
-            console.log(`🔍 DEBUG: Retrieved stored ranges for patient ${patientId}:`, storedRanges);
-            console.log(`🔍 DEBUG: Type of storedRanges:`, typeof storedRanges);
-            console.log(`🔍 DEBUG: Keys in storedRanges:`, Object.keys(storedRanges || {}));
+            // CRITICAL: Use the values that are CURRENTLY DISPLAYED in sliders (stored target ranges)
+            const currentlyDisplayedRanges = this.getCurrentTargetRanges(patientId);
+            console.log(`🔍 DISPLAY TRUTH - Threshold ranges currently shown in sliders for patient ${patientId}:`, currentlyDisplayedRanges);
             
-            if (storedRanges && Object.keys(storedRanges).length > 0) {
-                console.log(`📊 Using stored target ranges for patient ${patientId}:`, storedRanges);
+            if (currentlyDisplayedRanges && Object.keys(currentlyDisplayedRanges).length > 0) {
+                console.log(`📊 Using DISPLAY TRUTH target ranges (what user sees in sliders):`, currentlyDisplayedRanges);
                 thresholds = {
-                    HR: storedRanges.HR || thresholds.HR,
-                    BP_Mean: storedRanges.BP_Mean || thresholds.BP_Mean,
-                    AF: storedRanges.AF || thresholds.AF,
-                    Saturatie: storedRanges.Saturatie || thresholds.Saturatie,
-                    Temperature: storedRanges.Temperature || thresholds.Temperature
+                    HR: currentlyDisplayedRanges.HR || thresholds.HR,
+                    BP_Mean: currentlyDisplayedRanges.BP_Mean || thresholds.BP_Mean,
+                    AF: currentlyDisplayedRanges.AF || thresholds.AF,
+                    Saturatie: currentlyDisplayedRanges.Saturatie || thresholds.Saturatie,
+                    Temperature: currentlyDisplayedRanges.Temperature || thresholds.Temperature
                 };
-                console.log(`🔍 DEBUG: Final thresholds object after merging:`, thresholds);
-            } else if (medicalProblem && medicalProblem !== 'none') {
-                // Fallback to matrix-based ranges if no stored ranges available
-                let matrixRanges = this.getMatrixBasedBaseRanges(medicalProblem, selectedRiskLevel);
-                
-                // ENHANCED: Check for active condition tags (pneumonie, sepsis) that might affect thresholds
-                if (matrixRanges && Object.keys(matrixRanges).length > 0) {
-                    console.log(`📊 Base matrix-based ranges for ${medicalProblem}:`, matrixRanges);
+                console.log(`🔍 FINAL DISPLAY TRUTH thresholds object:`, thresholds);
+            } else {
+                // Only fallback to calculated values if NO display values exist
+                console.log(`⚠️ No display values found - falling back to calculated values for patient ${patientId}`);
+                if (medicalProblem && medicalProblem !== 'none') {
+                    let matrixRanges = this.getMatrixBasedBaseRanges(medicalProblem, selectedRiskLevel);
                     
-                    // Check for active condition states that might require threshold adjustments
-                    const activeTags = [];
-                    const sepsisCondition = this.getPatientConditionState('sepsis', patientId);
-                    if (sepsisCondition && sepsisCondition.isActive) {
-                        activeTags.push('sepsis');
-                    }
-                    const pneumonieCondition = this.getPatientConditionState('pneumonie', patientId);
-                    if (pneumonieCondition && pneumonieCondition.isActive) {
-                        activeTags.push('pneumonie');
-                    }
-                    
-                    // Apply tag-based adjustments if any active conditions found
-                    if (activeTags.length > 0) {
-                        console.log(`🏷️ Active condition tags found for threshold calculation:`, activeTags);
-                        const tagAdjustments = this.calculateTagBasedParameterAdjustments(
-                            activeTags, 
-                            matrixRanges, 
-                            {}, // Empty organ states for threshold calculation
-                            selectedRiskLevel
-                        );
-                        if (tagAdjustments && tagAdjustments.adjustedRanges) {
-                            matrixRanges = tagAdjustments.adjustedRanges;
-                            console.log(`📊 Tag-adjusted ranges for WebSocket:`, matrixRanges);
+                    // ENHANCED: Check for active condition tags (pneumonie, sepsis) that might affect thresholds
+                    if (matrixRanges && Object.keys(matrixRanges).length > 0) {
+                        console.log(`📊 Base matrix-based ranges for ${medicalProblem}:`, matrixRanges);
+                        
+                        // Check for active condition states that might require threshold adjustments
+                        const activeTags = [];
+                        const sepsisCondition = this.getPatientConditionState('sepsis', patientId);
+                        if (sepsisCondition && sepsisCondition.isActive) {
+                            activeTags.push('sepsis');
                         }
+                        const pneumonieCondition = this.getPatientConditionState('pneumonie', patientId);
+                        if (pneumonieCondition && pneumonieCondition.isActive) {
+                            activeTags.push('pneumonie');
+                        }
+                        
+                        // Apply tag-based adjustments if any active conditions found
+                        if (activeTags.length > 0) {
+                            console.log(`🏷️ Active condition tags found for threshold calculation:`, activeTags);
+                            const tagAdjustments = this.calculateTagBasedParameterAdjustments(
+                                activeTags, 
+                                matrixRanges, 
+                                {}, // Empty organ states for threshold calculation
+                                selectedRiskLevel
+                            );
+                            if (tagAdjustments && tagAdjustments.adjustedRanges) {
+                                matrixRanges = tagAdjustments.adjustedRanges;
+                                console.log(`📊 Tag-adjusted ranges for WebSocket:`, matrixRanges);
+                            }
+                        }
+                        
+                        thresholds = {
+                            HR: matrixRanges.HR || thresholds.HR,
+                            BP_Mean: matrixRanges.BP_Mean || thresholds.BP_Mean,
+                            AF: matrixRanges.AF || thresholds.AF,
+                            Saturatie: matrixRanges.Saturatie || thresholds.Saturatie,
+                            Temperature: matrixRanges.Temperature || thresholds.Temperature
+                        };
+                        
+                        console.log(`📊 Using fallback matrix + tag-adjusted ranges for patient ${patientId}:`, thresholds);
                     }
-                    
-                    thresholds = {
-                        HR: matrixRanges.HR || thresholds.HR,
-                        BP_Mean: matrixRanges.BP_Mean || thresholds.BP_Mean,
-                        AF: matrixRanges.AF || thresholds.AF,
-                        Saturatie: matrixRanges.Saturatie || thresholds.Saturatie,
-                        Temperature: matrixRanges.Temperature || thresholds.Temperature
-                    };
-                    
-                    console.log(`📊 Using matrix + tag-adjusted ranges for patient ${patientId}:`, thresholds);
                 }
             }
             
-            console.log(`📊 Final thresholds for patient ${patientId}:`, thresholds);
+            console.log(`📊 FINAL DISPLAY TRUTH thresholds for patient ${patientId}:`, thresholds);
             
             const config = {
                 patientId: patientId,
                 bedNumber: bedNumber,
                 medicalProblem: medicalProblem,
                 riskLevels: riskLevels,
-                thresholds: thresholds
+                thresholds: thresholds,
+                displayTruthSource: currentlyDisplayedRanges ? 'slider_values' : 'calculated_fallback'
             };
             
-            console.log(`✅ Complete configuration being returned for patient ${patientId}:`);
+            console.log(`✅ DISPLAY TRUTH configuration being returned for patient ${patientId}:`);
             console.log(`   📋 Medical Problem: ${medicalProblem}`);
             console.log(`   🏥 Bed Number: ${bedNumber}`);
             console.log(`   📊 Risk Levels: circulatoir=${riskLevels.circulatoir}, respiratoire=${riskLevels.respiratoire}, temperature=${riskLevels.temperature}`);
             console.log(`   ⚙️ Thresholds:`, thresholds);
+            console.log(`   🎯 Data Source: ${config.displayTruthSource}`);
             
             return config;
         } catch (error) {
-            console.error('❌ Error collecting current medical configuration:', error);
+            console.error('❌ Error collecting display truth medical configuration:', error);
             return null;
         }
     }
 
     /**
-     * Send complete thresholds_risk_levels message
-     * Always sends the full current configuration - no delta detection
+     * Send complete thresholds_risk_levels message with DISPLAY TRUTH data
+     * Sends exactly what the user sees in the UI (sliders + risk level buttons)
      */
     sendFullThresholdsRiskLevels(patientId) {
-        console.log(`📤 Sending full thresholds_risk_levels for patient ${patientId}`);
+        console.log(`📤 Sending DISPLAY TRUTH thresholds_risk_levels for patient ${patientId}`);
         
-        // DEBUG: Show the exact moment when we collect the configuration
-        console.log(`🔍 DEBUG: About to collect current medical configuration for patient ${patientId}`);
+        // Collect the current DISPLAY TRUTH configuration
+        console.log(`🎯 Collecting DISPLAY TRUTH configuration for patient ${patientId}`);
         
         const currentConfig = this.collectCurrentMedicalConfiguration(patientId);
         
-        console.log(`🔍 DEBUG: Collected configuration:`, currentConfig);
-        console.log(`🔍 DEBUG: Thresholds in config:`, currentConfig?.thresholds);
+        console.log(`🎯 DISPLAY TRUTH configuration collected:`, currentConfig);
+        console.log(`🎯 DISPLAY TRUTH thresholds:`, currentConfig?.thresholds);
+        console.log(`🎯 DISPLAY TRUTH risk levels:`, currentConfig?.riskLevels);
         
         if (!currentConfig) {
-            console.error('❌ Could not collect current configuration for patient:', patientId);
+            console.error('❌ Could not collect DISPLAY TRUTH configuration for patient:', patientId);
             return;
         }
         
         const messageData = {
             patientId: currentConfig.patientId,
             bedNumber: currentConfig.bedNumber,
-            changeType: 'full_config',
+            changeType: 'display_truth', // Changed to indicate this is display truth
             medicalProblem: currentConfig.medicalProblem,
             riskLevels: currentConfig.riskLevels,
-            thresholds: currentConfig.thresholds
+            thresholds: currentConfig.thresholds,
+            dataSource: currentConfig.displayTruthSource, // NEW: Indicates if from sliders or fallback
+            timestamp: new Date().toISOString()
         };
         
-        console.log(`📤 Sending complete configuration:`, messageData);
+        console.log(`📤 Sending DISPLAY TRUTH configuration (what user sees in UI):`, messageData);
         
         // Send the full configuration message
         this.sendWebSocketMessage('thresholds_risk_levels', messageData);
         
-        console.log('✅ Full thresholds_risk_levels message sent for patient:', patientId);
+        console.log('✅ DISPLAY TRUTH thresholds_risk_levels message sent for patient:', patientId);
     }
 
     /**
@@ -923,7 +896,6 @@ class SharedDataManager {
             // Detect patient assignments/changes and send WebSocket messages
             this.detectAndSendBedChanges(currentBedStates, bedStates);
 
-            console.log('✅ Bed states saved:', bedStates);
             return true;
         } catch (error) {
             console.error('❌ Error saving bed states:', error);
@@ -942,8 +914,6 @@ class SharedDataManager {
                 
                 // Patient assigned to bed
                 if (!oldBed.occupied && newBed.occupied && newBed.patientId) {
-                    console.log(`👤 Patient ${newBed.patientId} assigned to bed ${bedNumber}`);
-                    
                     // Combine basic patient data and medical information
                     const basicPatientData = newBed.patientData || {};
                     const medicalInfo = this.getPatientMedicalInfo(newBed.patientId) || {};
@@ -976,8 +946,6 @@ class SharedDataManager {
                 
                 // Patient discharged from bed
                 if (oldBed.occupied && (!newBed.occupied || !newBed.patientId) && oldBed.patientId) {
-                    console.log(`👋 Patient ${oldBed.patientId} discharged from bed ${bedNumber}`);
-                    
                     this.sendWebSocketMessage('patient_discharged', {
                         patientId: oldBed.patientId,
                         bedNumber: parseInt(bedNumber),
@@ -993,8 +961,6 @@ class SharedDataManager {
                 // Patient transferred between beds
                 if (oldBed.occupied && newBed.occupied && oldBed.patientId && newBed.patientId && 
                     oldBed.patientId !== newBed.patientId) {
-                    console.log(`🔄 Bed ${bedNumber} patient changed: ${oldBed.patientId} → ${newBed.patientId}`);
-                    
                     // Send discharge for old patient
                     this.sendWebSocketMessage('patient_discharged', {
                         patientId: oldBed.patientId,
@@ -1100,7 +1066,6 @@ class SharedDataManager {
                 this.saveAppData(appData);
             }
 
-            console.log('✅ Session data saved:', sessionData);
             return true;
         } catch (error) {
             console.error('❌ Error saving session data:', error);
@@ -1148,7 +1113,6 @@ class SharedDataManager {
                 this.saveAppData(appData);
             }
 
-            console.log('✅ Session data cleared');
             return true;
         } catch (error) {
             console.error('❌ Error clearing session data:', error);
@@ -1194,8 +1158,6 @@ class SharedDataManager {
      */
     removePatient(patientId) {
         try {
-            console.log('🗑️ Removing all data for patient:', patientId);
-            
             // Remove individual patient data (legacy compatibility)
             const patientMedicalKey = this.storageKeys.PATIENT_PREFIX + patientId + '_medicalInfo';
             const patientTargetRangesKey = this.storageKeys.PATIENT_PREFIX + patientId + '_targetRanges';
@@ -2779,8 +2741,14 @@ class SharedDataManager {
     applyTagParameterAdjustments(patientId, tag, isActive) {
         console.log(`🏷️ Applying tag parameter adjustments: ${tag} = ${isActive ? 'ACTIVE' : 'INACTIVE'} for patient ${patientId}`);
         
+        // SET FLAG: Mark that tag parameter changes are in progress to prevent immediate websocket triggers
+        sessionStorage.setItem('tagParameterChangeInProgress', 'true');
+        console.log('🚩 SET tagParameterChangeInProgress flag - preventing immediate websocket triggers');
+        
         if (!patientId) {
             console.warn('❌ No patient ID provided for tag parameter adjustments');
+            // Clear flag on early return
+            sessionStorage.removeItem('tagParameterChangeInProgress');
             return;
         }
         
@@ -2847,6 +2815,10 @@ class SharedDataManager {
         // Dispatch event to notify all pages about parameter AND monitoring level changes
         // TIMING FIX: Delay WebSocket message to ensure organ state changes are applied first
         setTimeout(() => {
+            // CLEAR FLAG: Tag parameter changes are now complete
+            sessionStorage.removeItem('tagParameterChangeInProgress');
+            console.log('🚩 CLEARED tagParameterChangeInProgress flag - enabling immediate websocket triggers');
+            
             // CRITICAL FIX: Send WebSocket message AFTER organ state changes complete
             // This ensures external systems receive tag-adjusted thresholds AND updated monitoring levels
             console.log(`📤 Sending WebSocket message for tag-based parameter change: ${tag} = ${isActive ? 'ACTIVE' : 'INACTIVE'} (delayed for consistency)`);
@@ -2875,7 +2847,7 @@ class SharedDataManager {
                 }
             }));
             console.log(`🔄 Dispatched globalParametersChanged event for tag-based slider updates`);
-        }, 100); // Increased delay to ensure organ state changes complete before WebSocket message
+        }, 500); // INCREASED DELAY: Ensure all organ state changes and UI updates complete before WebSocket message
         
         return result;
     }

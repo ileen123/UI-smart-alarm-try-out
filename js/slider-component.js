@@ -1103,6 +1103,16 @@ class VitalParameterSlider {
                 
                 console.log(`✅ Saved ${this.config.parameter} settings to SharedDataManager for patient ${this.config.patientId}`);
                 
+                // CONDITIONAL WEBSOCKET TRIGGER: Only send immediately if NOT part of tag parameter changes
+                // Tag parameter changes have their own delayed websocket trigger to ensure proper order
+                const isPartOfTagChange = sessionStorage.getItem('tagParameterChangeInProgress');
+                if (!isPartOfTagChange) {
+                    console.log(`📤 Slider threshold changed - sending current display state via websocket`);
+                    window.sharedDataManager.sendFullThresholdsRiskLevels(this.config.patientId);
+                } else {
+                    console.log(`⏸️ Slider threshold changed - skipping immediate websocket (tag change in progress)`);
+                }
+                
                 // Update original values since changes are now saved
                 this.originalMin = this.currentMin;
                 this.originalMax = this.currentMax;
