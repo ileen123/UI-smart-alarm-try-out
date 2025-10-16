@@ -5,10 +5,9 @@
  */
 
 class WebSocketConnectionManager {
-    constructor(testMode = false, showPings = true) {
+    constructor(testMode = false) {
         this.client = null;
         this.testMode = testMode;
-        this.showPings = showPings;
         this.config = {
             ip: 'localhost',
             port: 8080,
@@ -16,14 +15,13 @@ class WebSocketConnectionManager {
             reconnectDelay: 5000,
             maxReconnectAttempts: 10,
             heartbeatInterval: 30000,
-            testMode: testMode,
-            showPings: showPings
+            testMode: testMode
         };
         
         if (testMode) {
-            console.log('🧪 WebSocket Connection Manager initialized in TEST MODE - ping messages only');
+            console.log('🧪 WebSocket Connection Manager initialized in TEST MODE');
         } else {
-            console.log('🔧 WebSocket Connection Manager initialized for localhost:8080 with ping monitoring');
+            console.log('🔧 WebSocket Connection Manager initialized for localhost:8080');
         }
         this.initializeConnection();
     }
@@ -166,43 +164,20 @@ class WebSocketConnectionManager {
         this.config.testMode = enabled;
         if (this.client) {
             this.client.config.testMode = enabled;
-            
-            // Update ping display if it exists
-            const container = document.getElementById('ping-messages-container');
-            if (container && this.client.config.showPings) {
-                // Remove old display and create new one with correct styling
-                container.remove();
-                this.client.addPingMessageDisplay();
-            }
         }
         
         if (enabled) {
-            console.log('🧪 Test mode ENABLED - will generate ping messages instead of WebSocket attempts');
+            console.log('🧪 Test mode ENABLED - will generate test logs instead of WebSocket attempts');
         } else {
-            console.log('🌐 Test mode DISABLED - will attempt real WebSocket connection with ping monitoring');
+            console.log('🌐 Test mode DISABLED - will attempt real WebSocket connection');
         }
     }
     
     /**
-     * Enable or disable ping message display
+     * Enable or disable show pings (deprecated - functionality removed)
      */
     setShowPings(enabled) {
-        this.showPings = enabled;
-        this.config.showPings = enabled;
-        if (this.client) {
-            this.client.config.showPings = enabled;
-            
-            const container = document.getElementById('ping-messages-container');
-            if (enabled && !container) {
-                // Add ping display
-                this.client.addPingMessageDisplay();
-            } else if (!enabled && container) {
-                // Remove ping display
-                container.remove();
-            }
-        }
-        
-        console.log(`📡 Ping message display ${enabled ? 'ENABLED' : 'DISABLED'}`);
+        console.log(`📡 Ping message display functionality has been removed`);
     }
     
     /**
@@ -225,17 +200,16 @@ class WebSocketConnectionManager {
     }
 }
 
-// Check URL parameters for test mode and ping display
+// Check URL parameters for test mode
 const urlParams = new URLSearchParams(window.location.search);
 const testMode = urlParams.get('testMode') === 'true' || urlParams.get('test') === 'true';
-const showPings = urlParams.get('showPings') !== 'false'; // Default to true unless explicitly disabled
 
 // Initialize WebSocket manager when DOM is ready
 function initializeWebSocketManager() {
     console.log('🚀 Initializing WebSocket manager with DOM ready...');
     
-    // Global instance - with test mode and ping display support
-    window.webSocketManager = new WebSocketConnectionManager(testMode, showPings);
+    // Global instance - with test mode support
+    window.webSocketManager = new WebSocketConnectionManager(testMode);
     
     console.log('✅ Global WebSocket manager initialized');
 }
@@ -257,13 +231,6 @@ if (typeof window !== 'undefined') {
     window.toggleWebSocketTestMode = function(enabled) {
         if (window.webSocketManager) {
             window.webSocketManager.setTestMode(enabled);
-        }
-    };
-    
-    // Add global ping display toggle function
-    window.toggleWebSocketPings = function(enabled) {
-        if (window.webSocketManager) {
-            window.webSocketManager.setShowPings(enabled);
         }
     };
 }

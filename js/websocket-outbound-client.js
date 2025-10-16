@@ -14,8 +14,7 @@ class WebSocketOutboundClient {
             reconnectDelay: config.reconnectDelay || 5000,
             maxReconnectAttempts: config.maxReconnectAttempts || 10,
             heartbeatInterval: config.heartbeatInterval || 30000,
-            testMode: config.testMode || false, // Enable test mode for ping messages
-            showPings: config.showPings !== false, // Show ping messages (default: true, can be disabled)
+            testMode: config.testMode || false,
             ...config
         };
         
@@ -26,7 +25,6 @@ class WebSocketOutboundClient {
         this.isConnecting = false;
         this.messageQueue = [];
         this.sessionId = this.generateSessionId();
-        this.pingCount = 0; // Counter for ping messages
         
         // Event handlers
         this.onConnected = config.onConnected || (() => {});
@@ -35,216 +33,20 @@ class WebSocketOutboundClient {
         this.onError = config.onError || (() => {});
         
         if (this.config.testMode) {
-            console.log('🧪 WebSocket Outbound Client initialized in TEST MODE - will generate ping messages');
+            console.log('🧪 WebSocket Outbound Client initialized in TEST MODE');
         } else {
             console.log('🌐 WebSocket Outbound Client initialized:', this.getWebSocketUrl());
-        }
-        
-        // Always add ping display if showPings is enabled
-        if (this.config.showPings) {
-            this.addPingMessageDisplay();
         }
     }
     
     /**
      * Generate a unique session ID for this client instance
      */
+    /**
+     * Generate a unique session ID for this client instance
+     */
     generateSessionId() {
         return 'client_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
-    }
-    
-    /**
-     * Add ping message display panel to the page
-     */
-    addPingMessageDisplay() {
-        // Check if DOM is ready before creating display
-        if (!document.body) {
-            console.log('📱 DOM not ready for ping display, deferring...');
-            // Defer until DOM is ready
-            if (document.readyState === 'loading') {
-                document.addEventListener('DOMContentLoaded', () => {
-                    this.addPingMessageDisplay();
-                });
-            } else {
-                // DOM is ready but body is not available yet, wait a bit
-                setTimeout(() => this.addPingMessageDisplay(), 100);
-            }
-            return;
-        }
-        
-        // Only add if the display doesn't already exist
-        if (document.getElementById('ping-display-container')) {
-            return;
-        }
-        
-        const container = document.createElement('div');
-        container.id = 'ping-display-container';
-        container.innerHTML = `
-            <div style="position: fixed; top: 20px; right: 20px; width: 320px; z-index: 9999; 
-                       background: rgba(255, 255, 255, 0.95); border: 2px solid #007ACC; border-radius: 8px; 
-                       box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2); font-family: 'Segoe UI', sans-serif;">
-                <div style="background: #007ACC; color: white; padding: 8px 12px; border-radius: 6px 6px 0 0; 
-                           font-weight: bold; display: flex; justify-content: space-between; align-items: center;">
-                    <span>WebSocket Monitor</span>
-                    <button onclick="this.parentElement.parentElement.style.display='none'" 
-                           style="background: rgba(255,255,255,0.2); color: white; border: none; 
-                                   border-radius: 3px; padding: 2px 6px; cursor: pointer;">×</button>
-                </div>
-                <div style="padding: 8px 12px; font-size: 12px; border-bottom: 1px solid #ddd;">
-                    <div>URL: <span id="websocket-url" style="font-weight: bold; color: #007ACC;">localhost:8080</span></div>
-                    <div>Status: <span id="connection-status" style="font-weight: bold;">Connecting...</span></div>
-                    <div>Mode: <span id="connection-mode" style="font-weight: bold; color: ${this.config.testMode ? '#ff6600' : '#00aa00'};">${this.config.testMode ? 'TEST' : 'REAL'}</span></div>
-                    <button onclick="document.getElementById('ping-messages-list').innerHTML=''" 
-                           style="background: #ff6666; color: white; float: right; font-size: 10px; 
-                                   border: none; border-radius: 3px; padding: 2px 6px; cursor: pointer;">Clear</button>
-                </div>
-                <div id="ping-messages-list" style="padding: 10px; max-height: 300px; overflow-y: auto;"></div>
-            </div>
-        `;
-        document.body.appendChild(container);
-        console.log('📱 Ping display panel added to DOM');
-    }
-    
-    /**
-     * Add a ping message to the display
-     */
-    addPingMessage(type, data, status = 'ping') {
-        this.pingCount++;
-        const timestamp = new Date().toLocaleTimeString();
-        const pingList = document.getElementById('ping-messages-list');
-        
-        if (pingList) {
-            const messageDiv = document.createElement('div');
-            
-            // Different styling based on status and mode
-            let borderColor, statusIcon, statusText, bgColor;
-            
-            if (this.config.testMode) {
-                borderColor = '#ffd700';
-                statusIcon = '📡';
-                statusText = 'PING';
-                bgColor = 'rgba(255,215,0,0.1)';
-            } else {
-                switch (status) {
-                    case 'sent':
-                        borderColor = '#4ade80';
-                        statusIcon = '✅';
-                        statusText = 'SENT';
-                        bgColor = 'rgba(74,222,128,0.1)';
-                        break;
-                    case 'queued':
-                        borderColor = '#fbbf24';
-                        statusIcon = '⏳';
-                        statusText = 'QUEUED';
-                        bgColor = 'rgba(251,191,36,0.1)';
-                        break;
-                    case 'failed':
-                        borderColor = '#ef4444';
-                        statusIcon = '❌';
-                        statusText = 'FAILED';
-                        bgColor = 'rgba(239,68,68,0.1)';
-                        break;
-                    default:
-                        borderColor = '#3b82f6';
-                        statusIcon = '📤';
-                        statusText = 'ATTEMPT';
-                        bgColor = 'rgba(59,130,246,0.1)';
-                }
-            }
-            
-            messageDiv.style.cssText = `
-                margin-bottom: 8px; padding: 8px; 
-                background: ${bgColor}; 
-                border-radius: 5px; border-left: 4px solid ${borderColor};
-            `;
-            
-            const summary = this.createDataSummary(data);
-            messageDiv.innerHTML = `
-                <div style="color: ${borderColor}; font-weight: bold;">${statusIcon} ${statusText} #${this.pingCount} - ${type}</div>
-                <div style="color: #e2e8f0; font-size: 11px;">${timestamp}</div>
-                <div style="color: #cbd5e0; margin-top: 4px;">${summary}</div>
-            `;
-            
-            pingList.insertBefore(messageDiv, pingList.firstChild);
-            
-            // Keep only last 20 messages
-            while (pingList.children.length > 20) {
-                pingList.removeChild(pingList.lastChild);
-            }
-            
-            // Also log to console with distinctive styling
-            const logStyle = this.config.testMode 
-                ? 'background: linear-gradient(45deg, #667eea, #764ba2); color: white; padding: 2px 8px; border-radius: 3px; font-weight: bold;'
-                : `background: ${status === 'sent' ? '#4ade80' : status === 'queued' ? '#fbbf24' : status === 'failed' ? '#ef4444' : '#3b82f6'}; color: white; padding: 2px 8px; border-radius: 3px; font-weight: bold;`;
-                
-            console.log(`%c${statusIcon} ${statusText} #${this.pingCount} - ${type}`, logStyle, data);
-        } else {
-            // If ping display is not available, still log to console with basic styling
-            let statusIcon, statusText;
-            
-            if (this.config.testMode) {
-                statusIcon = '📡';
-                statusText = 'PING';
-            } else {
-                switch (status) {
-                    case 'sent':
-                        statusIcon = '✅';
-                        statusText = 'SENT';
-                        break;
-                    case 'queued':
-                        statusIcon = '⏳';
-                        statusText = 'QUEUED';
-                        break;
-                    case 'failed':
-                        statusIcon = '❌';
-                        statusText = 'FAILED';
-                        break;
-                    default:
-                        statusIcon = '📤';
-                        statusText = 'ATTEMPT';
-                }
-            }
-            
-            const logStyle = this.config.testMode 
-                ? 'background: linear-gradient(45deg, #667eea, #764ba2); color: white; padding: 2px 8px; border-radius: 3px; font-weight: bold;'
-                : `background: ${status === 'sent' ? '#4ade80' : status === 'queued' ? '#fbbf24' : status === 'failed' ? '#ef4444' : '#3b82f6'}; color: white; padding: 2px 8px; border-radius: 3px; font-weight: bold;`;
-                
-            console.log(`%c${statusIcon} ${statusText} #${this.pingCount} - ${type}`, logStyle, data);
-        }
-    }
-    
-    /**
-     * Create a summary of data for display
-     */
-    createDataSummary(data) {
-        if (!data) return 'No data';
-        
-        const keys = Object.keys(data);
-        if (keys.length === 0) return 'Empty data';
-        
-        const importantKeys = ['patientId', 'bedNumber', 'riskLevel', 'patient'];
-        const summary = [];
-        
-        // Show important keys first
-        importantKeys.forEach(key => {
-            if (data[key] !== undefined) {
-                if (typeof data[key] === 'object' && data[key] !== null) {
-                    if (data[key].id) summary.push(`${key}: ${data[key].id}`);
-                    else if (data[key].name) summary.push(`${key}: ${data[key].name}`);
-                    else summary.push(`${key}: [object]`);
-                } else {
-                    summary.push(`${key}: ${data[key]}`);
-                }
-            }
-        });
-        
-        // Add count of other keys
-        const otherKeys = keys.filter(k => !importantKeys.includes(k));
-        if (otherKeys.length > 0) {
-            summary.push(`+${otherKeys.length} more fields`);
-        }
-        
-        return summary.join(', ') || 'Complex data structure';
     }
     
     /**
@@ -373,34 +175,22 @@ class WebSocketOutboundClient {
             data: data
         };
         
-        // Test mode: Generate ping message instead of sending
+        // Test mode: Just return success without actually sending
         if (this.config.testMode) {
-            if (this.config.showPings) {
-                this.addPingMessage(type, data, 'ping');
-            }
+            console.log(`📡 Test mode: Would send [${type}]:`, data);
             return true; // Always return success in test mode
         }
         
-        // Real mode: Try to send via WebSocket AND show ping messages
+        // Real mode: Try to send via WebSocket
         if (this.isConnected()) {
             try {
                 const messageStr = JSON.stringify(message);
                 this.websocket.send(messageStr);
                 console.log(`📤 Message sent [${type}]:`, data);
-                
-                // Show ping message indicating successful send
-                if (this.config.showPings) {
-                    this.addPingMessage(type, data, 'sent');
-                }
                 return true;
             } catch (error) {
                 console.error('❌ Error sending message:', error);
                 this.queueMessage(message);
-                
-                // Show ping message indicating failed send
-                if (this.config.showPings) {
-                    this.addPingMessage(type, data, 'failed');
-                }
                 return false;
             }
         } else {
@@ -412,11 +202,6 @@ class WebSocketOutboundClient {
             
             console.warn(`⚠️ WebSocket not connected. Queueing message [${type}]`);
             this.queueMessage(message);
-            
-            // Show ping message indicating queued message
-            if (this.config.showPings) {
-                this.addPingMessage(type, data, 'queued');
-            }
             return false;
         }
     }

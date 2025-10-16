@@ -815,6 +815,8 @@
                                                 console.log(`🔄 SECONDARY BACKUP (SETUP): Final UI refresh for ${tagCondition}...`);
                                                 syncDisplaysWithCentralizedRanges();
                                                 updateSetupPageElements();
+                                                // Update monitoring status labels as final backup
+                                                updateMonitoringStatus();
                                             }, 100);
                                         }, 150); // Increased from 50ms to 150ms
                                     }
@@ -943,6 +945,9 @@
                                     // Update setup page UI elements
                                     updateSetupPageElements();
                                     
+                                    // Update monitoring status labels after organ state changes
+                                    setTimeout(() => updateMonitoringStatus(), 100);
+                                    
                                     console.log('✅ UNIFIED TAG (SETUP): Immediate UI updates completed');
                                 } else {
                                     console.log('⏭️ UNIFIED TAG (SETUP): Skipping UI update - different patient');
@@ -998,6 +1003,8 @@
                                         console.log('🔄 UNIFIED TAG (SETUP): Refreshing displays after tag state sync...');
                                         syncDisplaysWithCentralizedRanges();
                                         updateSetupPageElements(); // Update setup page UI elements too
+                                        // Update monitoring status labels after tag state sync
+                                        updateMonitoringStatus();
                                         console.log('✅ UNIFIED TAG (SETUP): Display refresh completed after sync');
                                     }, 100);
                                 }
@@ -1244,6 +1251,9 @@
                                     }
                                 }
                             }
+                            
+                            // Update monitoring status labels to reflect current circle states
+                            updateMonitoringStatus();
                             
                             console.log('✅ Setup page UI elements updated');
                         }
