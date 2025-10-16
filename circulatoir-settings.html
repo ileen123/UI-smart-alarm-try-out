@@ -2020,7 +2020,7 @@
                             const beforeBP_MIN = window.BP_MIN;
                             const beforeBP_MAX = window.BP_MAX;
                             
-                            refreshSlidersFromTargetRanges();
+                            syncSlidersWithCentralizedRanges();
                             updateRiskLevelButtons(); // Also update buttons and heart circle
                             
                             // Check if values actually changed
@@ -2036,7 +2036,7 @@
                             // Additional backup after more time to ensure all async operations complete
                             setTimeout(() => {
                                 console.log('🔄 SECONDARY BACKUP (CIRC): Final UI refresh...');
-                                refreshSlidersFromTargetRanges();
+                                syncSlidersWithCentralizedRanges();
                                 updateRiskLevelButtons();
                             }, 100);
                         }, 150); // Increased from 50ms to 150ms
@@ -2093,8 +2093,8 @@
                     
                     // Immediately refresh sliders with new target ranges
                     if (targetRanges) {
-                        console.log('🔄 UNIFIED TAG (CIRC): Calling refreshSlidersFromTargetRanges()...');
-                        refreshSlidersFromTargetRanges();
+                        console.log('🔄 UNIFIED TAG (CIRC): Calling syncSlidersWithCentralizedRanges()...');
+                        syncSlidersWithCentralizedRanges();
                     }
                     
                     // Update risk level buttons to reflect new monitoring levels
@@ -2103,7 +2103,7 @@
                     // Additional timeout-based refresh to ensure everything is updated
                     setTimeout(() => {
                         console.log('🔄 UNIFIED TAG (CIRC): Secondary refresh after timeout...');
-                        refreshSlidersFromTargetRanges();
+                        syncSlidersWithCentralizedRanges();
                         updateRiskLevelButtons(); // Update buttons again after timeout
                         console.log('✅ UNIFIED TAG (CIRC): Secondary refresh completed');
                     }, 100);
@@ -2153,7 +2153,7 @@
                     // ENHANCEMENT: Refresh sliders when tag states sync from other pages with timeout
                     setTimeout(() => {
                         console.log('🔄 UNIFIED TAG (CIRC): Refreshing sliders after tag state sync...');
-                        refreshSlidersFromTargetRanges();
+                        syncSlidersWithCentralizedRanges();
                         updateRiskLevelButtons(); // Update risk level buttons too
                         console.log('✅ UNIFIED TAG (CIRC): Slider refresh completed after sync');
                     }, 100);
@@ -2173,7 +2173,7 @@
                         
                         // Refresh sliders to show automatic values without manual overrides
                         setTimeout(() => {
-                            refreshSlidersFromTargetRanges();
+                            syncSlidersWithCentralizedRanges();
                             updateRiskLevelButtons();
                             console.log('✅ MANUAL OVERRIDE (CIRC): Sliders refreshed after override clearing');
                         }, 50);

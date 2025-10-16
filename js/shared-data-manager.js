@@ -390,17 +390,34 @@ class SharedDataManager {
     clearPatientManualAdjustments(patientId) {
         if (!patientId) return;
         
-        // Clear all slider custom thresholds
+        console.log(`🧹 CLEARING: All manual adjustments for patient ${patientId}`);
+        
+        // CRITICAL: Clear new manual override system
+        this.clearManualOverrides(patientId, 'problem-change');
+        
+        // CRITICAL: Also clear customThresholds from medical info (old system)
+        const medicalInfo = this.getPatientMedicalInfo(patientId);
+        if (medicalInfo && medicalInfo.customThresholds) {
+            console.log(`🧹 CLEARING: Found customThresholds in medical info to clear:`, medicalInfo.customThresholds);
+            medicalInfo.customThresholds = {};
+            medicalInfo.lastUpdated = new Date().toISOString();
+            this.savePatientMedicalInfo(patientId, medicalInfo);
+            console.log(`✅ CLEARING: Cleared customThresholds from medical info`);
+        }
+        
+        // Clear all slider custom thresholds (legacy system)
         const parameterTypes = ['HR', 'BP_Mean', 'AF', 'Saturatie', 'Temperature'];
         parameterTypes.forEach(type => {
             localStorage.removeItem(`patient-${patientId}-${type}-custom-threshold`);
         });
         
-        // Clear all global parameter manual overrides
+        // Clear all global parameter manual overrides (legacy system)
         const globalParams = ['HR_MIN', 'HR_MAX', 'BP_MIN', 'BP_MAX', 'AF_MIN', 'AF_MAX', 'SAT_MIN', 'SAT_MAX', 'TEMP_MIN', 'TEMP_MAX'];
         globalParams.forEach(param => {
             localStorage.removeItem(`patient-${patientId}-${param}-manual`);
         });
+        
+        console.log(`✅ CLEARING: Completed manual adjustment clearing for patient ${patientId}`);
     }
 
     /**
@@ -3548,6 +3565,8 @@ class SharedDataManager {
      * @returns {Object} - Current target ranges for all parameters
      */
     getCurrentTargetRanges(patientId) {
+        console.log(`🔍 CACHE DEBUG: getCurrentTargetRanges called for patient ${patientId}`);
+        
         const key = `${this.storageKeys.PATIENT_PREFIX}${patientId}_current_target_ranges`;
         const stored = localStorage.getItem(key);
         
@@ -3563,7 +3582,12 @@ class SharedDataManager {
         }
         
         // MANUAL OVERRIDE SYSTEM: Apply manual overrides with priority
+        console.log(`🔍 CACHE DEBUG: About to check for manual overrides for patient ${patientId}`);
+        const manualOverrides = this.getManualOverrides(patientId);
+        console.log(`🔍 CACHE DEBUG: Found manual overrides:`, manualOverrides);
+        
         const finalRanges = this.applyManualOverridesToRanges(patientId, baseRanges);
+        console.log(`🔍 CACHE DEBUG: Final ranges after applying manual overrides:`, finalRanges);
         
         return finalRanges;
     }
@@ -4625,16 +4649,21 @@ class SharedDataManager {
      */
     getManualOverrides(patientId) {
         const overrideKey = `${this.storageKeys.MANUAL_OVERRIDE_PREFIX}${patientId}`;
+        console.log(`🔍 CACHE DEBUG: getManualOverrides called for key: ${overrideKey}`);
         
         try {
             const stored = localStorage.getItem(overrideKey);
+            console.log(`🔍 CACHE DEBUG: localStorage.getItem returned:`, stored);
             if (stored) {
-                return JSON.parse(stored);
+                const parsed = JSON.parse(stored);
+                console.log(`🔍 CACHE DEBUG: Parsed manual overrides:`, parsed);
+                return parsed;
             }
         } catch (error) {
             console.warn('❌ Error parsing manual overrides:', error);
         }
         
+        console.log(`🔍 CACHE DEBUG: No manual overrides found, returning empty object`);
         return {};
     }
     
@@ -4660,13 +4689,34 @@ class SharedDataManager {
         const overrideKey = `${this.storageKeys.MANUAL_OVERRIDE_PREFIX}${patientId}`;
         const existingOverrides = this.getManualOverrides(patientId);
         
-        if (Object.keys(existingOverrides).length === 0) {
+        console.log(`🔍 MANUAL OVERRIDE: Existing overrides before clearing:`, existingOverrides);
+        console.log(`🔍 MANUAL OVERRIDE: Storage key to clear: ${overrideKey}`);
+        
+        // CRITICAL: Also clear the old customThresholds system that sliders read from
+        const medicalInfo = this.getPatientMedicalInfo(patientId);
+        if (medicalInfo && medicalInfo.customThresholds) {
+            console.log(`🔍 MANUAL OVERRIDE: Found customThresholds to clear:`, medicalInfo.customThresholds);
+            medicalInfo.customThresholds = {};
+            medicalInfo.lastUpdated = new Date().toISOString();
+            this.savePatientMedicalInfo(patientId, medicalInfo);
+            console.log(`✅ MANUAL OVERRIDE: Cleared customThresholds from medical info`);
+        }
+        
+        if (Object.keys(existingOverrides).length === 0 && (!medicalInfo?.customThresholds || Object.keys(medicalInfo.customThresholds).length === 0)) {
             console.log('ℹ️ MANUAL OVERRIDE: No manual overrides to clear');
             return;
         }
         
-        // Remove from localStorage
+        // Remove from localStorage (new system)
         localStorage.removeItem(overrideKey);
+        
+        // Verify removal
+        const afterClear = localStorage.getItem(overrideKey);
+        console.log(`🔍 MANUAL OVERRIDE: After clearing, storage contains:`, afterClear);
+        
+        // Invalidate cache to ensure fresh calculations don't use old overrides
+        this.invalidateEffectiveValuesCache(patientId);
+        console.log(`🗑️ MANUAL OVERRIDE: Cache invalidated for patient ${patientId}`);
         
         console.log(`✅ MANUAL OVERRIDE: Cleared all manual overrides for patient ${patientId} due to: ${trigger}`);
         

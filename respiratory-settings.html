@@ -1863,13 +1863,13 @@
                         // Backup timeout to ensure UI updates - increased timeout for data manager processing
                         setTimeout(() => {
                             console.log('🔄 BACKUP (RESP): Forcing slider refresh after data manager processing...');
-                            refreshSlidersFromTargetRanges();
+                            syncSlidersWithCentralizedRanges();
                             updateRiskLevelButtons(); // Also update buttons and lung circle
                             
                             // Additional backup after more time to ensure all async operations complete
                             setTimeout(() => {
                                 console.log('🔄 SECONDARY BACKUP (RESP): Final UI refresh...');
-                                refreshSlidersFromTargetRanges();
+                                syncSlidersWithCentralizedRanges();
                                 updateRiskLevelButtons();
                             }, 100);
                         }, 150); // Increased from 50ms to 150ms
@@ -1892,8 +1892,8 @@
                     
                     // Immediately refresh sliders with new target ranges
                     if (targetRanges) {
-                        console.log('🔄 UNIFIED TAG (RESP): Calling refreshSlidersFromTargetRanges()...');
-                        refreshSlidersFromTargetRanges();
+                        console.log('🔄 UNIFIED TAG (RESP): Calling syncSlidersWithCentralizedRanges()...');
+                        syncSlidersWithCentralizedRanges();
                     }
                     
                     // Update risk level buttons to reflect new monitoring levels
@@ -1931,7 +1931,7 @@
                     // Refresh sliders with timeout to ensure data is processed
                     setTimeout(() => {
                         console.log('🔄 UNIFIED TAG (RESP): Refreshing sliders after sync event...');
-                        refreshSlidersFromTargetRanges();
+                        syncSlidersWithCentralizedRanges();
                         updateRiskLevelButtons(); // Update risk level buttons too
                         console.log('✅ UNIFIED TAG (RESP): Slider refresh completed after sync');
                     }, 100);
@@ -1951,7 +1951,7 @@
                         
                         // Refresh sliders to show automatic values without manual overrides
                         setTimeout(() => {
-                            refreshSlidersFromTargetRanges();
+                            syncSlidersWithCentralizedRanges();
                             updateRiskLevelButtons();
                             console.log('✅ MANUAL OVERRIDE (RESP): Sliders refreshed after override clearing');
                         }, 50);
@@ -2267,7 +2267,7 @@
                                     min: currentTargetRanges.AF.min,
                                     max: currentTargetRanges.AF.max
                                 };
-                                console.log('📊 Using stored AF target range for slider initialization:', afTargetRange);
+                                console.log('📊 Using stored AF target range for slider initialization (no manual overrides):', afTargetRange);
                                 
                                 // Update global variables to match stored data
                                 window.AF_MIN = afTargetRange.min;

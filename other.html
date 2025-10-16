@@ -1453,16 +1453,32 @@
             console.log('🔧 Setting up event listeners...');
             
             // FORCE SLIDER REFRESH FUNCTION: Can be called from other pages to update temperature slider
+            // Uses effective values instead of global variables for consistency
             window.forceTemperatureSliderRefresh = function() {
-                console.log('💪 FORCE REFRESH - Temperature slider');
-                console.log('💪 Global variables - TEMP:', window.TEMP_MIN, '-', window.TEMP_MAX);
+                console.log('💪 FORCE REFRESH - Temperature slider using effective values');
+                
+                if (!currentPatientId || !window.sharedDataManager) {
+                    console.warn('⚠️ Cannot force refresh - missing patient or SharedDataManager');
+                    return;
+                }
+                
+                // Get effective values instead of global variables
+                const effectiveValues = window.sharedDataManager.getCurrentEffectiveValues(currentPatientId);
+                
+                if (!effectiveValues || !effectiveValues.parameterRanges || !effectiveValues.parameterRanges.Temperature) {
+                    console.warn('⚠️ No effective Temperature values available for force refresh');
+                    return;
+                }
+                
+                const tempRange = effectiveValues.parameterRanges.Temperature;
+                console.log('💪 Effective Temperature values:', tempRange.min, '-', tempRange.max);
                 
                 if (tempSlider && tempSlider.config && tempSlider.config.targetRange) {
-                    console.log('💪 Force updating Temperature slider:', window.TEMP_MIN, '-', window.TEMP_MAX);
-                    tempSlider.config.targetRange.min = window.TEMP_MIN;
-                    tempSlider.config.targetRange.max = window.TEMP_MAX;
-                    tempSlider.currentMin = window.TEMP_MIN;
-                    tempSlider.currentMax = window.TEMP_MAX;
+                    console.log('💪 Force updating Temperature slider with effective values:', tempRange.min, '-', tempRange.max);
+                    tempSlider.config.targetRange.min = tempRange.min;
+                    tempSlider.config.targetRange.max = tempRange.max;
+                    tempSlider.currentMin = tempRange.min;
+                    tempSlider.currentMax = tempRange.max;
                     if (tempSlider.updateSliderPosition) {
                         tempSlider.updateSliderPosition();
                     }
@@ -1471,19 +1487,35 @@
                 }
             };
             
-            // SIMPLE APPROACH: Listen for global parameter changes
+            // SINGLE SOURCE: Listen for global parameter changes and use effective values
             window.addEventListener('globalParametersChanged', function(event) {
-                console.log('� Global parameters changed event received:', event.detail);
-                // Update temperature slider with new global variables
+                console.log('🔄 Global parameters changed event received:', event.detail);
+                
+                if (!currentPatientId || !window.sharedDataManager) {
+                    console.warn('⚠️ Cannot update temperature slider - missing patient or SharedDataManager');
+                    return;
+                }
+                
+                // Get effective values instead of using global variables
+                const effectiveValues = window.sharedDataManager.getCurrentEffectiveValues(currentPatientId);
+                
+                if (!effectiveValues || !effectiveValues.parameterRanges || !effectiveValues.parameterRanges.Temperature) {
+                    console.warn('⚠️ No effective Temperature values available for slider update');
+                    return;
+                }
+                
+                const tempRange = effectiveValues.parameterRanges.Temperature;
+                
+                // Update temperature slider with effective values
                 if (tempSlider && typeof tempSlider.updateConfig === 'function') {
                     tempSlider.updateConfig({
-                        targetRange: { min: window.TEMP_MIN, max: window.TEMP_MAX }
+                        targetRange: { min: tempRange.min, max: tempRange.max }
                     });
                     // Force visual position refresh
                     if (tempSlider.updateSliderPosition) {
                         tempSlider.updateSliderPosition();
                     }
-                    console.log('✅ Temperature slider updated from global parameters:', window.TEMP_MIN, '-', window.TEMP_MAX);
+                    console.log('✅ Temperature slider updated from effective values:', tempRange.min, '-', tempRange.max);
                 }
             });
 

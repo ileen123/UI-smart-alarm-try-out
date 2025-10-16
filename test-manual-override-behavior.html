@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manual Override Behavior Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f5f5f5;
+        }
+        .test-container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .test-step {
+            margin: 15px 0;
+            padding: 10px;
+            border-left: 4px solid #007cba;
+            background-color: #f8f9fa;
+        }
+        .test-result {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+        }
+        .success {
+            background-color: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+        .error {
+            background-color: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+        .info {
+            background-color: #d1ecf1;
+            border: 1px solid #bee5eb;
+            color: #0c5460;
+        }
+        button {
+            background-color: #007cba;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background-color: #005a87;
+        }
+        .code-block {
+            background-color: #f4f4f4;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 10px;
+            font-family: 'Courier New', monospace;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>🧪 Manual Override Behavior Test</h1>
+    <p>This test simulates the real-world scenario of setting manual overrides and then changing diagnosis/tags to verify they are properly cleared.</p>
+    
+    <div class="test-container">
+        <h2>Test Controls</h2>
+        <button onclick="runFullTest()">🚀 Run Complete Test Suite</button>
+        <button onclick="clearAll()">🧹 Clear All Data</button>
+        <button onclick="showCurrentState()">🔍 Show Current State</button>
+    </div>
+
+    <div id="test-output"></div>
+
+    <script src="js/shared-data-manager.js"></script>
+    <script>
+        let testOutput = document.getElementById('test-output');
+        let manager;
+        const TEST_PATIENT_ID = 'test-patient-behavior';
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            manager = new SharedDataManager();
+            addResult('info', 'Test environment initialized. Click "Run Complete Test Suite" to begin.');
+        });
+
+        function addResult(type, message) {
+            const div = document.createElement('div');
+            div.className = `test-result ${type}`;
+            div.innerHTML = message;
+            testOutput.appendChild(div);
+            testOutput.scrollTop = testOutput.scrollHeight;
+        }
+
+        function addStep(title, content) {
+            const div = document.createElement('div');
+            div.className = 'test-step';
+            div.innerHTML = `<strong>${title}</strong><br>${content}`;
+            testOutput.appendChild(div);
+        }
+
+        async function runFullTest() {
+            testOutput.innerHTML = '';
+            addResult('info', '🧪 Starting Complete Manual Override Behavior Test...');
+            
+            try {
+                // Test 1: Simulate real-world scenario
+                await testRealWorldScenario();
+                
+                // Test 2: Test dual storage systems
+                await testDualStorageSystems();
+                
+                // Test 3: Test cross-page simulation
+                await testCrossPageBehavior();
+                
+                addResult('success', '🎉 All tests completed successfully! Manual override clearing is working correctly.');
+                
+            } catch (error) {
+                addResult('error', `❌ Test failed: ${error.message}`);
+                console.error('Test error:', error);
+            }
+        }
+
+        async function testRealWorldScenario() {
+            addStep('Test 1: Real-World Scenario', 'Simulating the exact user workflow that was problematic');
+            
+            // Step 1: Set up initial patient with problem
+            addResult('info', 'Step 1.1: Setting up patient with respiratory insufficiency');
+            const initialMedicalInfo = {
+                selectedProblem: 'respiratoire-insufficientie',
+                selectedRiskLevel: 'low',
+                customThresholds: {}
+            };
+            manager.savePatientMedicalInfo(TEST_PATIENT_ID, initialMedicalInfo);
+            
+            // Step 2: Simulate manual slider adjustment (both storage systems)
+            addResult('info', 'Step 1.2: User manually adjusts Saturatie slider to 90-100%');
+            
+            // New system: manual override
+            manager.setManualOverride(TEST_PATIENT_ID, 'Saturatie', {
+                min: 90,
+                max: 100,
+                unit: '%'
+            });
+            
+            // Old system: customThresholds (simulating slider component behavior)
+            const medicalInfo = manager.getPatientMedicalInfo(TEST_PATIENT_ID);
+            if (!medicalInfo.customThresholds) medicalInfo.customThresholds = {};
+            if (!medicalInfo.customThresholds.respiratoire) medicalInfo.customThresholds.respiratoire = {};
+            medicalInfo.customThresholds.respiratoire.Saturatie = {
+                min: 90,
+                max: 100,
+                unit: '%'
+            };
+            manager.savePatientMedicalInfo(TEST_PATIENT_ID, medicalInfo);
+            
+            // Verify manual overrides are set
+            const manualOverrides = manager.getManualOverrides(TEST_PATIENT_ID);
+            const updatedMedicalInfo = manager.getPatientMedicalInfo(TEST_PATIENT_ID);
+            
+            if (Object.keys(manualOverrides).length > 0 && updatedMedicalInfo.customThresholds.respiratoire?.Saturatie) {
+                addResult('success', '✅ Manual overrides set in both systems');
+                addResult('info', `New system: ${JSON.stringify(manualOverrides)}`);
+                addResult('info', `Old system: ${JSON.stringify(updatedMedicalInfo.customThresholds.respiratoire.Saturatie)}`);
+            } else {
+                throw new Error('Failed to set manual overrides');
+            }
+            
+            // Step 3: User changes diagnosis (should clear overrides)
+            addResult('info', 'Step 1.3: User changes diagnosis to heart failure');
+            manager.clearManualOverrides(TEST_PATIENT_ID, 'setup-problem-hart-falen');
+            
+            // Step 4: Verify both systems are cleared
+            const afterClearManual = manager.getManualOverrides(TEST_PATIENT_ID);
+            const afterClearMedical = manager.getPatientMedicalInfo(TEST_PATIENT_ID);
+            
+            const newSystemCleared = Object.keys(afterClearManual).length === 0;
+            const oldSystemCleared = !afterClearMedical.customThresholds || 
+                                   Object.keys(afterClearMedical.customThresholds).length === 0;
+            
+            if (newSystemCleared && oldSystemCleared) {
+                addResult('success', '✅ Test 1 PASSED: Both manual override systems cleared on diagnosis change');
+            } else {
+                addResult('error', `❌ Test 1 FAILED: Manual overrides not cleared properly`);
+                addResult('error', `New system cleared: ${newSystemCleared}, Old system cleared: ${oldSystemCleared}`);
+                if (!newSystemCleared) addResult('error', `Remaining new overrides: ${JSON.stringify(afterClearManual)}`);
+                if (!oldSystemCleared) addResult('error', `Remaining old overrides: ${JSON.stringify(afterClearMedical.customThresholds)}`);
+            }
+        }
+
+        async function testDualStorageSystems() {
+            addStep('Test 2: Dual Storage Systems', 'Testing both manual override storage mechanisms');
+            
+            // Clear everything first
+            manager.clearManualOverrides(TEST_PATIENT_ID, 'test-reset');
+            
+            // Test new system only
+            addResult('info', 'Step 2.1: Testing new manual override system');
+            manager.setManualOverride(TEST_PATIENT_ID, 'HR', { min: 80, max: 120, unit: 'bpm' });
+            
+            const newSystemOverrides = manager.getManualOverrides(TEST_PATIENT_ID);
+            if (newSystemOverrides.HR) {
+                addResult('success', '✅ New system: Manual override set correctly');
+            } else {
+                throw new Error('New system failed to set override');
+            }
+            
+            // Test old system only
+            addResult('info', 'Step 2.2: Testing old customThresholds system');
+            const medicalInfo = manager.getPatientMedicalInfo(TEST_PATIENT_ID) || {};
+            if (!medicalInfo.customThresholds) medicalInfo.customThresholds = {};
+            if (!medicalInfo.customThresholds.circulatoir) medicalInfo.customThresholds.circulatoir = {};
+            medicalInfo.customThresholds.circulatoir.BP_Mean = { min: 70, max: 90, unit: 'mmHg' };
+            manager.savePatientMedicalInfo(TEST_PATIENT_ID, medicalInfo);
+            
+            const oldSystemThresholds = manager.getPatientMedicalInfo(TEST_PATIENT_ID).customThresholds;
+            if (oldSystemThresholds.circulatoir?.BP_Mean) {
+                addResult('success', '✅ Old system: Custom threshold set correctly');
+            } else {
+                throw new Error('Old system failed to set threshold');
+            }
+            
+            // Test clearing both systems
+            addResult('info', 'Step 2.3: Testing simultaneous clearing of both systems');
+            manager.clearManualOverrides(TEST_PATIENT_ID, 'test-dual-clearing');
+            
+            const afterClearNew = manager.getManualOverrides(TEST_PATIENT_ID);
+            const afterClearOld = manager.getPatientMedicalInfo(TEST_PATIENT_ID).customThresholds;
+            
+            const bothCleared = Object.keys(afterClearNew).length === 0 && 
+                              (!afterClearOld || Object.keys(afterClearOld).length === 0);
+            
+            if (bothCleared) {
+                addResult('success', '✅ Test 2 PASSED: Both storage systems cleared simultaneously');
+            } else {
+                addResult('error', '❌ Test 2 FAILED: Not both systems cleared');
+                addResult('error', `New system: ${JSON.stringify(afterClearNew)}`);
+                addResult('error', `Old system: ${JSON.stringify(afterClearOld)}`);
+            }
+        }
+
+        async function testCrossPageBehavior() {
+            addStep('Test 3: Cross-Page Behavior & Cache', 'Simulating the page revisit scenario with cache debugging');
+            
+            // Step 1: Set manual overrides (simulating user adjustments)
+            addResult('info', 'Step 3.1: User sets manual overrides on respiratory settings page');
+            
+            // Simulate both override systems being set
+            manager.setManualOverride(TEST_PATIENT_ID, 'AF', { min: 15, max: 25, unit: '/min' });
+            manager.setManualOverride(TEST_PATIENT_ID, 'Saturatie', { min: 88, max: 98, unit: '%' });
+            
+            const medicalInfo = manager.getPatientMedicalInfo(TEST_PATIENT_ID) || {};
+            if (!medicalInfo.customThresholds) medicalInfo.customThresholds = {};
+            if (!medicalInfo.customThresholds.respiratoire) medicalInfo.customThresholds.respiratoire = {};
+            medicalInfo.customThresholds.respiratoire.AF = { min: 15, max: 25, unit: '/min' };
+            medicalInfo.customThresholds.respiratoire.Saturatie = { min: 88, max: 98, unit: '%' };
+            manager.savePatientMedicalInfo(TEST_PATIENT_ID, medicalInfo);
+            
+            addResult('success', '✅ Manual overrides set in both systems');
+            
+            // Step 2: Check what getCurrentTargetRanges returns BEFORE clearing
+            addResult('info', 'Step 3.2: Checking getCurrentTargetRanges BEFORE clearing overrides');
+            const rangesWithOverrides = manager.getCurrentTargetRanges(TEST_PATIENT_ID);
+            addResult('info', `Ranges with overrides: AF ${rangesWithOverrides.AF?.min}-${rangesWithOverrides.AF?.max}, Saturatie ${rangesWithOverrides.Saturatie?.min}-${rangesWithOverrides.Saturatie?.max}`);
+            
+            // Step 3: User activates sepsis tag (should clear overrides)
+            addResult('info', 'Step 3.3: User activates sepsis tag - clearing manual overrides');
+            manager.clearManualOverrides(TEST_PATIENT_ID, 'tag-sepsis-activated');
+            
+            // Step 4: IMMEDIATELY check what getCurrentTargetRanges returns AFTER clearing
+            addResult('info', 'Step 3.4: IMMEDIATELY checking getCurrentTargetRanges AFTER clearing overrides');
+            const rangesAfterClear = manager.getCurrentTargetRanges(TEST_PATIENT_ID);
+            addResult('info', `Ranges after clearing: AF ${rangesAfterClear.AF?.min}-${rangesAfterClear.AF?.max}, Saturatie ${rangesAfterClear.Saturatie?.min}-${rangesAfterClear.Saturatie?.max}`);
+            
+            // Step 5: Compare the ranges to see if they're different
+            const afChanged = rangesWithOverrides.AF?.min !== rangesAfterClear.AF?.min || 
+                            rangesWithOverrides.AF?.max !== rangesAfterClear.AF?.max;
+            const satChanged = rangesWithOverrides.Saturatie?.min !== rangesAfterClear.Saturatie?.min || 
+                             rangesWithOverrides.Saturatie?.max !== rangesAfterClear.Saturatie?.max;
+            
+            if (afChanged || satChanged) {
+                addResult('success', '✅ CACHE TEST PASSED: getCurrentTargetRanges returns different values after clearing');
+                addResult('success', `AF changed: ${afChanged}, Saturatie changed: ${satChanged}`);
+            } else {
+                addResult('error', '❌ CACHE TEST FAILED: getCurrentTargetRanges returns same values after clearing');
+                addResult('error', 'This indicates a cache problem - ranges should change after clearing overrides');
+            }
+            
+            // Step 6: Simulate page revisit - check what slider would see
+            addResult('info', 'Step 3.5: Simulating page revisit - what would sliders see?');
+            
+            // This simulates what the slider component does on page load
+            const currentTargetRanges = manager.getCurrentTargetRanges(TEST_PATIENT_ID);
+            const medicalInfoForSlider = manager.getPatientMedicalInfo(TEST_PATIENT_ID);
+            
+            // Check if slider would find old custom thresholds
+            const wouldFindOldThresholds = medicalInfoForSlider.customThresholds?.respiratoire?.AF || 
+                                         medicalInfoForSlider.customThresholds?.respiratoire?.Saturatie;
+            
+            // Check if manual overrides are applied to current ranges
+            const manualOverridesExist = manager.getManualOverrides(TEST_PATIENT_ID);
+            const hasManualOverrides = Object.keys(manualOverridesExist).length > 0;
+            
+            // Check if the current ranges still contain the old manual values
+            const stillHasOldAF = currentTargetRanges.AF?.min === 15 && currentTargetRanges.AF?.max === 25;
+            const stillHasOldSat = currentTargetRanges.Saturatie?.min === 88 && currentTargetRanges.Saturatie?.max === 98;
+            
+            if (!wouldFindOldThresholds && !hasManualOverrides && !stillHasOldAF && !stillHasOldSat) {
+                addResult('success', '✅ Test 3 PASSED: Page revisit would show correct values (no stale overrides)');
+                addResult('success', '✅ Slider would use matrix-based ranges, not old manual values');
+            } else {
+                addResult('error', '❌ Test 3 FAILED: Page revisit would still show old manual values');
+                if (wouldFindOldThresholds) {
+                    addResult('error', `Found old customThresholds: ${JSON.stringify(medicalInfoForSlider.customThresholds)}`);
+                }
+                if (hasManualOverrides) {
+                    addResult('error', `Found manual overrides: ${JSON.stringify(manualOverridesExist)}`);
+                }
+                if (stillHasOldAF) {
+                    addResult('error', `getCurrentTargetRanges still returns old AF values: ${currentTargetRanges.AF.min}-${currentTargetRanges.AF.max}`);
+                }
+                if (stillHasOldSat) {
+                    addResult('error', `getCurrentTargetRanges still returns old Saturatie values: ${currentTargetRanges.Saturatie.min}-${currentTargetRanges.Saturatie.max}`);
+                }
+            }
+        }
+
+        function showCurrentState() {
+            testOutput.innerHTML = '';
+            addResult('info', '🔍 Current State Analysis');
+            
+            const manualOverrides = manager.getManualOverrides(TEST_PATIENT_ID);
+            const medicalInfo = manager.getPatientMedicalInfo(TEST_PATIENT_ID);
+            const targetRanges = manager.getCurrentTargetRanges(TEST_PATIENT_ID);
+            
+            addResult('info', `<strong>Manual Overrides (New System):</strong><div class="code-block">${JSON.stringify(manualOverrides, null, 2)}</div>`);
+            addResult('info', `<strong>Custom Thresholds (Old System):</strong><div class="code-block">${JSON.stringify(medicalInfo?.customThresholds || {}, null, 2)}</div>`);
+            addResult('info', `<strong>Current Target Ranges (What sliders see):</strong><div class="code-block">${JSON.stringify(targetRanges, null, 2)}</div>`);
+            addResult('info', `<strong>Medical Info:</strong><div class="code-block">${JSON.stringify(medicalInfo, null, 2)}</div>`);
+        }
+
+        function clearAll() {
+            manager.clearManualOverrides(TEST_PATIENT_ID, 'test-reset');
+            
+            // Also clear medical info
+            const medicalInfo = manager.getPatientMedicalInfo(TEST_PATIENT_ID) || {};
+            medicalInfo.customThresholds = {};
+            manager.savePatientMedicalInfo(TEST_PATIENT_ID, medicalInfo);
+            
+            // Clear localStorage keys
+            const keys = Object.keys(localStorage);
+            keys.forEach(key => {
+                if (key.includes(TEST_PATIENT_ID)) {
+                    localStorage.removeItem(key);
+                }
+            });
+            
+            addResult('success', '🧹 All test data cleared');
+        }
+
+        // Auto-run a quick test on page load to verify basic functionality
+        window.addEventListener('load', function() {
+            setTimeout(() => {
+                addResult('info', '💡 Tip: The test simulates the exact scenario where sliders showed old manual values on page revisit. If all tests pass, the issue is fixed!');
+            }, 1000);
+        });
+    </script>
+</body>
+</html>

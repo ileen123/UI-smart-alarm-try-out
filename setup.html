@@ -1147,6 +1147,12 @@
                             console.log('🔄 Current selectedProblem:', selectedProblem);
                             console.log('🔄 Setting selectedRiskLevel to:', riskLevel);
                             selectedRiskLevel = riskLevel;
+                            
+                            // MANUAL OVERRIDE CLEARING: Clear any manual overrides when risk level changes
+                            if (currentPatientId && window.sharedDataManager) {
+                                window.sharedDataManager.clearManualOverrides(currentPatientId, `setup-risk-level-${riskLevel}`);
+                            }
+                            
                             console.log('🔄 Calling updateOrganCircles...');
                             updateOrganCircles();
                         }
@@ -1419,25 +1425,42 @@
                         /**
                          * Synchronize all written displays with centralized target ranges
                          * Called on page load to ensure displays match the source of truth
+                         * Uses getCurrentEffectiveValues() instead of global variables for consistency
                          */
                         function syncDisplaysWithCentralizedRanges() {
-                            console.log('🌐 SIMPLE SYNC: Updating displays with global variables...');
+                            console.log('🌐 SINGLE SOURCE: Updating displays with effective values...');
+
+                            if (!currentPatientId || !window.sharedDataManager) {
+                                console.warn('⚠️ Cannot sync displays - missing patient or SharedDataManager');
+                                return;
+                            }
+
+                            // Get effective values (single source of truth)
+                            const effectiveValues = window.sharedDataManager.getCurrentEffectiveValues(currentPatientId);
+                            
+                            if (!effectiveValues || !effectiveValues.parameterRanges) {
+                                console.warn('⚠️ No effective values available for display sync');
+                                return;
+                            }
+
+                            const ranges = effectiveValues.parameterRanges;
+                            console.log('📦 Using effective parameter ranges for display:', ranges);
 
                             // Update circulatory parameters (HR and BP)
                             const circulatoryCard = document.querySelector('.value-card');
                             const hrRange = circulatoryCard?.querySelector('.value-number');
                             const bpRange = circulatoryCard?.querySelectorAll('.value-number')[1];
 
-                            // Update HR display from global variables
-                            if (hrRange) {
-                                hrRange.textContent = `${window.HR_MIN} - ${window.HR_MAX} bpm`;
-                                console.log('📊 Updated HR display:', hrRange.textContent);
+                            // Update HR display from effective values
+                            if (hrRange && ranges.HR) {
+                                hrRange.textContent = `${ranges.HR.min} - ${ranges.HR.max} bpm`;
+                                console.log('📊 Updated HR display from effective values:', hrRange.textContent);
                             }
 
-                            // Update BP display from global variables
-                            if (bpRange) {
-                                bpRange.textContent = `${window.BP_MIN} - ${window.BP_MAX} mmHg`;
-                                console.log('📊 Updated BP display:', bpRange.textContent);
+                            // Update BP display from effective values
+                            if (bpRange && ranges.BP_Mean) {
+                                bpRange.textContent = `${ranges.BP_Mean.min} - ${ranges.BP_Mean.max} mmHg`;
+                                console.log('📊 Updated BP display from effective values:', bpRange.textContent);
                             }
 
                             // Update respiratory parameters
@@ -1447,32 +1470,32 @@
                                 const saturatieRange = respiratoryCard?.querySelector('.value-number');
                                 const afDisplay = document.getElementById('af-range-display');
 
-                                // Update Saturatie display from global variables
-                                if (saturatieRange) {
-                                    saturatieRange.textContent = `${window.SAT_MIN} - ${window.SAT_MAX}%`;
-                                    console.log('📊 Updated Saturatie display:', saturatieRange.textContent);
+                                // Update Saturatie display from effective values
+                                if (saturatieRange && ranges.Saturatie) {
+                                    saturatieRange.textContent = `${ranges.Saturatie.min} - ${ranges.Saturatie.max}%`;
+                                    console.log('📊 Updated Saturatie display from effective values:', saturatieRange.textContent);
                                 }
 
-                                // Update AF display from global variables
-                                if (afDisplay) {
-                                    afDisplay.textContent = `${window.AF_MIN} - ${window.AF_MAX} /min`;
-                                    console.log('📊 Updated AF display:', afDisplay.textContent);
+                                // Update AF display from effective values
+                                if (afDisplay && ranges.AF) {
+                                    afDisplay.textContent = `${ranges.AF.min} - ${ranges.AF.max} /min`;
+                                    console.log('📊 Updated AF display from effective values:', afDisplay.textContent);
                                 }
                             }
 
-                            // Update temperature display from global variables
+                            // Update temperature display from effective values
                             const temperatureCards = document.querySelectorAll('.value-card');
                             if (temperatureCards.length >= 3) {
                                 const temperatureCard = temperatureCards[2];
                                 const tempRange = temperatureCard?.querySelector('.value-number');
 
-                                if (tempRange) {
-                                    tempRange.textContent = `${window.TEMP_MIN} - ${window.TEMP_MAX}°C`;
-                                    console.log('📊 Updated Temperature display:', tempRange.textContent);
+                                if (tempRange && ranges.Temperature) {
+                                    tempRange.textContent = `${ranges.Temperature.min} - ${ranges.Temperature.max}°C`;
+                                    console.log('📊 Updated Temperature display from effective values:', tempRange.textContent);
                                 }
                             }
 
-                            console.log('✅ All displays updated with global variables');
+                            console.log('✅ All displays updated with effective values (single source of truth)');
                         }
                         
                         // Function to check if a parameter is actually affected by a specific tag

@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manual Override Clearing Test</title>
+</head>
+<body>
+    <h1>Manual Override Clearing Test</h1>
+    
+    <div id="test-results"></div>
+    
+    <script src="js/shared-data-manager.js"></script>
+    <script>
+        async function testManualOverrideClearing() {
+            const resultsDiv = document.getElementById('test-results');
+            const testPatientId = 'test-patient-001';
+            
+            resultsDiv.innerHTML = '<h2>Testing Manual Override Clearing...</h2>';
+            
+            try {
+                // Initialize shared data manager
+                const manager = new SharedDataManager();
+                
+                // Test 1: Set a manual override
+                resultsDiv.innerHTML += '<h3>Test 1: Setting manual override</h3>';
+                const testRange = { min: 90, max: 130, unit: 'bpm' };
+                manager.setManualOverride(testPatientId, 'HR', testRange);
+                
+                // Verify it was set
+                const overrides = manager.getManualOverrides(testPatientId);
+                resultsDiv.innerHTML += `<p>✅ Manual override set: ${JSON.stringify(overrides)}</p>`;
+                
+                // Test 2: Clear manual overrides for problem change
+                resultsDiv.innerHTML += '<h3>Test 2: Clearing manual overrides (problem change)</h3>';
+                manager.clearManualOverrides(testPatientId, 'problem-change');
+                
+                // Verify they were cleared
+                const afterClear = manager.getManualOverrides(testPatientId);
+                const isEmpty = Object.keys(afterClear).length === 0;
+                resultsDiv.innerHTML += `<p>${isEmpty ? '✅' : '❌'} Manual overrides after clearing: ${JSON.stringify(afterClear)}</p>`;
+                
+                // Test 3: Test tag change clearing
+                resultsDiv.innerHTML += '<h3>Test 3: Testing tag change clearing</h3>';
+                
+                // Set another manual override
+                manager.setManualOverride(testPatientId, 'AF', { min: 15, max: 25, unit: '/min' });
+                const beforeTagClear = manager.getManualOverrides(testPatientId);
+                resultsDiv.innerHTML += `<p>Manual override before tag change: ${JSON.stringify(beforeTagClear)}</p>`;
+                
+                // Clear via tag change
+                manager.clearManualOverrides(testPatientId, 'tag-sepsis-activated');
+                const afterTagClear = manager.getManualOverrides(testPatientId);
+                const isTagEmpty = Object.keys(afterTagClear).length === 0;
+                resultsDiv.innerHTML += `<p>${isTagEmpty ? '✅' : '❌'} Manual overrides after tag clearing: ${JSON.stringify(afterTagClear)}</p>`;
+                
+                // Test 4: Test with getCurrentTargetRanges to simulate real scenario
+                resultsDiv.innerHTML += '<h3>Test 4: Testing getCurrentTargetRanges behavior</h3>';
+                
+                // Set some base ranges
+                const baseRanges = {
+                    HR: { min: 60, max: 100, unit: 'bpm' },
+                    AF: { min: 12, max: 20, unit: '/min' }
+                };
+                manager.setCurrentTargetRanges(testPatientId, baseRanges);
+                
+                // Set a manual override
+                manager.setManualOverride(testPatientId, 'HR', { min: 80, max: 120, unit: 'bpm' });
+                
+                // Get current ranges (should include override)
+                const withOverride = manager.getCurrentTargetRanges(testPatientId);
+                resultsDiv.innerHTML += `<p>Ranges with manual override: HR ${withOverride.HR.min}-${withOverride.HR.max}</p>`;
+                
+                // Clear overrides
+                manager.clearManualOverrides(testPatientId, 'test-clearing');
+                
+                // Get current ranges again (should be back to base)
+                const withoutOverride = manager.getCurrentTargetRanges(testPatientId);
+                resultsDiv.innerHTML += `<p>Ranges after clearing: HR ${withoutOverride.HR.min}-${withoutOverride.HR.max}</p>`;
+                
+                const rangesMatch = withoutOverride.HR.min === baseRanges.HR.min && 
+                                  withoutOverride.HR.max === baseRanges.HR.max;
+                resultsDiv.innerHTML += `<p>${rangesMatch ? '✅' : '❌'} Ranges correctly reverted to base values</p>`;
+                
+                resultsDiv.innerHTML += '<h2>🎉 All tests completed!</h2>';
+                
+            } catch (error) {
+                resultsDiv.innerHTML += `<p>❌ Error during testing: ${error.message}</p>`;
+                console.error('Test error:', error);
+            }
+        }
+        
+        // Run tests when page loads
+        document.addEventListener('DOMContentLoaded', testManualOverrideClearing);
+    </script>
+</body>
+</html>
