@@ -243,7 +243,7 @@ class VitalParameterSlider {
         // For parameters with 400px wide external SVGs, adjust viewBox
         if ((this.config.parameter === 'Saturatie' && lowerLoaded) || 
             (this.config.parameter === 'AF' && upperLoaded) ||
-            (this.config.parameter === 'Temperature' && upperLoaded) ||
+            (this.config.parameter === 'Temperature' && (upperLoaded || lowerLoaded)) ||
             (this.config.parameter === 'BP_Mean' && lowerLoaded)) {
             console.log(`📐 Setting viewBox for ${this.config.parameter} external SVG (400px): 0 0 400 270`);
             svg.setAttribute('viewBox', '0 0 400 270');
@@ -280,7 +280,7 @@ class VitalParameterSlider {
                 },
                 Temperature: {
                     upper: true,  // Temperature has external upper SVGs (Temp-tight.svg, etc.)
-                    lower: false  // Temperature uses embedded lower SVGs (for now)
+                    lower: true   // Temperature has external lower SVGs (Temp-tight-down.svg, etc.)
                 }
             };
 
@@ -329,6 +329,9 @@ class VitalParameterSlider {
             } else if (this.config.parameter === 'Temperature' && areaType === 'upper') {
                 // Temperature upper SVGs: Temp-tight.svg, Temp-mid.svg, Temp-loose.svg
                 filename = `Temp-${level.toLowerCase()}.svg`;
+            } else if (this.config.parameter === 'Temperature' && areaType === 'lower') {
+                // Temperature lower SVGs: Temp-tight-down.svg, Temp-mid-down.svg, Temp-loose-down.svg
+                filename = `Temp-${level.toLowerCase()}-down.svg`;
             } else if (this.config.parameter === 'BP_Mean' && areaType === 'lower') {
                 // BP lower SVGs: BP-tight-down.svg, BP-mid-down.svg, BP-loose-down.svg
                 filename = `BP-${level.toLowerCase()}-down.svg`;
@@ -459,8 +462,9 @@ class VitalParameterSlider {
         
         // Set the viewBox to match the original SVG - this will automatically scale content
         if (svg) {
-            // For Saturation external SVGs that are 400px wide, we need to adjust the viewBox
-            if (this.config.parameter === 'Saturatie' && lowerLoaded) {
+            // For parameters with 400px wide external SVGs, we need to adjust the viewBox
+            if ((this.config.parameter === 'Saturatie' && lowerLoaded) ||
+                (this.config.parameter === 'Temperature' && (upperLoaded || lowerLoaded))) {
                 // Use a viewBox that matches the external SVG dimensions (400px wide)
                 svg.setAttribute('viewBox', '0 0 400 270');
             } else {
@@ -583,8 +587,8 @@ class VitalParameterSlider {
         // Move lower-areas group: attach the TOP of the SVG to the lower dashed line (so it extends downward)
         const lowerAreas = svg.querySelector('.lower-areas');
         if (lowerAreas && lowerAreas.firstChild) {
-            // Check if we're using external SVGs for lower areas (Saturatie and BP_Mean parameters)
-            const isExternalLowerSVG = this.config.parameter === 'Saturatie' || this.config.parameter === 'BP_Mean';
+            // Check if we're using external SVGs for lower areas (Saturatie, BP_Mean, and Temperature parameters)
+            const isExternalLowerSVG = this.config.parameter === 'Saturatie' || this.config.parameter === 'BP_Mean' || this.config.parameter === 'Temperature';
             
             if (isExternalLowerSVG) {
                 // External lower SVGs (Saturatie, BP): scale and position appropriately
