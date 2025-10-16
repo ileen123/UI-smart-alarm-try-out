@@ -1655,19 +1655,19 @@ class SharedDataManager {
         // Define optimal Y-axis ranges based on medical knowledge and Matrix possibilities
         const yAxisRanges = {
             'HR': {
-                min: 50,     // Accommodate severe bradycardia 
-                max: 150,    // Accommodate severe tachycardia
-                step: 25     // Appropriate steps for heart rate
+                min: 40,     // Updated y-axis range for HR slider
+                max: 160,    // Updated y-axis range for HR slider
+                step: 15     // Updated step size for HR slider
             },
             'BP_Mean': {
-                min: 30,     // Accommodate severe hypotension
-                max: 120,    // Accommodate severe hypertension
-                step: 20     // Appropriate steps for blood pressure
+                min: 30,     // Updated y-axis range for BP slider
+                max: 120,    // Updated y-axis range for BP slider
+                step: 15     // Updated step size for BP slider
             },
             'AF': {
-                min: 5,      // Accommodate severe respiratory depression
-                max: 30,     // Accommodate severe tachypnea/respiratory distress
-                step: 5      // Appropriate steps for respiratory rate
+                min: 0,      // Keep AF slider as is
+                max: 30,     // Keep AF slider as is
+                step: 5      // Keep AF slider as is
             },
             'Saturatie': {
                 min: 80,     // Accommodate severe hypoxemia
@@ -1675,9 +1675,9 @@ class SharedDataManager {
                 step: 5      // Appropriate steps for oxygen saturation
             },
             'Temperature': {
-                min: 32.0,   // Accommodate severe hypothermia
-                max: 42.0,   // Accommodate severe hyperthermia
-                step: 1.0    // Appropriate steps for temperature
+                min: 35.0,   // Updated y-axis range for Temperature slider
+                max: 40.0,   // Updated y-axis range for Temperature slider
+                step: 0.5    // Updated step size for Temperature slider
             }
         };
 

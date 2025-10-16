@@ -1240,27 +1240,8 @@ class VitalParameterSlider {
 // Patient Configuration Helper
 class PatientConfigurationHelper {
     static getHeartRateConfig(patient, targetRange) {
-        const age = patient.age;
-        
-        let yAxisConfig;
-        
-        // Age-based y-axis configuration for Heart Rate
-        if (age <= 2) {
-            // Infant (0-2 years)
-            yAxisConfig = { min: 80, max: 200, step: 20 };
-        } else if (age <= 12) {
-            // Child (3-12 years)
-            yAxisConfig = { min: 70, max: 180, step: 20 };
-        } else if (age <= 17) {
-            // Adolescent (13-17 years)
-            yAxisConfig = { min: 40, max: 140, step: 20 };
-        } else if (age <= 65) {
-            // Adult (18-65 years)
-            yAxisConfig = { min: 50, max: 140, step: 20 };
-        } else {
-            // Elderly (65+ years)
-            yAxisConfig = { min: 40, max: 120, step: 20 };
-        }
+        // Unified y-axis configuration for Heart Rate (all age groups)
+        const yAxisConfig = { min: 40, max: 160, step: 15 };
         
         return {
             parameter: 'HR',
@@ -1272,18 +1253,8 @@ class PatientConfigurationHelper {
     }
     
     static getBloodPressureConfig(patient, targetRange) {
-        const age = patient.age;
-        
-        let yAxisConfig;
-        
-        // Age-based y-axis for Blood Pressure (Mean)
-        if (age <= 12) {
-            yAxisConfig = { min: 40, max: 100, step: 10 };
-        } else if (age <= 17) {
-            yAxisConfig = { min: 50, max: 110, step: 10 };
-        } else {
-            yAxisConfig = { min: 60, max: 120, step: 10 };
-        }
+        // Unified y-axis configuration for Blood Pressure (all age groups)
+        const yAxisConfig = { min: 30, max: 120, step: 15 };
         
         return {
             parameter: 'BP_Mean',
@@ -1300,7 +1271,7 @@ class PatientConfigurationHelper {
             name: 'Temperature',
             unit: '°C',
             targetRange: targetRange,
-            yAxis: { min: 35, max: 42, step: 0.5 }
+            yAxis: { min: 35, max: 40, step: 0.5 }
         };
     }
     
