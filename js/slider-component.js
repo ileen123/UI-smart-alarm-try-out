@@ -331,8 +331,8 @@ class VitalParameterSlider {
             }
             // HR and AF use their full names: HR-tight.svg, AF-tight.svg
             
-            filename = `${paramName}-${level.toLowerCase()}${suffix}.svg`;
-            const svgPath = `./svg's/${filename}`;
+                filename = `${paramName}-${level.toLowerCase()}${suffix}.svg`;
+                const svgPath = `/svg's/${filename}`;
             
             console.log(`Loading external SVG: ${svgPath} for ${this.config.parameter} ${areaType}`);
 
