@@ -1701,6 +1701,7 @@ class SharedDataManager {
      */
     getMatrixBasedBaseRanges(problemValue, overallRiskLevel = 'low') {
         console.log(`📋 Getting matrix-based base ranges for: ${problemValue} + ${overallRiskLevel}`);
+        console.log(`📋 Problem value details - Type: ${typeof problemValue}, Length: ${problemValue?.length}, Trimmed: "${problemValue?.trim()}"`);
         
         // If no medical problem selected, return default standard ranges for tag testing
         if (!problemValue || problemValue === '' || problemValue === 'none') {
@@ -1712,7 +1713,11 @@ class SharedDataManager {
         // These ranges should ideally be further refined based on risk level in future iterations
         let baseRanges = {};
         
-        switch(problemValue) {
+        // Normalize the problem value (trim whitespace, convert to lowercase for comparison)
+        const normalizedProblem = problemValue.trim().toLowerCase();
+        console.log(`📋 Normalized problem value for switch: "${normalizedProblem}"`);
+        
+        switch(normalizedProblem) {
             case 'respiratoire-insufficientie':
                 baseRanges = {
                     HR: { min: 70, max: 100 },
@@ -1745,7 +1750,9 @@ class SharedDataManager {
                 
             default:
                 // Unknown problem - return empty ranges to force proper selection
-                console.log(`🚫 Unknown medical problem '${problemValue}' - returning empty ranges (requires valid problem selection)`);
+                console.error(`🚫 UNMATCHED PROBLEM VALUE: "${normalizedProblem}" (original: "${problemValue}")`);
+                console.error(`🚫 Expected one of: 'respiratoire-insufficientie', 'hart-falen', 'sepsis'`);
+                console.error(`🚫 Returning empty ranges to prevent errors`);
                 return {};
         }
         
@@ -1969,6 +1976,7 @@ class SharedDataManager {
         
         // Get target ranges from the matrix based on problem and risk level
         console.log('🎯 Getting matrix-based target ranges for problem:', problemValue);
+        console.log('🎯 Problem value type:', typeof problemValue, 'length:', problemValue?.length, 'trimmed:', problemValue?.trim());
         
         if (!problemValue || problemValue === '' || problemValue === 'none') {
             // No main problem selected - return empty ranges to force matrix selection
@@ -1978,18 +1986,29 @@ class SharedDataManager {
             // Get base ranges from matrix
             const baseRanges = this.getMatrixBasedBaseRanges(problemValue, overallRiskLevel);
             
-            // Add units to the base ranges
-            targetRanges = {
-                HR: { min: baseRanges.HR.min, max: baseRanges.HR.max, unit: 'bpm' },
-                BP_Systolic: { min: baseRanges.BP_Mean ? baseRanges.BP_Mean.min + 35 : 100, max: baseRanges.BP_Mean ? baseRanges.BP_Mean.max + 55 : 140, unit: 'mmHg' },
-                BP_Diastolic: { min: baseRanges.BP_Mean ? baseRanges.BP_Mean.min : 60, max: baseRanges.BP_Mean ? baseRanges.BP_Mean.max : 90, unit: 'mmHg' },
-                BP_Mean: { min: baseRanges.BP_Mean.min, max: baseRanges.BP_Mean.max, unit: 'mmHg' },
-                AF: { min: baseRanges.AF.min, max: baseRanges.AF.max, unit: '/min' },
-                Saturatie: { min: baseRanges.Saturatie.min, max: baseRanges.Saturatie.max, unit: '%' },
-                Temperature: { min: baseRanges.Temperature.min, max: baseRanges.Temperature.max, unit: '°C' }
-            };
+            console.log('🔍 DEBUG: baseRanges returned from matrix:', baseRanges);
+            console.log('🔍 DEBUG: baseRanges is empty?', Object.keys(baseRanges).length === 0);
             
-            console.log('📊 Matrix-derived ranges for', problemValue, '+ risk', overallRiskLevel, '- HR:', targetRanges.HR.min + '-' + targetRanges.HR.max, 'AF:', targetRanges.AF.min + '-' + targetRanges.AF.max);
+            // CRITICAL FIX: Check if baseRanges is empty (switch didn't match)
+            if (!baseRanges || Object.keys(baseRanges).length === 0) {
+                console.error('❌ CRITICAL: getMatrixBasedBaseRanges returned empty object for problem:', problemValue);
+                console.error('❌ This means the switch statement did not match the problem value');
+                console.error('❌ Returning empty targetRanges to prevent errors');
+                targetRanges = {};
+            } else {
+                // Add units to the base ranges with defensive checks
+                targetRanges = {
+                    HR: baseRanges.HR ? { min: baseRanges.HR.min, max: baseRanges.HR.max, unit: 'bpm' } : { min: 70, max: 100, unit: 'bpm' },
+                    BP_Systolic: baseRanges.BP_Mean ? { min: baseRanges.BP_Mean.min + 35, max: baseRanges.BP_Mean.max + 55, unit: 'mmHg' } : { min: 100, max: 140, unit: 'mmHg' },
+                    BP_Diastolic: baseRanges.BP_Mean ? { min: baseRanges.BP_Mean.min, max: baseRanges.BP_Mean.max, unit: 'mmHg' } : { min: 60, max: 90, unit: 'mmHg' },
+                    BP_Mean: baseRanges.BP_Mean ? { min: baseRanges.BP_Mean.min, max: baseRanges.BP_Mean.max, unit: 'mmHg' } : { min: 60, max: 90, unit: 'mmHg' },
+                    AF: baseRanges.AF ? { min: baseRanges.AF.min, max: baseRanges.AF.max, unit: '/min' } : { min: 12, max: 20, unit: '/min' },
+                    Saturatie: baseRanges.Saturatie ? { min: baseRanges.Saturatie.min, max: baseRanges.Saturatie.max, unit: '%' } : { min: 92, max: 100, unit: '%' },
+                    Temperature: baseRanges.Temperature ? { min: baseRanges.Temperature.min, max: baseRanges.Temperature.max, unit: '°C' } : { min: 36.0, max: 38.5, unit: '°C' }
+                };
+                
+                console.log('📊 Matrix-derived ranges for', problemValue, '+ risk', overallRiskLevel, '- HR:', targetRanges.HR.min + '-' + targetRanges.HR.max, 'AF:', targetRanges.AF.min + '-' + targetRanges.AF.max);
+            }
         }
         
         console.log(`🎯 Using MATRIX states for ${problemValue} + ${overallRiskLevel}:`, organStates);
@@ -2986,7 +3005,8 @@ class SharedDataManager {
         this.invalidateEffectiveValuesCache(patientId);
         
         // Apply parameter adjustments based on ALL current tags (not just this one)
-        const result = this.applyUnifiedTagAdjustments(patientId);
+        // Pass the specific tag and its state for highlighting purposes
+        const result = this.applyUnifiedTagAdjustments(patientId, tag, isActive);
         
         console.log(`✅ UNIFIED TAG: Condition tag ${tag} ${isActive ? 'activated' : 'deactivated'} with unified parameter adjustments`);
         
@@ -3001,8 +3021,10 @@ class SharedDataManager {
      * Recalculates all parameters from scratch based on current tag states
      * Prevents stacking by always starting from matrix base values
      * @param {string} patientId - Patient ID
+     * @param {string} toggledTag - The specific tag that was just toggled (for highlighting)
+     * @param {boolean} toggledTagActive - Whether the toggled tag is now active (for highlighting)
      */
-    applyUnifiedTagAdjustments(patientId) {
+    applyUnifiedTagAdjustments(patientId, toggledTag = null, toggledTagActive = null) {
         console.log(`🔄 UNIFIED TAG: Applying unified tag adjustments for patient ${patientId}`);
         
         if (!patientId) {
@@ -3089,6 +3111,23 @@ class SharedDataManager {
                 }
             }));
             console.log('📡 UNIFIED TAG: Broadcasted immediate UI update event');
+            
+            // HIGHLIGHTING FIX: Also dispatch tagParametersChanged event for highlighting support
+            // Dispatch for the specific tag that was toggled to enable blue highlighting
+            if (toggledTag !== null && toggledTagActive !== null) {
+                window.dispatchEvent(new CustomEvent('tagParametersChanged', {
+                    detail: {
+                        source: 'unified_tag',
+                        tag: toggledTag,
+                        changedTags: [toggledTag],
+                        isActive: toggledTagActive,
+                        patientId: patientId,
+                        parameters: finalRanges,
+                        organStates: finalOrganStates
+                    }
+                }));
+                console.log(`🎨 UNIFIED TAG: Dispatched tagParametersChanged event for ${toggledTag} (${toggledTagActive ? 'ACTIVE' : 'INACTIVE'}) highlighting`);
+            }
         }, 10); // Small delay to ensure storage operations complete
         
         // Delayed websocket trigger - increased delay to account for UI update timing

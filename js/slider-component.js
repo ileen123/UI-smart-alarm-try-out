@@ -561,7 +561,12 @@ class VitalParameterSlider {
                 // Position so bottom aligns with upper dashed line, add 1 extra pixel for perfect alignment without gaps
                 let svgHeight;
                 if (this.config.parameter === 'HR') {
-                    svgHeight = 286;
+                    // Use correct SVG height for each monitoring level
+                    if (this.config.monitoringLevel && this.config.monitoringLevel.toLowerCase() === 'mid') {
+                        svgHeight = 286; // HR-mid.svg has viewBox height of 286
+                    } else {
+                        svgHeight = 262; // HR-tight.svg and HR-loose.svg have height 262
+                    }
                 } else if (this.config.parameter === 'BP_Mean') {
                     svgHeight = 262;
                 } else if (this.config.parameter === 'AF') {

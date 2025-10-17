@@ -1517,8 +1517,8 @@
                         function isParameterAffectedByTag(parameter, tag) {
                             // Based on the tagMatrix in SharedDataManager, determine which parameters are affected by each tag
                             const tagParameterMap = {
-                                'sepsis': ['HR', 'BP_Mean', 'Temperature'], // Sepsis affects HR, BP_Mean, and Temperature (confirmed in SharedDataManager)
-                                'pneumonie': ['AF', 'Saturatie', 'HR', 'BP_Mean', 'Temperature'] // Pneumonie affects AF, Saturatie, HR, BP_Mean, and Temperature
+                                'sepsis': ['HR', 'BP_Mean'], // Sepsis affects HR and BP_Mean only (from SharedDataManager tagMatrix)
+                                'pneumonie': ['AF'] // Pneumonie affects AF only (from SharedDataManager tagMatrix)
                             };
                             
                             return tagParameterMap[tag] && tagParameterMap[tag].includes(parameter);
@@ -1634,7 +1634,8 @@
                             // But only highlight those that are ACTUALLY affected by this specific tag
                             
                             if (parameters.HR && hrRange) {
-                                hrRange.textContent = `${parameters.HR.min} - ${parameters.HR.max} ${parameters.HR.unit}`;
+                                const hrUnit = parameters.HR.unit || 'bpm';
+                                hrRange.textContent = `${parameters.HR.min} - ${parameters.HR.max} ${hrUnit}`;
                                 if (isParameterAffectedByTag('HR', tag)) {
                                     highlightParameterChange(hrRange, highlightClass, `${tag} affected HR`);
                                     console.log(`✅ Updated and HIGHLIGHTED HR display with ${tag} delta:`, hrRange.textContent);
@@ -1644,7 +1645,8 @@
                             }
                             
                             if (parameters.BP_Mean && bpRange) {
-                                bpRange.textContent = `${parameters.BP_Mean.min} - ${parameters.BP_Mean.max} ${parameters.BP_Mean.unit}`;
+                                const bpUnit = parameters.BP_Mean.unit || 'mmHg';
+                                bpRange.textContent = `${parameters.BP_Mean.min} - ${parameters.BP_Mean.max} ${bpUnit}`;
                                 if (isParameterAffectedByTag('BP_Mean', tag)) {
                                     highlightParameterChange(bpRange, highlightClass, `${tag} affected BP`);
                                     console.log(`✅ Updated and HIGHLIGHTED BP display with ${tag} delta:`, bpRange.textContent);
@@ -1664,7 +1666,8 @@
                             }
                             
                             if (parameters.Saturatie && saturatieRange) {
-                                saturatieRange.textContent = `${parameters.Saturatie.min} - ${parameters.Saturatie.max}${parameters.Saturatie.unit}`;
+                                const satUnit = parameters.Saturatie.unit || '%';
+                                saturatieRange.textContent = `${parameters.Saturatie.min} - ${parameters.Saturatie.max}${satUnit}`;
                                 if (isParameterAffectedByTag('Saturatie', tag)) {
                                     highlightParameterChange(saturatieRange, highlightClass, `${tag} affected Saturatie`);
                                     console.log(`✅ Updated and HIGHLIGHTED Saturatie display with ${tag} delta:`, saturatieRange.textContent);
@@ -1674,7 +1677,10 @@
                             }
                             
                             if (parameters.Temperature && tempRange) {
-                                tempRange.textContent = `${parameters.Temperature.min} - ${parameters.Temperature.max} ${parameters.Temperature.unit}`;
+                                const tempUnit = parameters.Temperature.unit || '°C';
+                                const tempMin = (Math.round(parameters.Temperature.min * 10) / 10).toFixed(1);
+                                const tempMax = (Math.round(parameters.Temperature.max * 10) / 10).toFixed(1);
+                                tempRange.textContent = `${tempMin} - ${tempMax}${tempUnit}`;
                                 if (isParameterAffectedByTag('Temperature', tag)) {
                                     highlightParameterChange(tempRange, highlightClass, `${tag} affected Temperature`);
                                     console.log(`✅ Updated and HIGHLIGHTED Temperature display with ${tag} delta:`, tempRange.textContent);
