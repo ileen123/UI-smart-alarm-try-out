@@ -603,10 +603,12 @@
 
                 // Update Temperature display from effective values
                 if (valueNumbers[4] && ranges.Temperature) {
-                    const tempText = `${ranges.Temperature.min} - ${ranges.Temperature.max}${ranges.Temperature.unit || '°C'}`;
+                    // Show one decimal for temperature
+                    const min = (Math.round(ranges.Temperature.min * 10) / 10).toFixed(1);
+                    const max = (Math.round(ranges.Temperature.max * 10) / 10).toFixed(1);
+                    const tempText = `${min} - ${max}${ranges.Temperature.unit || '°C'}`;
                     valueNumbers[4].textContent = tempText;
                     console.log('📊 Updated Temperature display from effective values:', tempText);
-                    
                     // Apply highlighting if manual override
                     if (hasManualOverrides && effectiveValues.manualOverrides.Temperature) {
                         setTimeout(() => {
@@ -1156,7 +1158,12 @@
         // Helper function to update individual parameter display
         function updateParameterDisplay(parameter, min, max, unit) {
             let targetElement = null;
-            let displayText = `${Math.round(min)} - ${Math.round(max)}`;
+            let displayText;
+            if (parameter === 'Temperature') {
+                displayText = `${(Math.round(min * 10) / 10).toFixed(1)} - ${(Math.round(max * 10) / 10).toFixed(1)}`;
+            } else {
+                displayText = `${Math.round(min)} - ${Math.round(max)}`;
+            }
             
             // Add unit if provided
             if (unit) {
