@@ -47,7 +47,7 @@ class VitalParameterSlider {
         setTimeout(() => {
             this.loadExistingSettings();
             this.initializeAlarmToggle();
-        }, 100);
+        }, 200);
     }
 
     calculateScale() {
@@ -315,6 +315,7 @@ class VitalParameterSlider {
 
     async loadExternalSVGArea(targetArea, areaType, level) {
         try {
+            console.log("Loading external SVG area:", areaType, "for level:", level);
             // Construct filename based on parameter type and area
             // All parameters now follow consistent naming: [Parameter]-[level][-down].svg
             let filename;
@@ -332,9 +333,9 @@ class VitalParameterSlider {
             // HR and AF use their full names: HR-tight.svg, AF-tight.svg
             
                 filename = `${paramName}-${level.toLowerCase()}${suffix}.svg`;
-                const svgPath = `/svg's/${filename}`;
-            
-            console.log(`Loading external SVG: ${svgPath} for ${this.config.parameter} ${areaType}`);
+                const svgPath = `/svgs/${filename}`;
+                // Log the SVG path before attempting to load
+                console.log(`[SVG LOAD] Attempting to load external SVG at path: ${svgPath} for parameter: ${this.config.parameter}, area: ${areaType}`);
 
             const response = await fetch(svgPath);
             if (!response.ok) {
@@ -475,8 +476,8 @@ class VitalParameterSlider {
         try {
             // Determine SVG file names based on monitoring level
             const level = this.config.monitoringLevel.charAt(0).toUpperCase() + this.config.monitoringLevel.slice(1);
-            const upperSvgFile = `./svg's/${level}.svg`;
-            const lowerSvgFile = `./svg's/${level}_down.svg`;
+            const upperSvgFile = `./svgs/${level}.svg`;
+            const lowerSvgFile = `./svgs/${level}_down.svg`;
             
             console.log(`Loading SVG files: ${upperSvgFile} and ${lowerSvgFile}`);
             
@@ -1136,7 +1137,7 @@ class VitalParameterSlider {
                         
                         // Update button state to outlined since changes are saved
                         this.updateButtonState();
-                    }, 1500);
+                    }, 1000);
                 }, 300);
                 
             } catch (error) {
