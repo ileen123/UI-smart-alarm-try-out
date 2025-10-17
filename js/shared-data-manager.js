@@ -3005,7 +3005,8 @@ class SharedDataManager {
         this.invalidateEffectiveValuesCache(patientId);
         
         // Apply parameter adjustments based on ALL current tags (not just this one)
-        const result = this.applyUnifiedTagAdjustments(patientId);
+        // Pass the specific tag and its state for highlighting purposes
+        const result = this.applyUnifiedTagAdjustments(patientId, tag, isActive);
         
         console.log(`✅ UNIFIED TAG: Condition tag ${tag} ${isActive ? 'activated' : 'deactivated'} with unified parameter adjustments`);
         
@@ -3020,8 +3021,10 @@ class SharedDataManager {
      * Recalculates all parameters from scratch based on current tag states
      * Prevents stacking by always starting from matrix base values
      * @param {string} patientId - Patient ID
+     * @param {string} toggledTag - The specific tag that was just toggled (for highlighting)
+     * @param {boolean} toggledTagActive - Whether the toggled tag is now active (for highlighting)
      */
-    applyUnifiedTagAdjustments(patientId) {
+    applyUnifiedTagAdjustments(patientId, toggledTag = null, toggledTagActive = null) {
         console.log(`🔄 UNIFIED TAG: Applying unified tag adjustments for patient ${patientId}`);
         
         if (!patientId) {
@@ -3108,6 +3111,23 @@ class SharedDataManager {
                 }
             }));
             console.log('📡 UNIFIED TAG: Broadcasted immediate UI update event');
+            
+            // HIGHLIGHTING FIX: Also dispatch tagParametersChanged event for highlighting support
+            // Dispatch for the specific tag that was toggled to enable blue highlighting
+            if (toggledTag !== null && toggledTagActive !== null) {
+                window.dispatchEvent(new CustomEvent('tagParametersChanged', {
+                    detail: {
+                        source: 'unified_tag',
+                        tag: toggledTag,
+                        changedTags: [toggledTag],
+                        isActive: toggledTagActive,
+                        patientId: patientId,
+                        parameters: finalRanges,
+                        organStates: finalOrganStates
+                    }
+                }));
+                console.log(`🎨 UNIFIED TAG: Dispatched tagParametersChanged event for ${toggledTag} (${toggledTagActive ? 'ACTIVE' : 'INACTIVE'}) highlighting`);
+            }
         }, 10); // Small delay to ensure storage operations complete
         
         // Delayed websocket trigger - increased delay to account for UI update timing

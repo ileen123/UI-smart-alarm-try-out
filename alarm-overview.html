@@ -386,7 +386,8 @@
             // But only highlight those that are ACTUALLY affected by this specific tag
             
             if (parameters.HR && valueNumbers[0]) {
-                valueNumbers[0].textContent = `${parameters.HR.min} - ${parameters.HR.max} ${parameters.HR.unit}`;
+                const hrUnit = parameters.HR.unit || 'bpm';
+                valueNumbers[0].textContent = `${parameters.HR.min} - ${parameters.HR.max} ${hrUnit}`;
                 if (isParameterAffectedByTag('HR', tag)) {
                     highlightParameterChange(valueNumbers[0], highlightClass, `${tag} affected HR`);
                     console.log(`✅ Updated and HIGHLIGHTED HR display with ${tag} delta:`, valueNumbers[0].textContent);
@@ -396,7 +397,8 @@
             }
             
             if (parameters.BP_Mean && valueNumbers[1]) {
-                valueNumbers[1].textContent = `${parameters.BP_Mean.min} - ${parameters.BP_Mean.max} ${parameters.BP_Mean.unit}`;
+                const bpUnit = parameters.BP_Mean.unit || 'mmHg';
+                valueNumbers[1].textContent = `${parameters.BP_Mean.min} - ${parameters.BP_Mean.max} ${bpUnit}`;
                 if (isParameterAffectedByTag('BP_Mean', tag)) {
                     highlightParameterChange(valueNumbers[1], highlightClass, `${tag} affected BP`);
                     console.log(`✅ Updated and HIGHLIGHTED BP display with ${tag} delta:`, valueNumbers[1].textContent);
@@ -406,7 +408,8 @@
             }
             
             if (parameters.Saturatie && valueNumbers[2]) {
-                valueNumbers[2].textContent = `${parameters.Saturatie.min} - ${parameters.Saturatie.max}${parameters.Saturatie.unit}`;
+                const satUnit = parameters.Saturatie.unit || '%';
+                valueNumbers[2].textContent = `${parameters.Saturatie.min} - ${parameters.Saturatie.max}${satUnit}`;
                 if (isParameterAffectedByTag('Saturatie', tag)) {
                     highlightParameterChange(valueNumbers[2], highlightClass, `${tag} affected Saturatie`);
                     console.log(`✅ Updated and HIGHLIGHTED Saturatie display with ${tag} delta:`, valueNumbers[2].textContent);
@@ -426,7 +429,10 @@
             }
             
             if (parameters.Temperature && valueNumbers[4]) {
-                valueNumbers[4].textContent = `${parameters.Temperature.min} - ${parameters.Temperature.max} ${parameters.Temperature.unit}`;
+                const tempUnit = parameters.Temperature.unit || '°C';
+                const tempMin = (Math.round(parameters.Temperature.min * 10) / 10).toFixed(1);
+                const tempMax = (Math.round(parameters.Temperature.max * 10) / 10).toFixed(1);
+                valueNumbers[4].textContent = `${tempMin} - ${tempMax}${tempUnit}`;
                 if (isParameterAffectedByTag('Temperature', tag)) {
                     highlightParameterChange(valueNumbers[4], highlightClass, `${tag} affected Temperature`);
                     console.log(`✅ Updated and HIGHLIGHTED Temperature display with ${tag} delta:`, valueNumbers[4].textContent);
