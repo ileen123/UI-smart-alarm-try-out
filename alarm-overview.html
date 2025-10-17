@@ -2561,30 +2561,23 @@
                 if (window.dataManager) {
                     window.dataManager.setSelectedProblem(selectedProblem);
                 }
-                updateOrganCirclesBasedOnProblem(selectedProblem);
                 
-                // WEBSOCKET FIX: Save medical problem AFTER organ levels are calculated
-                // Similar pattern to risk level handler - wait for applyProblemSpecificMonitoring to complete
-                setTimeout(() => {
-                    if (currentPatientId && window.sharedDataManager) {
-                        const existingMedicalInfo = window.sharedDataManager.getPatientMedicalInfo(currentPatientId) || {};
-                        const updatedMedicalInfo = {
-                            ...existingMedicalInfo,
-                            selectedProblem: selectedProblem,
-                            selectedRiskLevel: selectedRiskLevel,
-                            selectedTags: selectedTags,
-                            lastUpdated: new Date().toISOString()
-                        };
-                        window.sharedDataManager.savePatientMedicalInfo(currentPatientId, updatedMedicalInfo);
-                        console.log('✅ ALARM-OVERVIEW WEBSOCKET FIX: Medical problem saved AFTER organ calculations - triggers WebSocket:', selectedProblem);
-                        
-                        // Debug: Check what was actually stored
-                        console.log('🔍 ALARM-OVERVIEW Debug - Organ levels after medical problem selection:');
-                        console.log('  Heart:', window.sharedDataManager.getHeartMonitoringLevel(currentPatientId));
-                        console.log('  Lung:', window.sharedDataManager.getLungMonitoringLevel(currentPatientId));
-                        console.log('  Temp:', window.sharedDataManager.getTempMonitoringLevel(currentPatientId));
-                    }
-                }, 150); // Increased delay to match successful risk level pattern
+                // CRITICAL FIX: Save medical problem IMMEDIATELY before applying changes
+                // This ensures syncDisplaysWithCentralizedRanges reads the correct problem value
+                if (currentPatientId && window.sharedDataManager) {
+                    const existingMedicalInfo = window.sharedDataManager.getPatientMedicalInfo(currentPatientId) || {};
+                    const updatedMedicalInfo = {
+                        ...existingMedicalInfo,
+                        selectedProblem: selectedProblem,
+                        selectedRiskLevel: selectedRiskLevel,
+                        selectedTags: selectedTags,
+                        lastUpdated: new Date().toISOString()
+                    };
+                    window.sharedDataManager.savePatientMedicalInfo(currentPatientId, updatedMedicalInfo);
+                    console.log('✅ ALARM-OVERVIEW: Medical problem saved IMMEDIATELY before calculations:', selectedProblem);
+                }
+                
+                updateOrganCirclesBasedOnProblem(selectedProblem);
                 
                 // Clear flag after processing
                 setTimeout(() => {
