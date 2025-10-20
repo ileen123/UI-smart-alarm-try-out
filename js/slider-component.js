@@ -961,8 +961,9 @@ class VitalParameterSlider {
             // Update SharedDataManager
             if (window.sharedDataManager && this.config.patientId) {
                 console.log(`📞 Calling setParameterAlarmEnabled(${this.config.patientId}, ${this.config.parameter}, ${isEnabled})`);
+                // Dispatch to the datamanager
                 window.sharedDataManager.setParameterAlarmEnabled(this.config.patientId, this.config.parameter, isEnabled);
-            } else {
+                } else {
                 console.error(`❌ Cannot save alarm state - missing SharedDataManager or patientId`);
             }
         });

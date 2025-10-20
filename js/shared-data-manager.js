@@ -78,6 +78,7 @@ class SharedDataManager {
             if (this.webSocketManager) {
                 // Track this message as sent
                 this.trackSentMessage(messageFingerprint);
+                console.log('📤 Sending WebSocket message:', type, data);
                 return this.webSocketManager.sendMessage(type, data, priority);
             } else {
                 console.warn('⚠️ WebSocket manager not available. Message not sent:', type);
@@ -434,6 +435,7 @@ class SharedDataManager {
         return window.isUserChangingProblem === true;
     }
 
+
     /**
      * Parameter Alarm Toggle Management
      * Controls whether alarms are active/inactive for each parameter (HR, BP, Saturatie, AF, Temperature)
@@ -446,13 +448,26 @@ class SharedDataManager {
      * @param {boolean} isEnabled - Whether alarms are enabled for this parameter
      */
     setParameterAlarmEnabled(patientId, parameter, isEnabled) {
+        console.log('FUNCTION TRIGGERED - SET PARAMETER ALARM ENABLED');
         const key = `patient-${patientId}-alarm-${parameter}`;
         localStorage.setItem(key, isEnabled.toString());
         
+
         // Trigger event for cross-page synchronization
+        // maintain a different message format to the dispatchEvent
         window.dispatchEvent(new CustomEvent('parameterAlarmToggled', {
             detail: { patientId, parameter, isEnabled }
-        }));
+        }));    
+
+        const payload = {
+            'type': 'parameterAlarmToggled',
+            'patientId': patientId,
+            'parameter': parameter,
+            'status': isEnabled ? 'enabled' : 'disabled'
+        }
+        console.log('📤 Preparing to send WebSocket message for parameter alarm toggle:', payload);
+        this.sendWebSocketMessage('parameterAlarmToggled', payload);
+        console.log('📤 WebSocket message sent:', result);
     }
 
     /**
