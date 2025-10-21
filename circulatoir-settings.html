@@ -916,10 +916,10 @@
             if (currentPatientId && window.sharedDataManager) {
                 console.log('🎯 CIRCULATOIR: Initializing with single source of truth for patient:', currentPatientId);
                 
-                // Get ALL effective values in one call (prevents stacking)
+                // FORCE FRESH DATA: Don't use cache when page loads to ensure we get latest problem-specific ranges
                 const effectiveValues = window.sharedDataManager.getCurrentEffectiveValues(
                     currentPatientId, 
-                    { useCache: true } // Use cache during initialization to prevent redundancy
+                    { useCache: false, forceRefresh: true } // Force fresh calculation on page load
                 );
                 
                 console.log('📦 CIRCULATOIR: Received effective values package:', effectiveValues);

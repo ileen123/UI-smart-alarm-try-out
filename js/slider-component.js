@@ -796,118 +796,34 @@ class VitalParameterSlider {
             try {
                 console.log(`🔄 Loading existing settings for ${this.config.parameter} from patient ${this.config.patientId}`);
                 
-                // Check if pneumonie is active and this is AF parameter - skip loading saved settings
-                if (this.config.parameter === 'AF') {
-                    const pneumonieState = window.sharedDataManager.getPatientConditionState('pneumonie', this.config.patientId);
-                    if (pneumonieState && pneumonieState.isActive) {
-                        console.log('🫁 Pneumonie is active - skipping saved AF settings to preserve 10-30 range');
-                        console.log('ℹ️ No custom settings loaded for AF due to active pneumonie condition');
-                        return false;
-                    }
-                }
+                // UPDATED APPROACH: Get current target ranges from central storage
+                // This ensures we load the ranges that match the current main problem selection
+                const currentTargetRanges = window.sharedDataManager.getCurrentTargetRanges(this.config.patientId);
                 
-                // Check if sepsis is active and this is HR or BP parameter - skip loading saved settings
-                if (['HR', 'BP_Mean'].includes(this.config.parameter)) {
-                    const sepsisState = window.sharedDataManager.getPatientConditionState('sepsis', this.config.patientId);
-                    if (sepsisState && sepsisState.isActive) {
-                        console.log(`🦠 Sepsis is active - skipping saved ${this.config.parameter} settings to preserve sepsis ranges`);
-                        console.log(`ℹ️ No custom settings loaded for ${this.config.parameter} due to active sepsis condition`);
-                        return false;
-                    }
-                }
-                
-                // Get patient medical info
-                const medicalInfo = window.sharedDataManager.getPatientMedicalInfo(this.config.patientId);
-                
-                if (medicalInfo && medicalInfo.customThresholds) {
-                    // Determine which organ system this parameter belongs to
-                    let organSystem = 'overig'; // default
-                    if (['HR', 'BP_Mean'].includes(this.config.parameter)) {
-                        organSystem = 'circulatoir';
-                    } else if (['Saturatie', 'RR', 'AF'].includes(this.config.parameter)) {
-                        organSystem = 'respiratoir';
-                    } else if (['Temp'].includes(this.config.parameter)) {
-                        organSystem = 'overig';
-                    }
+                if (currentTargetRanges && currentTargetRanges[this.config.parameter]) {
+                    const targetRange = currentTargetRanges[this.config.parameter];
+                    console.log(`📊 Using current target range for ${this.config.parameter}:`, targetRange);
                     
-                    // Check if custom thresholds exist for this parameter
-                    const customThreshold = medicalInfo.customThresholds[organSystem]?.[this.config.parameter];
+                    // Update slider with current target ranges
+                    this.currentMin = targetRange.min;
+                    this.currentMax = targetRange.max;
                     
-                    if (customThreshold) {
-                        console.log(`✅ Found custom threshold for ${this.config.parameter}:`, customThreshold);
-                        
-                        // Update current values
-                        this.currentMin = customThreshold.min;
-                        this.currentMax = customThreshold.max;
-                        
-                        // Update the original values to track against
-                        this.originalMin = customThreshold.min;
-                        this.originalMax = customThreshold.max;
-                        
-                        // Update the configuration
-                        this.config.targetRange.min = customThreshold.min;
-                        this.config.targetRange.max = customThreshold.max;
-                        
-                        // Update the UI
-                        this.updateSliderPosition();
-                        this.updateDisplayValues();
-                        
-                        // Initial button state should be outlined since no manual adjustments yet
-                        this.updateButtonState();
-                        
-                        console.log(`✅ Loaded settings: ${this.currentMin}-${this.currentMax} ${this.config.unit}`);
-                        return true;
-                    }
+                    // Update the original values to track against
+                    this.originalMin = targetRange.min;
+                    this.originalMax = targetRange.max;
+                    
+                    this.config.targetRange.min = targetRange.min;
+                    this.config.targetRange.max = targetRange.max;
+                    
+                    this.updateSliderPosition();
+                    this.updateDisplayValues();
+                    this.updateButtonState();
+                    
+                    console.log(`✅ Loaded current target range: ${this.currentMin}-${this.currentMax} ${this.config.unit}`);
+                    return true;
                 }
                 
-                // Try to load from condition-based thresholds (sepsis, etc.)
-                if (medicalInfo && medicalInfo.selectedTags) {
-                    const thresholds = window.sharedDataManager.getThresholdsByTags(medicalInfo.selectedTags);
-                    
-                    if (thresholds && this.config.parameter === 'HR' && thresholds.circulatoir?.HR) {
-                        const hrThresholds = thresholds.circulatoir.HR;
-                        this.currentMin = hrThresholds.min;
-                        this.currentMax = hrThresholds.max;
-                        
-                        // Update the original values to track against
-                        this.originalMin = hrThresholds.min;
-                        this.originalMax = hrThresholds.max;
-                        
-                        this.config.targetRange.min = hrThresholds.min;
-                        this.config.targetRange.max = hrThresholds.max;
-                        
-                        this.updateSliderPosition();
-                        this.updateDisplayValues();
-                        
-                        // Initial button state should be outlined since no manual adjustments yet
-                        this.updateButtonState();
-                        
-                        console.log(`✅ Loaded condition-based HR thresholds: ${this.currentMin}-${this.currentMax} ${this.config.unit}`);
-                        return true;
-                    } else if (thresholds && this.config.parameter === 'BP_Mean' && thresholds.circulatoir?.BP_Mean) {
-                        const bpThresholds = thresholds.circulatoir.BP_Mean;
-                        this.currentMin = bpThresholds.min;
-                        this.currentMax = bpThresholds.max;
-                        
-                        // Update the original values to track against
-                        this.originalMin = bpThresholds.min;
-                        this.originalMax = bpThresholds.max;
-                        
-                        this.config.targetRange.min = bpThresholds.min;
-                        this.config.targetRange.max = bpThresholds.max;
-                        
-                        this.updateSliderPosition();
-                        this.updateDisplayValues();
-                        
-                        // Initial button state should be outlined since no manual adjustments yet
-                        this.updateButtonState();
-                        
-                        console.log(`✅ Loaded condition-based BP thresholds: ${this.currentMin}-${this.currentMax} ${this.config.unit}`);
-                        return true;
-                    }
-                }
-                
-                console.log(`ℹ️ No custom settings found for ${this.config.parameter}, using defaults`);
+                console.log(`ℹ️ No target range found for ${this.config.parameter}, keeping initialized values`);
                 return false;
                 
             } catch (error) {
