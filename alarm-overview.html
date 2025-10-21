@@ -138,16 +138,16 @@
                     <button class="btn tag-btn" data-condition="sepsis">
                         Sepsis <img src="svgs/sepsis.svg" alt="Sepsis" class="sepsis-icon">
                     </button>
-                    <button class="btn tag-btn" data-condition="diabetes">
+                    <button class="btn tag-btn inactive" data-condition="diabetes" disabled>
                         Diabetes <img src="svgs/diabetes.svg" alt="Diabetes" class="condition-icon">
                     </button>
-                    <button class="btn tag-btn" data-condition="herstellende">
+                    <button class="btn tag-btn inactive" data-condition="herstellende" disabled>
                         Herstellende <img src="svgs/patient_icon.svg" alt="Herstellende" class="condition-icon">
                     </button>
                     <button class="btn tag-btn" data-condition="pneumonie">
                         Pneumonie <img src="svgs/lung.svg" alt="Pneumonie" class="condition-icon">
                     </button>
-                    <button class="btn tag-btn" data-condition="chronisch-nierfalen">
+                    <button class="btn tag-btn inactive" data-condition="chronisch-nierfalen" disabled>
                         Chronisch Nierfalen <img src="svgs/nierfalen.svg" alt="Nierfalen" class="condition-icon">
                     </button>
                     <!-- More button to show additional options -->
@@ -1699,7 +1699,15 @@
 
             // UNIFIED TAG HANDLING: Event listeners for tag buttons
             document.querySelectorAll('.tag-btn').forEach(button => {
-                button.addEventListener('click', function() {
+                button.addEventListener('click', function(e) {
+                    // Prevent interaction with inactive buttons
+                    if (this.classList.contains('inactive') || this.disabled) {
+                        console.log('🚫 Inactive tag button clicked - ignoring:', this.dataset.condition);
+                        e.preventDefault();
+                        e.stopPropagation();
+                        return;
+                    }
+                    
                     const condition = this.dataset.condition;
                     const isCurrentlySelected = this.classList.contains('selected');
                     const newState = !isCurrentlySelected;

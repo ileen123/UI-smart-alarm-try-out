@@ -432,6 +432,23 @@ body {
     border-color: #1961AB; /* Blue border to match background */
 }
 
+/* Inactive tag button styling - for disabled conditions */
+.btn.tag-btn.inactive {
+    background-color: #f5f5f500; /* Light grey background */
+    color: #4a4a4a67; /* Light grey text */
+    border-color: #4a4a4a67; /* Light grey border */
+    opacity: 0.6; /* Reduced opacity */
+    cursor: not-allowed; /* Show not-allowed cursor */
+    pointer-events: none; /* Prevent all interactions */
+}
+
+/* Grey out icons in inactive buttons */
+.btn.tag-btn.inactive .sepsis-icon,
+.btn.tag-btn.inactive .condition-icon {
+    filter: grayscale(100%);
+    opacity: 0.5;
+}
+
 /* Risk level button color coding */
 .btn.risk-low { 
     border-color: #FC6039; /* Orange border for low risk */

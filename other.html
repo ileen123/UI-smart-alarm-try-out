@@ -81,10 +81,7 @@
                 <h3 class="info-title">Overige additionele informatie:</h3>
                 <div class="circulatory-tags-section">
                 <!-- Temperature monitoring tags could go here in the future -->
-                    <button class="btn tag-btn circulatory-tag" data-condition="pneumonie">
-                        Pneumonie <img src="s/lung.svg" alt="Pneumonie" class="condition-icon">
-                    </button>
-                    <button class="btn tag-btn" data-condition="herstellende">
+                    <button class="btn tag-btn inactive" data-condition="herstellende" disabled>
                         Herstellende <img src="svgs/patient_icon.svg" alt="Herstellende" class="condition-icon">
                     </button>
                     <button class="circulatory-more-btn">⋯</button>
@@ -1544,7 +1541,15 @@
             // UNIFIED TAG HANDLING: Set up tag button listeners
             const circulatoryTagButtons = document.querySelectorAll('.circulatory-tag');
             circulatoryTagButtons.forEach(button => {
-                button.addEventListener('click', function() {
+                button.addEventListener('click', function(e) {
+                    // Prevent interaction with inactive buttons
+                    if (this.classList.contains('inactive') || this.disabled) {
+                        console.log('🚫 Inactive tag button clicked - ignoring:', this.dataset.condition);
+                        e.preventDefault();
+                        e.stopPropagation();
+                        return;
+                    }
+                    
                     const tagCondition = this.dataset.condition;
                     const isCurrentlySelected = this.classList.contains('selected');
                     const newState = !isCurrentlySelected;
@@ -1774,7 +1779,15 @@
             // Set up tag button listeners (for herstellende condition)
             const tagButtons = document.querySelectorAll('.tag-btn');
             tagButtons.forEach(button => {
-                button.addEventListener('click', function() {
+                button.addEventListener('click', function(e) {
+                    // Prevent interaction with inactive buttons
+                    if (this.classList.contains('inactive') || this.disabled) {
+                        console.log('🚫 Inactive tag button clicked - ignoring:', this.dataset.condition);
+                        e.preventDefault();
+                        e.stopPropagation();
+                        return;
+                    }
+                    
                     const condition = this.dataset.condition;
                     
                     if (this.classList.contains('selected')) {
