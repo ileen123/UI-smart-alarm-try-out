@@ -3005,8 +3005,22 @@ class SharedDataManager {
             return { skipped: true, reason: 'already_in_state', currentState: currentState };
         }
         
-        // MANUAL OVERRIDE CLEARING: Clear any manual overrides (fragile system)
-        this.clearManualOverrides(patientId, `tag-${tag}-${isActive ? 'activated' : 'deactivated'}`);
+        // SMART MANUAL OVERRIDE CLEARING: Only clear overrides for parameters affected by this tag
+        // Determine which parameters this tag affects
+        const parametersToKeep = [];
+        
+        if (tag === 'sepsis') {
+            // Sepsis only affects HR and BP_Mean, so keep manual overrides for other parameters
+            parametersToKeep.push('AF', 'Saturatie', 'Temperature');
+            console.log(`🔒 MANUAL OVERRIDE: Sepsis tag - keeping manual overrides for: ${parametersToKeep.join(', ')}`);
+        } else if (tag === 'pneumonie') {
+            // Pneumonie only affects AF and Saturatie, so keep manual overrides for other parameters
+            parametersToKeep.push('HR', 'BP_Mean', 'Temperature');
+            console.log(`🔒 MANUAL OVERRIDE: Pneumonie tag - keeping manual overrides for: ${parametersToKeep.join(', ')}`);
+        }
+        // Add more conditions here for other tags if needed
+        
+        this.clearManualOverrides(patientId, `tag-${tag}-${isActive ? 'activated' : 'deactivated'}`, parametersToKeep);
         
         // Update the condition state - single source of truth
         this.setPatientConditionState(tag, {
@@ -4737,23 +4751,48 @@ class SharedDataManager {
      * @param {string} patientId - Patient identifier
      * @param {string} trigger - What triggered the clearing ('tag', 'risk-level', 'problem')
      */
-    clearManualOverrides(patientId, trigger = 'systematic-change') {
-        console.log(`🧹 MANUAL OVERRIDE: Clearing all manual overrides for patient ${patientId} (trigger: ${trigger})`);
+    clearManualOverrides(patientId, trigger = 'systematic-change', parametersToKeep = []) {
+        console.log(`🧹 MANUAL OVERRIDE: Clearing manual overrides for patient ${patientId} (trigger: ${trigger})`);
+        
+        if (parametersToKeep.length > 0) {
+            console.log(`🔒 MANUAL OVERRIDE: Keeping manual overrides for: ${parametersToKeep.join(', ')}`);
+        }
         
         const overrideKey = `${this.storageKeys.MANUAL_OVERRIDE_PREFIX}${patientId}`;
         const existingOverrides = this.getManualOverrides(patientId);
         
         console.log(`🔍 MANUAL OVERRIDE: Existing overrides before clearing:`, existingOverrides);
-        console.log(`🔍 MANUAL OVERRIDE: Storage key to clear: ${overrideKey}`);
+        console.log(`🔍 MANUAL OVERRIDE: Storage key: ${overrideKey}`);
         
         // CRITICAL: Also clear the old customThresholds system that sliders read from
         const medicalInfo = this.getPatientMedicalInfo(patientId);
         if (medicalInfo && medicalInfo.customThresholds) {
             console.log(`🔍 MANUAL OVERRIDE: Found customThresholds to clear:`, medicalInfo.customThresholds);
-            medicalInfo.customThresholds = {};
+            
+            // If parametersToKeep is specified, only clear the other parameters
+            if (parametersToKeep.length > 0) {
+                // Keep specified parameters, clear others
+                const keptThresholds = {};
+                Object.keys(medicalInfo.customThresholds).forEach(organSystem => {
+                    keptThresholds[organSystem] = {};
+                    Object.keys(medicalInfo.customThresholds[organSystem] || {}).forEach(param => {
+                        if (parametersToKeep.includes(param)) {
+                            keptThresholds[organSystem][param] = medicalInfo.customThresholds[organSystem][param];
+                            console.log(`🔒 MANUAL OVERRIDE: Keeping customThreshold for ${param}`);
+                        } else {
+                            console.log(`🗑️ MANUAL OVERRIDE: Clearing customThreshold for ${param}`);
+                        }
+                    });
+                });
+                medicalInfo.customThresholds = keptThresholds;
+            } else {
+                // Clear all
+                medicalInfo.customThresholds = {};
+            }
+            
             medicalInfo.lastUpdated = new Date().toISOString();
             this.savePatientMedicalInfo(patientId, medicalInfo);
-            console.log(`✅ MANUAL OVERRIDE: Cleared customThresholds from medical info`);
+            console.log(`✅ MANUAL OVERRIDE: Updated customThresholds in medical info`);
         }
         
         if (Object.keys(existingOverrides).length === 0 && (!medicalInfo?.customThresholds || Object.keys(medicalInfo.customThresholds).length === 0)) {
@@ -4761,10 +4800,33 @@ class SharedDataManager {
             return;
         }
         
-        // Remove from localStorage (new system)
-        localStorage.removeItem(overrideKey);
+        // Handle new system overrides
+        if (parametersToKeep.length > 0) {
+            // Keep specified parameters, clear others
+            const keptOverrides = {};
+            Object.keys(existingOverrides).forEach(param => {
+                if (parametersToKeep.includes(param)) {
+                    keptOverrides[param] = existingOverrides[param];
+                    console.log(`🔒 MANUAL OVERRIDE: Keeping override for ${param}:`, existingOverrides[param]);
+                } else {
+                    console.log(`🗑️ MANUAL OVERRIDE: Clearing override for ${param}`);
+                }
+            });
+            
+            if (Object.keys(keptOverrides).length > 0) {
+                localStorage.setItem(overrideKey, JSON.stringify(keptOverrides));
+                console.log(`✅ MANUAL OVERRIDE: Kept overrides:`, keptOverrides);
+            } else {
+                localStorage.removeItem(overrideKey);
+                console.log(`✅ MANUAL OVERRIDE: All overrides cleared (none kept)`);
+            }
+        } else {
+            // Remove all from localStorage (new system)
+            localStorage.removeItem(overrideKey);
+            console.log(`✅ MANUAL OVERRIDE: All overrides cleared`);
+        }
         
-        // Verify removal
+        // Verify state after operation
         const afterClear = localStorage.getItem(overrideKey);
         console.log(`🔍 MANUAL OVERRIDE: After clearing, storage contains:`, afterClear);
         
@@ -4772,7 +4834,7 @@ class SharedDataManager {
         this.invalidateEffectiveValuesCache(patientId);
         console.log(`🗑️ MANUAL OVERRIDE: Cache invalidated for patient ${patientId}`);
         
-        console.log(`✅ MANUAL OVERRIDE: Cleared all manual overrides for patient ${patientId} due to: ${trigger}`);
+        console.log(`✅ MANUAL OVERRIDE: Cleared manual overrides for patient ${patientId} due to: ${trigger}`);
         
         // Fire event for cross-page synchronization
         this.fireManualOverrideChangedEvent(patientId, null, null, 'cleared', trigger);

@@ -508,12 +508,16 @@
          * Synchronize all written displays with centralized target ranges
          * Called on page load to ensure displays match the source of truth
          */
-        function syncDisplaysWithCentralizedRanges() {
+        function syncDisplaysWithCentralizedRanges(options = {}) {
             console.log('🌐 EFFECTIVE VALUES SYNC: Updating alarm overview displays with effective values...');
 
+            // Accept optional parameter to control highlighting
+            const { shouldHighlight = false, highlightReason = '' } = options;
+            
             // Check if user is manually changing problems - if so, apply highlighting after updates
             const isUserChangingProblem = window.sharedDataManager?.isUserManuallyChangingProblem();
             console.log('🎨 SYNC: User changing problem?', isUserChangingProblem);
+            console.log('🎨 SYNC: Should highlight?', shouldHighlight, 'Reason:', highlightReason);
 
             // Get effective values instead of global variables
             if (!currentPatientId) {
@@ -550,10 +554,10 @@
                     valueNumbers[0].textContent = hrText;
                     console.log('📊 Updated HR display from effective values:', hrText);
                     
-                    // Apply highlighting if user is changing problems OR if manual override
-                    if (isUserChangingProblem || (hasManualOverrides && effectiveValues.manualOverrides.HR)) {
+                    // ONLY highlight if explicitly requested (problem change or tag toggle) - NOT for normal page load
+                    if (shouldHighlight || isUserChangingProblem) {
                         setTimeout(() => {
-                            const reason = effectiveValues.manualOverrides.HR ? 'Manual override active' : 'Problem change affected HR';
+                            const reason = highlightReason || (isUserChangingProblem ? 'Problem change affected HR' : 'HR updated');
                             highlightParameterChange(valueNumbers[0], 'highlight', reason);
                             console.log('🎨 SYNC: Applied highlighting to HR:', reason);
                         }, 50);
@@ -566,10 +570,10 @@
                     valueNumbers[1].textContent = bpText;
                     console.log('📊 Updated BP display from effective values:', bpText);
                     
-                    // Apply highlighting if user is changing problems OR if manual override
-                    if (isUserChangingProblem || (hasManualOverrides && effectiveValues.manualOverrides.BP_Mean)) {
+                    // ONLY highlight if explicitly requested (problem change or tag toggle) - NOT for normal page load
+                    if (shouldHighlight || isUserChangingProblem) {
                         setTimeout(() => {
-                            const reason = effectiveValues.manualOverrides.BP_Mean ? 'Manual override active' : 'Problem change affected BP';
+                            const reason = highlightReason || (isUserChangingProblem ? 'Problem change affected BP' : 'BP updated');
                             highlightParameterChange(valueNumbers[1], 'highlight', reason);
                             console.log('🎨 SYNC: Applied highlighting to BP:', reason);
                         }, 50);
@@ -582,11 +586,11 @@
                     valueNumbers[2].textContent = satText;
                     console.log('📊 Updated Saturatie display from effective values:', satText);
                     
-                    // Apply highlighting if manual override
-                    if (hasManualOverrides && effectiveValues.manualOverrides.Saturatie) {
+                    // ONLY highlight if explicitly requested
+                    if (shouldHighlight) {
                         setTimeout(() => {
-                            highlightParameterChange(valueNumbers[2], 'highlight', 'Manual override active');
-                            console.log('🎨 SYNC: Applied highlighting to Saturatie: Manual override active');
+                            highlightParameterChange(valueNumbers[2], 'highlight', highlightReason || 'Saturatie updated');
+                            console.log('🎨 SYNC: Applied highlighting to Saturatie:', highlightReason);
                         }, 50);
                     }
                 }
@@ -598,11 +602,11 @@
                     afDisplay.textContent = afText;
                     console.log('📊 Updated AF display from effective values:', afText);
                     
-                    // Apply highlighting if manual override (problem highlighting handled elsewhere)
-                    if (hasManualOverrides && effectiveValues.manualOverrides.AF) {
+                    // ONLY highlight if explicitly requested
+                    if (shouldHighlight) {
                         setTimeout(() => {
-                            highlightParameterChange(afDisplay, 'highlight', 'Manual override active');
-                            console.log('🎨 SYNC: Applied highlighting to AF: Manual override active');
+                            highlightParameterChange(afDisplay, 'highlight', highlightReason || 'AF updated');
+                            console.log('🎨 SYNC: Applied highlighting to AF:', highlightReason);
                         }, 50);
                     }
                 }
@@ -615,11 +619,12 @@
                     const tempText = `${min} - ${max}${ranges.Temperature.unit || '°C'}`;
                     valueNumbers[4].textContent = tempText;
                     console.log('📊 Updated Temperature display from effective values:', tempText);
-                    // Apply highlighting if manual override
-                    if (hasManualOverrides && effectiveValues.manualOverrides.Temperature) {
+                    
+                    // ONLY highlight if explicitly requested
+                    if (shouldHighlight) {
                         setTimeout(() => {
-                            highlightParameterChange(valueNumbers[4], 'highlight', 'Manual override active');
-                            console.log('🎨 SYNC: Applied highlighting to Temperature: Manual override active');
+                            highlightParameterChange(valueNumbers[4], 'highlight', highlightReason || 'Temperature updated');
+                            console.log('🎨 SYNC: Applied highlighting to Temperature:', highlightReason);
                         }, 50);
                     }
                 }
