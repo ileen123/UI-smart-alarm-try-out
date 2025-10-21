@@ -1202,6 +1202,11 @@
             
             // Update button states immediately
             updateButtonStates(buttonLevel);
+            
+            // Update sliders to match loaded level (wait for sliders to be initialized)
+            setTimeout(() => {
+                updateSlidersMonitoringLevel(buttonLevel);
+            }, 2000); // Wait for sliders to be fully initialized
         }
         
         // Helper function to update button states
