@@ -1013,14 +1013,12 @@
                 console.log('✅ Global variables loaded for other page');
             }
 
-            // Initialize heart circle component (same as alarm overview)
-            setTimeout(() => {
-                initializeHeartCircleComponent();
-                initializeSliders();
-                
-                // SIMPLE APPROACH: Global variables are automatically loaded and used
-                console.log('✅ Sliders initialized - using global variables approach');
-            }, 1000);
+            // Initialize heart circle component and sliders immediately (polling handles readiness)
+            initializeHeartCircleComponent();
+            initializeSliders();
+            
+            // SIMPLE APPROACH: Global variables are automatically loaded and used
+            console.log('✅ Sliders initialized - using global variables approach');
         // Heart, Lung, and Temperature SVG content
         const svgContent = {
             heart: `<svg class="organ-icon" viewBox="0 0 22 26" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -1083,10 +1081,23 @@
             // Update button states to match loaded level
             updateButtonStates(buttonLevel);
             
-            // Update sliders to match loaded level (wait for sliders to be initialized)
-            setTimeout(() => {
-                updateSlidersMonitoringLevel(buttonLevel);
-            }, 1500); // Wait for sliders to be fully initialized
+            // Update sliders to match loaded level (wait for sliders to be initialized with polling)
+            // Use polling to ensure sliders are actually ready before updating
+            let attempts = 0;
+            const maxAttempts = 20; // Max 2 seconds (20 * 100ms)
+            const checkSlidersReady = setInterval(() => {
+                attempts++;
+                if (window.tempSlider && 
+                    typeof window.tempSlider.updateMonitoringLevel === 'function') {
+                    clearInterval(checkSlidersReady);
+                    console.log(`✅ Slider ready after ${attempts * 100}ms, updating monitoring level to: ${buttonLevel}`);
+                    updateSlidersMonitoringLevel(buttonLevel);
+                } else if (attempts >= maxAttempts) {
+                    clearInterval(checkSlidersReady);
+                    console.warn(`⚠️ Slider not ready after ${maxAttempts * 100}ms, attempting update anyway`);
+                    updateSlidersMonitoringLevel(buttonLevel);
+                }
+            }, 100); // Check every 100ms
             
             // Listen for global temp monitoring level changes
             document.addEventListener('tempMonitoringLevelChanged', function(event) {
@@ -2004,6 +2015,9 @@
                                 }
                             }
                         });
+                        
+                        // Assign to window for cross-function access (needed for monitoring level polling)
+                        window.tempSlider = tempSlider;
                         
                         if (tempSlider) {
                             console.log('✅ Temperature Slider initialized successfully');

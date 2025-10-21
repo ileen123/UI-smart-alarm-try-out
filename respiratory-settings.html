@@ -1040,11 +1040,9 @@
                 console.log('✅ Global variables loaded for respiratory page');
             }
 
-            // Initialize heart circle component (same as alarm overview)
-            setTimeout(() => {
-                initializeHeartCircleComponent();
-                initializeSliders();
-            }, 1000);
+            // Initialize heart circle component and sliders immediately (polling handles readiness)
+            initializeHeartCircleComponent();
+            initializeSliders();
         });
         // Heart and Lung SVG content
         const svgContent = {
@@ -1105,10 +1103,24 @@
             // Update button states to match loaded level
             updateButtonStates(buttonLevel);
             
-            // Update sliders to match loaded level (wait for sliders to be initialized)
-            setTimeout(() => {
-                updateSlidersMonitoringLevel(buttonLevel);
-            }, 2000); // Wait for sliders to be fully initialized
+            // Update sliders to match loaded level (wait for sliders to be initialized with polling)
+            // Use polling to ensure sliders are actually ready before updating
+            let attempts = 0;
+            const maxAttempts = 30; // Max 3 seconds (30 * 100ms)
+            const checkSlidersReady = setInterval(() => {
+                attempts++;
+                if (window.saturatieSlider && window.afSlider && 
+                    typeof window.saturatieSlider.updateMonitoringLevel === 'function' &&
+                    typeof window.afSlider.updateMonitoringLevel === 'function') {
+                    clearInterval(checkSlidersReady);
+                    console.log(`✅ Sliders ready after ${attempts * 100}ms, updating monitoring level to: ${buttonLevel}`);
+                    updateSlidersMonitoringLevel(buttonLevel);
+                } else if (attempts >= maxAttempts) {
+                    clearInterval(checkSlidersReady);
+                    console.warn(`⚠️ Sliders not ready after ${maxAttempts * 100}ms, attempting update anyway`);
+                    updateSlidersMonitoringLevel(buttonLevel);
+                }
+            }, 100); // Check every 100ms
             
             // Listen for global lung monitoring level changes
             document.addEventListener('lungMonitoringLevelChanged', function(event) {

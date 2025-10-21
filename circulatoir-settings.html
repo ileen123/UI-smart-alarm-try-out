@@ -1203,10 +1203,24 @@
             // Update button states immediately
             updateButtonStates(buttonLevel);
             
-            // Update sliders to match loaded level (wait for sliders to be initialized)
-            setTimeout(() => {
-                updateSlidersMonitoringLevel(buttonLevel);
-            }, 2000); // Wait for sliders to be fully initialized
+            // Update sliders to match loaded level (wait for sliders to be initialized with polling)
+            // Use polling to ensure sliders are actually ready before updating
+            let attempts = 0;
+            const maxAttempts = 20; // Max 2 seconds (20 * 100ms)
+            const checkSlidersReady = setInterval(() => {
+                attempts++;
+                if (window.hrSlider && window.bpSlider && 
+                    typeof window.hrSlider.updateMonitoringLevel === 'function' &&
+                    typeof window.bpSlider.updateMonitoringLevel === 'function') {
+                    clearInterval(checkSlidersReady);
+                    console.log(`✅ Sliders ready after ${attempts * 100}ms, updating monitoring level to: ${buttonLevel}`);
+                    updateSlidersMonitoringLevel(buttonLevel);
+                } else if (attempts >= maxAttempts) {
+                    clearInterval(checkSlidersReady);
+                    console.warn(`⚠️ Sliders not ready after ${maxAttempts * 100}ms, attempting update anyway`);
+                    updateSlidersMonitoringLevel(buttonLevel);
+                }
+            }, 100); // Check every 100ms
         }
         
         // Helper function to update button states
